@@ -1,0 +1,29 @@
+# === DO_NOT_EDIT: pkg-ext site ===
+site_name: tfdo
+# === OK_EDIT: pkg-ext site ===
+
+# === DO_NOT_EDIT: pkg-ext theme ===
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+# === OK_EDIT: pkg-ext theme ===
+
+# === DO_NOT_EDIT: pkg-ext nav ===
+nav:
+  - Home: index.md
+  - tfdo:
+    - Overview: _root/index.md
+    - TfDoSettings: _root/tfdosettings.md
+  - core: core/index.md
+# === OK_EDIT: pkg-ext nav ===
+
+# === DO_NOT_EDIT: pkg-ext extensions ===
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - admonition
+  - attr_list
+# === OK_EDIT: pkg-ext extensions ===

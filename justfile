@@ -2,7 +2,7 @@
 
 # === OK_EDIT: path-sync header ===
 # Custom variables and setup
-REPO_URL := ""
+REPO_URL := "https://github.com/EspenAlbert/tfdo"
 
 
 # === DO_NOT_EDIT: path-sync standard ===
