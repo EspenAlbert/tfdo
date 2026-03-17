@@ -113,3 +113,28 @@ name: TfDoBaseInput
 ts: 2026-03-17 21:25:53.244490+00:00
 type: keep_private
 full_path: _internal.models.TfDoBaseInput
+---
+name: InitInput
+ts: 2026-03-17 21:38:13.323731+00:00
+type: keep_private
+full_path: _internal.models.InitInput
+---
+name: PlanInput
+ts: 2026-03-17 21:38:13.323772+00:00
+type: keep_private
+full_path: _internal.models.PlanInput
+---
+name: ApplyInput
+ts: 2026-03-17 21:38:13.323779+00:00
+type: keep_private
+full_path: _internal.models.ApplyInput
+---
+name: DestroyInput
+ts: 2026-03-17 21:38:13.323783+00:00
+type: keep_private
+full_path: _internal.models.DestroyInput
+---
+name: CheckInput
+ts: 2026-03-17 21:38:13.323787+00:00
+type: keep_private
+full_path: _internal.models.CheckInput

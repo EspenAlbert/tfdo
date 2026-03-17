@@ -19,7 +19,7 @@
 <a id="apply_cmd_def"></a>
 
 ### cli_command: `apply_cmd`
-- [source](../../tfdo/_internal/core/cmd_apply.py#L12)
+- [source](../../tfdo/_internal/core/cmd_apply.py#L13)
 > **Since:** unreleased
 
 ```python
@@ -47,7 +47,7 @@ Run terraform apply.
 <a id="check_cmd_def"></a>
 
 ### cli_command: `check_cmd`
-- [source](../../tfdo/_internal/core/cmd_check.py#L11)
+- [source](../../tfdo/_internal/core/cmd_check.py#L12)
 > **Since:** unreleased
 
 ```python
@@ -75,7 +75,7 @@ Run terraform fmt check + validate (ruff-style).
 <a id="destroy_cmd_def"></a>
 
 ### cli_command: `destroy_cmd`
-- [source](../../tfdo/_internal/core/cmd_destroy.py#L12)
+- [source](../../tfdo/_internal/core/cmd_destroy.py#L13)
 > **Since:** unreleased
 
 ```python
@@ -103,7 +103,7 @@ Run terraform destroy.
 <a id="init_cmd_def"></a>
 
 ### cli_command: `init_cmd`
-- [source](../../tfdo/_internal/core/cmd_init.py#L10)
+- [source](../../tfdo/_internal/core/cmd_init.py#L11)
 > **Since:** unreleased
 
 ```python
@@ -129,7 +129,7 @@ Run terraform init with retry on transient errors.
 <a id="plan_cmd_def"></a>
 
 ### cli_command: `plan_cmd`
-- [source](../../tfdo/_internal/core/cmd_plan.py#L12)
+- [source](../../tfdo/_internal/core/cmd_plan.py#L13)
 > **Since:** unreleased
 
 ```python

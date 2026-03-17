@@ -12,6 +12,8 @@ class TfDoSettings(StaticSettings):
     SKIP_APP_NAME: bool = False
     binary: str = 'terraform'
     tf_version: str | None = None
+    log_level: str = 'INFO'
+    passthrough: bool = False
 ```
 <!-- === OK_EDIT: pkg-ext tfdosettings_def === -->
 

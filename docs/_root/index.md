@@ -17,7 +17,7 @@
 <a id="get_settings_def"></a>
 
 ### cli_command: `get_settings`
-- [source](../../tfdo/_internal/typer_app.py#L33)
+- [source](../../tfdo/_internal/typer_app.py#L35)
 > **Since:** unreleased
 
 ```python
