@@ -27,6 +27,8 @@ def main_callback(
     ctx.obj = TfDoSettings(
         binary=binary,
         tf_version=tf_version,
+        log_level=log_level,
+        passthrough=passthrough,
     )
 
 

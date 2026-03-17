@@ -22,3 +22,6 @@ class TfDoSettings(StaticSettings):
         alias=ENV_NAME_TF_VERSION,
         description="When set, binary becomes 'mise x terraform@{version} -- {binary}'",
     )
+
+    log_level: str = Field(default="INFO", description="Log level for tfdo")
+    passthrough: bool = Field(default=False, description="Disable parsed output, pass raw ANSI from terraform")

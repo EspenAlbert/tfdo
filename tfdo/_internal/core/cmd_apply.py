@@ -4,6 +4,7 @@ from pathlib import Path
 import typer
 
 from tfdo._internal import cmd_options
+from tfdo._internal.models import ApplyInput
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
@@ -19,5 +20,6 @@ def apply_cmd(
 ) -> None:
     """Run terraform apply."""
     settings = get_settings(ctx)
-    logger.info(f"tfdo apply [binary={settings.binary}] -- not implemented yet")
+    input_model = ApplyInput(settings=settings, auto_approve=auto_approve, var_file=var_file, init_first=init_first)
+    logger.info(f"tfdo apply [binary={input_model.settings.binary}] -- not implemented yet")
     raise typer.Exit(0)

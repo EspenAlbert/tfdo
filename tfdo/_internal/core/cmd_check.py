@@ -3,6 +3,7 @@ import logging
 import typer
 
 from tfdo._internal import cmd_options
+from tfdo._internal.models import CheckInput
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
@@ -18,5 +19,6 @@ def check_cmd(
 ) -> None:
     """Run terraform fmt check + validate (ruff-style)."""
     settings = get_settings(ctx)
-    logger.info(f"tfdo check [binary={settings.binary}] -- not implemented yet")
+    input_model = CheckInput(settings=settings, fix=fix, diff=diff, init_first=init_first)
+    logger.info(f"tfdo check [binary={input_model.settings.binary}] -- not implemented yet")
     raise typer.Exit(0)

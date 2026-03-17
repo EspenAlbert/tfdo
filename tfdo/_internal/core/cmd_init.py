@@ -2,6 +2,7 @@ import logging
 
 import typer
 
+from tfdo._internal.models import InitInput
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
@@ -15,5 +16,6 @@ def init_cmd(
 ) -> None:
     """Run terraform init with retry on transient errors."""
     settings = get_settings(ctx)
-    logger.info(f"tfdo init [binary={settings.binary}] -- not implemented yet")
+    input_model = InitInput(settings=settings, extra_args=extra_args or [])
+    logger.info(f"tfdo init [binary={input_model.settings.binary}] -- not implemented yet")
     raise typer.Exit(0)

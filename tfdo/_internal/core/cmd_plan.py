@@ -4,6 +4,7 @@ from pathlib import Path
 import typer
 
 from tfdo._internal import cmd_options
+from tfdo._internal.models import PlanInput
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
@@ -20,5 +21,8 @@ def plan_cmd(
 ) -> None:
     """Run terraform plan."""
     settings = get_settings(ctx)
-    logger.info(f"tfdo plan [binary={settings.binary}] -- not implemented yet")
+    input_model = PlanInput(
+        settings=settings, out=out, json_output=json_output, var_file=var_file, init_first=init_first
+    )
+    logger.info(f"tfdo plan [binary={input_model.settings.binary}] -- not implemented yet")
     raise typer.Exit(0)
