@@ -1,0 +1,102 @@
+# path-sync copy -n python-template
+
+# === OK_EDIT: path-sync header ===
+[project]
+name = "tfdo"
+version = "0.1.0"
+description = "Package description"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = ["*/**/*.py", "*/py.typed"]
+exclude = [
+  "*_examples.py",
+  "*_test.py",
+  "conftest.py",
+  "test_*.json",
+]
+
+# === DO_NOT_EDIT: path-sync pkg-ext ===
+[tool.pkg-ext]
+tag_prefix = "v"
+max_bump_type = "minor"
+# === OK_EDIT: path-sync pkg-ext ===
+
+# === DO_NOT_EDIT: path-sync ruff ===
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+# E501: line too long (handled by formatter)
+# UP006: use `type` instead of `Type` from typing module
+# UP007: use `X | Y` instead of `Union[X, Y]`
+# UP035: use `typing` instead of `typing_extensions`
+# UP040: use `type` keyword instead of `TypeAlias`
+# UP046: use type parameters on functions instead of TypeVar
+# UP047: use type parameters instead of `Generic[T]` subclass
+extend-ignore = ["E501", "UP006", "UP007", "UP035", "UP040", "UP046", "UP047"]
+extend-select = ["Q", "RUF100", "C90", "UP", "I", "T", "FURB"]
+# === OK_EDIT: path-sync ruff ===
+
+# === DO_NOT_EDIT: path-sync pytest ===
+[tool.pytest.ini_options]
+addopts = "-s -vv --log-cli-level=INFO -m 'not manual'"
+markers = ["manual: test requires manual env setup (not run in CI)"]
+python_files = ["*_test.py", "test_*.py"]
+asyncio_mode = "auto"
+# === OK_EDIT: path-sync pytest ===
+
+# === DO_NOT_EDIT: path-sync coverage ===
+[tool.coverage.report]
+omit = ["*_test.py"]
+exclude_lines = ["no cov", "if __name__ == .__main__.:"]
+# === OK_EDIT: path-sync coverage ===
+
+# === DO_NOT_EDIT: path-sync vulture ===
+[tool.vulture]
+min_confidence = 80
+ignore_names = ["mock_*", "Mock*", "*_mock"]
+exclude = [".venv/", "*test.py"]
+# === OK_EDIT: path-sync vulture ===
+
+# === DO_NOT_EDIT: path-sync dev-lint ===
+[dependency-groups]
+dev-lint = [
+  "pyright>=1.1",
+  "ruff>=0.14",
+  "vulture>=2.14",
+]
+# === OK_EDIT: path-sync dev-lint ===
+
+# === DO_NOT_EDIT: path-sync dev-test ===
+dev-test = [
+  "pytest>=9.0",
+  "pytest-asyncio>=0.24",
+  "pytest-cov>=7.0",
+  "pytest-examples>=0.0.18",
+  "pytest-regressions>=2.6",
+]
+# === OK_EDIT: path-sync dev-test ===
+
+# === DO_NOT_EDIT: path-sync dev ===
+dev = [{include-group = "dev-lint"}, {include-group = "dev-test"}]
+# === OK_EDIT: path-sync dev ===
+
+# === DO_NOT_EDIT: path-sync release ===
+release = ["pkg-ext"]
+# === OK_EDIT: path-sync release ===
+# 
+# === DO_NOT_EDIT: path-sync docs ===
+docs = [
+  "mkdocs-material>=9.5",
+]
+# === OK_EDIT: path-sync docs ===

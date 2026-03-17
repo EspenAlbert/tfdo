@@ -1,0 +1,22 @@
+# path-sync copy -n python-template
+name: setup
+description: 'Setup Python, uv, and just for CI'
+
+inputs:
+  python-version:
+    default: '3.13'
+    description: 'Python version to use'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "${{ inputs.python-version }}"
+    - uses: astral-sh/setup-uv@v7
+    - uses: extractions/setup-just@v2
+    - name: git-configure
+      shell: bash
+      run: |
+        git config --global user.name github-actions[bot]
+        git config --global user.email github-actions[bot]@users.noreply.github.com

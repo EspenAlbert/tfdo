@@ -1,0 +1,40 @@
+# path-sync copy -n python-template
+
+# === DO_NOT_EDIT: path-sync gitignore ===
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Cache directories
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# pkg-ext dev mode files
+.groups-dev.yaml
+CHANGELOG-dev.md
+*.api-dev.yaml
+
+# MkDocs build output
+site/
+# === OK_EDIT: path-sync gitignore ===
