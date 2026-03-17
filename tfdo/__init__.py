@@ -5,7 +5,7 @@ from tfdo._internal.typer_app import main_callback
 from tfdo import core
 from tfdo._internal.settings import TfDoSettings
 
-VERSION = "0.0.1"
+VERSION = "0.1.0"
 __all__ = [
     "get_settings",
     "main_callback",

@@ -18,7 +18,7 @@
 
 ### cli_command: `get_settings`
 - [source](../../tfdo/_internal/typer_app.py#L35)
-> **Since:** unreleased
+> **Since:** 0.1.0
 
 ```python
 def get_settings() -> TfDoSettings:
@@ -29,14 +29,14 @@ def get_settings() -> TfDoSettings:
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext get_settings_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext main_callback_def === -->
 <a id="main_callback_def"></a>
 
 ### cli_command: `main_callback`
 - [source](../../tfdo/_internal/typer_app.py#L13)
-> **Since:** unreleased
+> **Since:** 0.1.0
 
 ```python
 def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., log_level: str = 'INFO', passthrough: bool = False) -> None:
@@ -56,5 +56,5 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., lo
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext main_callback_def === -->

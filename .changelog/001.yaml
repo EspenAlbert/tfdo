@@ -138,3 +138,8 @@ name: CheckInput
 ts: 2026-03-17 21:38:13.323787+00:00
 type: keep_private
 full_path: _internal.models.CheckInput
+---
+name: 0.1.0
+ts: 2026-03-17 21:46:49.750376+00:00
+type: release
+old_version: 0.0.1

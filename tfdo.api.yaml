@@ -1,0 +1,496 @@
+pkg_import_name: tfdo
+version: 0.1.0
+groups:
+- name: __ROOT__
+  symbols:
+  - name: TfDoSettings
+    module_path: _internal.settings
+    docstring: ''
+    line_number: 9
+    type: class
+    mro_bases:
+    - StaticSettings
+    - BaseSettings
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: STATIC_DIR
+      type_annotation: Path | None
+      type_imports:
+      - pathlib.Path
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      env_vars:
+      - static_dir
+    - name: CACHE_DIR
+      type_annotation: Path | None
+      type_imports:
+      - pathlib.Path
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      env_vars:
+      - cache_dir
+    - name: SKIP_APP_NAME
+      type_annotation: bool
+      type_imports: []
+      default:
+        value_repr: 'False'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      env_vars:
+      - skip_app_name
+    - name: binary
+      type_annotation: str
+      type_imports: []
+      default:
+        value_repr: '''terraform'''
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      description: Terraform binary name or path (terraform, tofu, etc.)
+      env_vars:
+      - tfdo_binary
+      - binary
+    - name: tf_version
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      description: When set, binary becomes 'mise x terraform@{version} -- {binary}'
+      env_vars:
+      - tfdo_tf_version
+      - tf_version
+    - name: log_level
+      type_annotation: str
+      type_imports: []
+      default:
+        value_repr: '''INFO'''
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      description: Log level for tfdo
+      env_vars:
+      - log_level
+    - name: passthrough
+      type_annotation: bool
+      type_imports: []
+      default:
+        value_repr: 'False'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      description: Disable parsed output, pass raw ANSI from terraform
+      env_vars:
+      - passthrough
+  - name: get_settings
+    module_path: _internal.typer_app
+    docstring: ''
+    line_number: 35
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      return_annotation: TfDoSettings
+      return_type_imports:
+      - tfdo._internal.settings.TfDoSettings
+    cli_params: []
+  - name: main_callback
+    module_path: _internal.typer_app
+    docstring: ''
+    line_number: 13
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: binary
+        kind: positional_or_keyword
+        type_annotation: str
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: tf_version
+        kind: positional_or_keyword
+        type_annotation: str | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: log_level
+        kind: positional_or_keyword
+        type_annotation: str
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: passthrough
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: binary
+      type_annotation: str
+      flags:
+      - -b
+      - --binary
+      help: Terraform binary name or path
+      default_repr: '''terraform'''
+      required: false
+      envvar: TFDO_BINARY
+      is_argument: false
+      hidden: false
+    - param_name: tf_version
+      type_annotation: str | None
+      flags:
+      - -V
+      - --tf-version
+      help: Terraform version (uses mise for version selection)
+      required: true
+      envvar: TFDO_TF_VERSION
+      is_argument: false
+      hidden: false
+    - param_name: log_level
+      type_annotation: str
+      flags:
+      - --log-level
+      help: Log level for tfdo
+      default_repr: '''INFO'''
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: passthrough
+      type_annotation: bool
+      flags:
+      - --passthrough
+      help: Disable parsed output, pass raw ANSI from terraform
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+- name: core
+  symbols:
+  - name: apply_cmd
+    module_path: _internal.core.cmd_apply
+    docstring: Run terraform apply.
+    line_number: 13
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: auto_approve
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: var_file
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: init_first
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: auto_approve
+      type_annotation: bool
+      flags:
+      - --auto-approve
+      help: Skip interactive approval prompts
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: var_file
+      type_annotation: Path | None
+      flags:
+      - --var-file
+      - -f
+      help: Path to a terraform .tfvars file
+      required: true
+      is_argument: false
+      hidden: false
+    - param_name: init_first
+      type_annotation: bool
+      flags:
+      - --init
+      help: Run terraform init before the command
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+  - name: check_cmd
+    module_path: _internal.core.cmd_check
+    docstring: Run terraform fmt check + validate (ruff-style).
+    line_number: 12
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: fix
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: diff
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: init_first
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: fix
+      type_annotation: bool
+      flags:
+      - --fix
+      help: Auto-format instead of checking
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: diff
+      type_annotation: bool
+      flags:
+      - --diff
+      help: Show what would change
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: init_first
+      type_annotation: bool
+      flags:
+      - --init
+      help: Run terraform init before the command
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+  - name: destroy_cmd
+    module_path: _internal.core.cmd_destroy
+    docstring: Run terraform destroy.
+    line_number: 13
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: auto_approve
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: var_file
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: init_first
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: auto_approve
+      type_annotation: bool
+      flags:
+      - --auto-approve
+      help: Skip interactive approval prompts
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: var_file
+      type_annotation: Path | None
+      flags:
+      - --var-file
+      - -f
+      help: Path to a terraform .tfvars file
+      required: true
+      is_argument: false
+      hidden: false
+    - param_name: init_first
+      type_annotation: bool
+      flags:
+      - --init
+      help: Run terraform init before the command
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+  - name: init_cmd
+    module_path: _internal.core.cmd_init
+    docstring: Run terraform init with retry on transient errors.
+    line_number: 11
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: extra_args
+        kind: positional_or_keyword
+        type_annotation: list[str]
+        type_imports: []
+        default:
+          value_repr: <typer.models.ArgumentInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: extra_args
+      type_annotation: list[str]
+      flags: []
+      help: Extra arguments forwarded to terraform init
+      required: true
+      is_argument: true
+      hidden: false
+  - name: plan_cmd
+    module_path: _internal.core.cmd_plan
+    docstring: Run terraform plan.
+    line_number: 13
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: out
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: json_output
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: var_file
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: init_first
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: out
+      type_annotation: Path | None
+      flags:
+      - -o
+      - --out
+      help: Write the plan to a file
+      required: true
+      is_argument: false
+      hidden: false
+    - param_name: json_output
+      type_annotation: bool
+      flags:
+      - --json
+      help: Output plan in JSON format
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: var_file
+      type_annotation: Path | None
+      flags:
+      - --var-file
+      - -f
+      help: Path to a terraform .tfvars file
+      required: true
+      is_argument: false
+      hidden: false
+    - param_name: init_first
+      type_annotation: bool
+      flags:
+      - --init
+      help: Run terraform init before the command
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+dumped_at: 2026-03-17 21:46:49.722803+00:00

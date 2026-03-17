@@ -3,7 +3,7 @@
 <!-- === DO_NOT_EDIT: pkg-ext tfdosettings_def === -->
 ## class: TfDoSettings
 - [source](../../tfdo/_internal/settings.py#L9)
-> **Since:** unreleased
+> **Since:** 0.1.0
 
 ```python
 class TfDoSettings(StaticSettings):
@@ -44,5 +44,5 @@ class TfDoSettings(StaticSettings):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tfdosettings_changes === -->

@@ -3,7 +3,7 @@
 # === OK_EDIT: path-sync header ===
 [project]
 name = "tfdo"
-version = "0.0.1"
+version = "0.1.0"
 description = "Terraform/OpenTofu lifecycle CLI with retry, workspaces, and CI scaffold"
 requires-python = ">=3.13"
 license = "MIT"

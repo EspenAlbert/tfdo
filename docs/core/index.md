@@ -20,7 +20,7 @@
 
 ### cli_command: `apply_cmd`
 - [source](../../tfdo/_internal/core/cmd_apply.py#L13)
-> **Since:** unreleased
+> **Since:** 0.1.0
 
 ```python
 def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = ..., init_first: bool = False) -> None:
@@ -41,14 +41,14 @@ Run terraform apply.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext apply_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext check_cmd_def === -->
 <a id="check_cmd_def"></a>
 
 ### cli_command: `check_cmd`
 - [source](../../tfdo/_internal/core/cmd_check.py#L12)
-> **Since:** unreleased
+> **Since:** 0.1.0
 
 ```python
 def check_cmd(*, fix: bool = False, diff: bool = False, init_first: bool = False) -> None:
@@ -69,14 +69,14 @@ Run terraform fmt check + validate (ruff-style).
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext check_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext destroy_cmd_def === -->
 <a id="destroy_cmd_def"></a>
 
 ### cli_command: `destroy_cmd`
 - [source](../../tfdo/_internal/core/cmd_destroy.py#L13)
-> **Since:** unreleased
+> **Since:** 0.1.0
 
 ```python
 def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = ..., init_first: bool = False) -> None:
@@ -97,14 +97,14 @@ Run terraform destroy.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext destroy_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext init_cmd_def === -->
 <a id="init_cmd_def"></a>
 
 ### cli_command: `init_cmd`
 - [source](../../tfdo/_internal/core/cmd_init.py#L11)
-> **Since:** unreleased
+> **Since:** 0.1.0
 
 ```python
 def init_cmd(*, extra_args: list[str] = ...) -> None:
@@ -123,14 +123,14 @@ Run terraform init with retry on transient errors.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext init_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext plan_cmd_def === -->
 <a id="plan_cmd_def"></a>
 
 ### cli_command: `plan_cmd`
 - [source](../../tfdo/_internal/core/cmd_plan.py#L13)
-> **Since:** unreleased
+> **Since:** 0.1.0
 
 ```python
 def plan_cmd(*, out: Path | None = ..., json_output: bool = False, var_file: Path | None = ..., init_first: bool = False) -> None:
@@ -152,5 +152,5 @@ Run terraform plan.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext plan_cmd_def === -->
