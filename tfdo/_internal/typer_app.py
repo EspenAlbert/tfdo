@@ -21,7 +21,7 @@ def main_callback(
     tf_version: str | None = typer.Option(
         None, "-V", "--tf-version", envvar="TFDO_TF_VERSION", help="Terraform version (uses mise for version selection)"
     ),
-    work_dir: Path = typer.Option(
+    work_dir: Path | None = typer.Option(
         None, "-w", "--work-dir", envvar="TFDO_WORK_DIR", help="Working directory for terraform commands"
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Log level for tfdo"),

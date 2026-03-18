@@ -42,4 +42,3 @@ class CheckInput(TfDoBaseInput):
 class InitResult(BaseModel):
     exit_code: int
     attempts_used: int
-    cache_cleaned: bool = False
