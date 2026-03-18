@@ -2,7 +2,7 @@
 
 <!-- === DO_NOT_EDIT: pkg-ext tfdosettings_def === -->
 ## class: TfDoSettings
-- [source](../../tfdo/_internal/settings.py#L9)
+- [source](../../tfdo/_internal/settings.py#L10)
 > **Since:** 0.1.0
 
 ```python
@@ -12,6 +12,7 @@ class TfDoSettings(StaticSettings):
     SKIP_APP_NAME: bool = False
     binary: str = 'terraform'
     tf_version: str | None = None
+    work_dir: Path = ...
     log_level: str = 'INFO'
     passthrough: bool = False
 ```
@@ -44,5 +45,6 @@ class TfDoSettings(StaticSettings):
 
 | Version | Change |
 |---------|--------|
+| unreleased | added optional field 'work_dir' (default: ...) |
 | 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tfdosettings_changes === -->

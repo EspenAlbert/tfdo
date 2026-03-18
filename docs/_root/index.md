@@ -17,7 +17,7 @@
 <a id="get_settings_def"></a>
 
 ### cli_command: `get_settings`
-- [source](../../tfdo/_internal/typer_app.py#L35)
+- [source](../../tfdo/_internal/typer_app.py#L38)
 > **Since:** 0.1.0
 
 ```python
@@ -35,11 +35,11 @@ def get_settings() -> TfDoSettings:
 <a id="main_callback_def"></a>
 
 ### cli_command: `main_callback`
-- [source](../../tfdo/_internal/typer_app.py#L13)
+- [source](../../tfdo/_internal/typer_app.py#L15)
 > **Since:** 0.1.0
 
 ```python
-def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., log_level: str = 'INFO', passthrough: bool = False) -> None:
+def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., work_dir: Path | None = ..., log_level: str = 'INFO', passthrough: bool = False) -> None:
     ...
 ```
 
@@ -49,6 +49,7 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., lo
 |---|---|---|---|---|
 | `-b`, `--binary` | `str` | `'terraform'` | `TFDO_BINARY` | Terraform binary name or path |
 | `-V`, `--tf-version` | `str | None` | *required* | `TFDO_TF_VERSION` | Terraform version (uses mise for version selection) |
+| `-w`, `--work-dir` | `Path | None` | *required* | `TFDO_WORK_DIR` | Working directory for terraform commands |
 | `--log-level` | `str` | `'INFO'` | - | Log level for tfdo |
 | `--passthrough` | `bool` | `False` | - | Disable parsed output, pass raw ANSI from terraform |
 

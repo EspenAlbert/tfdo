@@ -103,11 +103,11 @@ Run terraform destroy.
 <a id="init_cmd_def"></a>
 
 ### cli_command: `init_cmd`
-- [source](../../tfdo/_internal/core/cmd_init.py#L11)
+- [source](../../tfdo/_internal/core/cmd_init.py#L12)
 > **Since:** 0.1.0
 
 ```python
-def init_cmd(*, extra_args: list[str] = ...) -> None:
+def init_cmd(*, extra_args: list[str] | None = ...) -> None:
     ...
 ```
 
@@ -117,7 +117,7 @@ Run terraform init with retry on transient errors.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `extra_args` (arg) | `list[str]` | *required* | Extra arguments forwarded to terraform init |
+| `extra_args` (arg) | `list[str] | None` | *required* | Extra arguments forwarded to terraform init |
 
 ### Changes
 

@@ -1,0 +1,26 @@
+name: init
+ts: 2026-03-18 07:42:00.348186+00:00
+type: keep_private
+full_path: _internal.core.executor.init
+---
+name: InitResult
+ts: 2026-03-18 07:42:04.917558+00:00
+type: keep_private
+full_path: _internal.models.InitResult
+---
+name: ''
+ts: 2026-03-18 07:42:09.154468+00:00
+type: fix
+author: Espen Albert
+ignored: true
+message: 'fix(init): Remove unused cache_cleaned field and fix exit code reporting'
+short_sha: f5a47d
+---
+name: TfDoSettings
+ts: 2026-03-18 07:42:09.334639+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''work_dir'' (default: ...)'
+field_name: work_dir
+group: __ROOT__
