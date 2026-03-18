@@ -1,8 +1,15 @@
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel
 
 from tfdo._internal.settings import TfDoSettings
+
+
+class InitMode(StrEnum):
+    AUTO = "auto"
+    ALWAYS = "always"
+    NEVER = "never"
 
 
 class TfDoBaseInput(BaseModel):
@@ -16,7 +23,7 @@ class InitInput(TfDoBaseInput):
 
 class LifecycleInput(TfDoBaseInput):
     var_file: Path | None = None
-    init_first: bool = False
+    init_mode: InitMode = InitMode.AUTO
 
 
 class PlanInput(LifecycleInput):
@@ -35,7 +42,7 @@ class DestroyInput(LifecycleInput):
 class CheckInput(TfDoBaseInput):
     fix: bool = False
     diff: bool = False
-    init_first: bool = False
+    init_mode: InitMode = InitMode.AUTO
 
 
 class InitResult(BaseModel):

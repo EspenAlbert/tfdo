@@ -13,12 +13,13 @@ from tfdo._internal.core.executor import (
     _init_should_retry,
     _is_checksum_error,
     _is_transient,
+    _needs_init,
     apply,
     destroy,
     init,
     plan,
 )
-from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, PlanInput
+from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, PlanInput
 from tfdo._internal.settings import TfDoSettings
 
 module_name = init.__module__
@@ -158,11 +159,11 @@ def test_plan_flags_forwarded(tmp_path: Path):
     assert "-json" in cmd
 
 
-def test_plan_init_first_aborts_on_failure(tmp_path: Path):
+def test_plan_always_init_aborts_on_failure(tmp_path: Path):
     settings = _make_settings(tmp_path)
     init_run = _mock_run(exit_code=1, attempt=1)
     with patch(_patch_run, return_value=init_run) as mock_raw:
-        result = plan(PlanInput(settings=settings, init_first=True))
+        result = plan(PlanInput(settings=settings, init_mode=InitMode.ALWAYS))
     assert result.exit_code == 1
     mock_raw.assert_called_once()
     assert "init" in mock_raw.call_args[0][0]
@@ -196,18 +197,61 @@ def test_destroy_auto_approve(tmp_path: Path):
     assert "-auto-approve" in cmd
 
 
-def test_lifecycle_init_first_then_command(tmp_path: Path):
-    """Verify init runs first and the lifecycle command follows on success."""
+def test_lifecycle_always_init_then_command(tmp_path: Path):
     settings = _make_settings(tmp_path)
     init_run = _mock_run(exit_code=0, attempt=1)
     apply_run = _mock_run(exit_code=0)
     with patch(_patch_run, side_effect=[init_run, apply_run]) as mock_raw:
-        result = apply(ApplyInput(settings=settings, init_first=True, auto_approve=True))
+        result = apply(ApplyInput(settings=settings, init_mode=InitMode.ALWAYS, auto_approve=True))
     assert result.exit_code == 0
     assert mock_raw.call_count == 2
     cmds = [c[0][0] for c in mock_raw.call_args_list]
     assert "init" in cmds[0]
     assert "apply" in cmds[1]
+
+
+# --- init mode tests ---
+
+
+def test_needs_init_detection():
+    assert _needs_init('Error: Could not load plugin\n\nPlease run "terraform init"')
+    assert _needs_init("Error: Missing required provider")
+    assert _needs_init("Error: Backend initialization required")
+    assert _needs_init("Error: Module not installed")
+    assert not _needs_init("Error: Invalid HCL syntax")
+
+
+def test_auto_init_retries_on_init_needed_error(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    fail_run = _mock_run(exit_code=1, stderr='Plugin not found. Please run "terraform init"')
+    init_run = _mock_run(exit_code=0, attempt=1)
+    success_run = _mock_run(exit_code=0)
+    with patch(_patch_run, side_effect=[fail_run, init_run, success_run]) as mock_raw:
+        result = plan(PlanInput(settings=settings))
+    assert result.exit_code == 0
+    assert mock_raw.call_count == 3
+    cmds = [c[0][0] for c in mock_raw.call_args_list]
+    assert "plan" in cmds[0]
+    assert "init" in cmds[1]
+    assert "plan" in cmds[2]
+
+
+def test_auto_init_skips_when_no_init_pattern(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    fail_run = _mock_run(exit_code=1, stderr="Error: Invalid resource type")
+    with patch(_patch_run, return_value=fail_run) as mock_raw:
+        result = plan(PlanInput(settings=settings))
+    assert result.exit_code == 1
+    mock_raw.assert_called_once()
+
+
+def test_never_init_mode_skips_init(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    fail_run = _mock_run(exit_code=1, stderr='Please run "terraform init"')
+    with patch(_patch_run, return_value=fail_run) as mock_raw:
+        result = plan(PlanInput(settings=settings, init_mode=InitMode.NEVER))
+    assert result.exit_code == 1
+    mock_raw.assert_called_once()
 
 
 # --- CLI integration ---
