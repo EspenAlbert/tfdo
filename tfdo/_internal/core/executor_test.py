@@ -8,17 +8,22 @@ from typer.testing import CliRunner
 from tfdo._internal.core import executor
 from tfdo._internal.core.executor import (
     _build_init_command,
+    _build_lifecycle_command,
     _clean_terraform_cache,
     _init_should_retry,
     _is_checksum_error,
     _is_transient,
+    apply,
+    destroy,
     init,
+    plan,
 )
-from tfdo._internal.models import InitInput
+from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, PlanInput
 from tfdo._internal.settings import TfDoSettings
 
 module_name = init.__module__
 runner = CliRunner()
+_patch_run = f"{module_name}.{executor.run_and_wait.__name__}"
 
 
 def _make_settings(tmp_path: Path) -> TfDoSettings:
@@ -33,6 +38,9 @@ def _mock_run(exit_code: int = 0, stderr: str = "", attempt: int = 1, cwd: Path 
     run.config = MagicMock()
     run.config.cwd = cwd or Path("/tmp")
     return run
+
+
+# --- init tests ---
 
 
 def test_transient_and_checksum_detection():
@@ -83,7 +91,7 @@ def test_build_init_command():
 def test_init_success(tmp_path: Path):
     settings = _make_settings(tmp_path)
     run = _mock_run(exit_code=0, attempt=1)
-    with patch(f"{module_name}.{executor.run_and_wait.__name__}", return_value=run):
+    with patch(_patch_run, return_value=run):
         result = init(InitInput(settings=settings))
     assert result.exit_code == 0
     assert result.attempts_used == 1
@@ -92,7 +100,7 @@ def test_init_success(tmp_path: Path):
 def test_init_extra_args_forwarded(tmp_path: Path):
     settings = _make_settings(tmp_path)
     run = _mock_run(exit_code=0, attempt=1)
-    with patch(f"{module_name}.{executor.run_and_wait.__name__}", return_value=run) as mock_raw:
+    with patch(_patch_run, return_value=run) as mock_raw:
         init(InitInput(settings=settings, extra_args=["-upgrade", "-input=false"]))
     cmd = mock_raw.call_args[0][0]
     assert "-upgrade" in cmd
@@ -104,6 +112,132 @@ def test_init_cmd_via_cli(tmp_path: Path):
     from tfdo._internal.typer_app import app
 
     run = _mock_run(exit_code=0, attempt=1)
-    with patch(f"{module_name}.{executor.run_and_wait.__name__}", return_value=run):
+    with patch(_patch_run, return_value=run):
         result = runner.invoke(app, ["--work-dir", str(tmp_path), "init"])
+    assert result.exit_code == 0
+
+
+# --- lifecycle command building ---
+
+
+def test_build_lifecycle_command():
+    assert _build_lifecycle_command("terraform", "plan", None, []) == "terraform plan"
+    assert _build_lifecycle_command("tofu", "apply", Path("dev.tfvars"), ["-auto-approve"]) == (
+        "tofu apply -var-file=dev.tfvars -auto-approve"
+    )
+
+
+# --- plan tests ---
+
+
+def test_plan_success(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0)
+    with patch(_patch_run, return_value=run) as mock_raw:
+        result = plan(PlanInput(settings=settings))
+    assert result.exit_code == 0
+    assert "terraform plan" in mock_raw.call_args[0][0]
+
+
+def test_plan_exit_code_2_changes_detected(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=2)
+    with patch(_patch_run, return_value=run):
+        result = plan(PlanInput(settings=settings))
+    assert result.exit_code == 2
+
+
+def test_plan_flags_forwarded(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0)
+    with patch(_patch_run, return_value=run) as mock_raw:
+        plan(PlanInput(settings=settings, out=Path("tfplan"), json_output=True, var_file=Path("dev.tfvars")))
+    cmd = mock_raw.call_args[0][0]
+    assert "-var-file=dev.tfvars" in cmd
+    assert "-out=tfplan" in cmd
+    assert "-json" in cmd
+
+
+def test_plan_init_first_aborts_on_failure(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    init_run = _mock_run(exit_code=1, attempt=1)
+    with patch(_patch_run, return_value=init_run) as mock_raw:
+        result = plan(PlanInput(settings=settings, init_first=True))
+    assert result.exit_code == 1
+    mock_raw.assert_called_once()
+    assert "init" in mock_raw.call_args[0][0]
+
+
+# --- apply tests ---
+
+
+def test_apply_auto_approve(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0)
+    with patch(_patch_run, return_value=run) as mock_raw:
+        result = apply(ApplyInput(settings=settings, auto_approve=True, var_file=Path("prod.tfvars")))
+    assert result.exit_code == 0
+    cmd = mock_raw.call_args[0][0]
+    assert "-auto-approve" in cmd
+    assert "-var-file=prod.tfvars" in cmd
+
+
+# --- destroy tests ---
+
+
+def test_destroy_auto_approve(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0)
+    with patch(_patch_run, return_value=run) as mock_raw:
+        result = destroy(DestroyInput(settings=settings, auto_approve=True))
+    assert result.exit_code == 0
+    cmd = mock_raw.call_args[0][0]
+    assert "terraform destroy" in cmd
+    assert "-auto-approve" in cmd
+
+
+def test_lifecycle_init_first_then_command(tmp_path: Path):
+    """Verify init runs first and the lifecycle command follows on success."""
+    settings = _make_settings(tmp_path)
+    init_run = _mock_run(exit_code=0, attempt=1)
+    apply_run = _mock_run(exit_code=0)
+    with patch(_patch_run, side_effect=[init_run, apply_run]) as mock_raw:
+        result = apply(ApplyInput(settings=settings, init_first=True, auto_approve=True))
+    assert result.exit_code == 0
+    assert mock_raw.call_count == 2
+    cmds = [c[0][0] for c in mock_raw.call_args_list]
+    assert "init" in cmds[0]
+    assert "apply" in cmds[1]
+
+
+# --- CLI integration ---
+
+
+def test_plan_cmd_via_cli(tmp_path: Path):
+    from tfdo._internal.core import cmd_plan  # noqa: F401
+    from tfdo._internal.typer_app import app
+
+    run = _mock_run(exit_code=0)
+    with patch(_patch_run, return_value=run):
+        result = runner.invoke(app, ["--work-dir", str(tmp_path), "plan"])
+    assert result.exit_code == 0
+
+
+def test_apply_cmd_via_cli(tmp_path: Path):
+    from tfdo._internal.core import cmd_apply  # noqa: F401
+    from tfdo._internal.typer_app import app
+
+    run = _mock_run(exit_code=0)
+    with patch(_patch_run, return_value=run):
+        result = runner.invoke(app, ["--work-dir", str(tmp_path), "apply", "--auto-approve"])
+    assert result.exit_code == 0
+
+
+def test_destroy_cmd_via_cli(tmp_path: Path):
+    from tfdo._internal.core import cmd_destroy  # noqa: F401
+    from tfdo._internal.typer_app import app
+
+    run = _mock_run(exit_code=0)
+    with patch(_patch_run, return_value=run):
+        result = runner.invoke(app, ["--work-dir", str(tmp_path), "destroy", "--auto-approve"])
     assert result.exit_code == 0

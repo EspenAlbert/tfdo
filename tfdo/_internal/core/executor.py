@@ -4,7 +4,18 @@ from pathlib import Path
 
 from ask_shell.shell import AbortRetryError, ShellError, ShellRun, run_and_wait
 
-from tfdo._internal.models import InitInput, InitResult
+from tfdo._internal.models import (
+    ApplyInput,
+    ApplyResult,
+    DestroyInput,
+    DestroyResult,
+    InitInput,
+    InitResult,
+    LifecycleInput,
+    LifecycleResult,
+    PlanInput,
+    PlanResult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -88,3 +99,62 @@ def init(input_model: InitInput) -> InitResult:
         return InitResult(exit_code=e.exit_code or 1, attempts_used=e.run.current_attempt)
     except AbortRetryError:
         return InitResult(exit_code=1, attempts_used=1)
+
+
+def _build_lifecycle_command(binary: str, subcommand: str, var_file: Path | None, extra_flags: list[str]) -> str:
+    parts = [binary, subcommand]
+    if var_file:
+        parts.append(f"-var-file={var_file}")
+    parts.extend(extra_flags)
+    return " ".join(parts)
+
+
+def _maybe_init[T: LifecycleResult](input_model: LifecycleInput, result_cls: type[T]) -> T | None:
+    if not input_model.init_first:
+        return None
+    init_result = init(InitInput(settings=input_model.settings))
+    if init_result.exit_code != 0:
+        return result_cls(exit_code=init_result.exit_code)
+    return None
+
+
+def _run_lifecycle[T: LifecycleResult](
+    input_model: LifecycleInput, subcommand: str, extra_flags: list[str], result_cls: type[T]
+) -> T:
+    if early := _maybe_init(input_model, result_cls):
+        return early
+    settings = input_model.settings
+    cmd = _build_lifecycle_command(settings.binary, subcommand, input_model.var_file, extra_flags)
+    try:
+        run = run_and_wait(
+            cmd,
+            cwd=settings.work_dir,
+            allow_non_zero_exit=True,
+            skip_binary_check=True,
+        )
+        return result_cls(exit_code=run.exit_code or 0)
+    except ShellError as e:
+        return result_cls(exit_code=e.exit_code or 1)
+
+
+def plan(input_model: PlanInput) -> PlanResult:
+    extra_flags: list[str] = []
+    if input_model.out:
+        extra_flags.append(f"-out={input_model.out}")
+    if input_model.json_output:
+        extra_flags.append("-json")
+    return _run_lifecycle(input_model, "plan", extra_flags, PlanResult)
+
+
+def apply(input_model: ApplyInput) -> ApplyResult:
+    extra_flags: list[str] = []
+    if input_model.auto_approve:
+        extra_flags.append("-auto-approve")
+    return _run_lifecycle(input_model, "apply", extra_flags, ApplyResult)
+
+
+def destroy(input_model: DestroyInput) -> DestroyResult:
+    extra_flags: list[str] = []
+    if input_model.auto_approve:
+        extra_flags.append("-auto-approve")
+    return _run_lifecycle(input_model, "destroy", extra_flags, DestroyResult)

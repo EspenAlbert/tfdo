@@ -14,23 +14,22 @@ class InitInput(TfDoBaseInput):
     extra_args: list[str] = []
 
 
-class PlanInput(TfDoBaseInput):
+class LifecycleInput(TfDoBaseInput):
+    var_file: Path | None = None
+    init_first: bool = False
+
+
+class PlanInput(LifecycleInput):
     out: Path | None = None
     json_output: bool = False
-    var_file: Path | None = None
-    init_first: bool = False
 
 
-class ApplyInput(TfDoBaseInput):
+class ApplyInput(LifecycleInput):
     auto_approve: bool = False
-    var_file: Path | None = None
-    init_first: bool = False
 
 
-class DestroyInput(TfDoBaseInput):
+class DestroyInput(LifecycleInput):
     auto_approve: bool = False
-    var_file: Path | None = None
-    init_first: bool = False
 
 
 class CheckInput(TfDoBaseInput):
@@ -42,3 +41,19 @@ class CheckInput(TfDoBaseInput):
 class InitResult(BaseModel):
     exit_code: int
     attempts_used: int
+
+
+class LifecycleResult(BaseModel):
+    exit_code: int
+
+
+class PlanResult(LifecycleResult):
+    pass
+
+
+class ApplyResult(LifecycleResult):
+    pass
+
+
+class DestroyResult(LifecycleResult):
+    pass

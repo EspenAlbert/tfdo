@@ -1,13 +1,11 @@
-import logging
 from pathlib import Path
 
 import typer
 
 from tfdo._internal import cmd_options
+from tfdo._internal.core import executor
 from tfdo._internal.models import PlanInput
 from tfdo._internal.typer_app import app, get_settings
-
-logger = logging.getLogger(__name__)
 
 
 @app.command("plan")
@@ -24,5 +22,5 @@ def plan_cmd(
     input_model = PlanInput(
         settings=settings, out=out, json_output=json_output, var_file=var_file, init_first=init_first
     )
-    logger.info(f"tfdo plan [binary={input_model.settings.binary}] -- not implemented yet")
-    raise typer.Exit(0)
+    result = executor.plan(input_model)
+    raise typer.Exit(result.exit_code)
