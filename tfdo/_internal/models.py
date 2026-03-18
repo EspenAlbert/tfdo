@@ -37,3 +37,9 @@ class CheckInput(TfDoBaseInput):
     fix: bool = False
     diff: bool = False
     init_first: bool = False
+
+
+class InitResult(BaseModel):
+    exit_code: int
+    attempts_used: int
+    cache_cleaned: bool = False
