@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 2026-03-18T07-45Z
+
+### __Root__
+- `__ROOT__.TfDoSettings`: added optional field 'work_dir' (default: ...)
+
+
 ## 0.1.0 2026-03-17T21-46Z
 
 ### __Root__

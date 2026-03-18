@@ -1,12 +1,12 @@
 pkg_import_name: tfdo
-version: 0.1.0
+version: 0.1.1
 groups:
 - name: __ROOT__
   symbols:
   - name: TfDoSettings
     module_path: _internal.settings
     docstring: ''
-    line_number: 9
+    line_number: 10
     type: class
     mro_bases:
     - StaticSettings
@@ -70,6 +70,19 @@ groups:
       env_vars:
       - tfdo_tf_version
       - tf_version
+    - name: work_dir
+      type_annotation: Path
+      type_imports:
+      - pathlib.Path
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+      description: Working directory for terraform commands
+      env_vars:
+      - tfdo_work_dir
+      - work_dir
     - name: log_level
       type_annotation: str
       type_imports: []
@@ -95,7 +108,7 @@ groups:
   - name: get_settings
     module_path: _internal.typer_app
     docstring: ''
-    line_number: 35
+    line_number: 38
     type: cli_command
     signature:
       parameters:
@@ -111,7 +124,7 @@ groups:
   - name: main_callback
     module_path: _internal.typer_app
     docstring: ''
-    line_number: 13
+    line_number: 15
     type: cli_command
     signature:
       parameters:
@@ -131,6 +144,14 @@ groups:
         kind: positional_or_keyword
         type_annotation: str | None
         type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: work_dir
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -170,6 +191,16 @@ groups:
       help: Terraform version (uses mise for version selection)
       required: true
       envvar: TFDO_TF_VERSION
+      is_argument: false
+      hidden: false
+    - param_name: work_dir
+      type_annotation: Path | None
+      flags:
+      - -w
+      - --work-dir
+      help: Working directory for terraform commands
+      required: true
+      envvar: TFDO_WORK_DIR
       is_argument: false
       hidden: false
     - param_name: log_level
@@ -386,7 +417,7 @@ groups:
   - name: init_cmd
     module_path: _internal.core.cmd_init
     docstring: Run terraform init with retry on transient errors.
-    line_number: 11
+    line_number: 12
     type: cli_command
     signature:
       parameters:
@@ -397,7 +428,7 @@ groups:
         - typer.models.Context
       - name: extra_args
         kind: positional_or_keyword
-        type_annotation: list[str]
+        type_annotation: list[str] | None
         type_imports: []
         default:
           value_repr: <typer.models.ArgumentInfo object>
@@ -406,7 +437,7 @@ groups:
       return_type_imports: []
     cli_params:
     - param_name: extra_args
-      type_annotation: list[str]
+      type_annotation: list[str] | None
       flags: []
       help: Extra arguments forwarded to terraform init
       required: true
@@ -493,4 +524,4 @@ groups:
       required: false
       is_argument: false
       hidden: false
-dumped_at: 2026-03-17 21:46:49.722803+00:00
+dumped_at: 2026-03-18 07:45:24.707378+00:00
