@@ -4,9 +4,11 @@ from tfdo._internal.core.cmd_check import check_cmd as _check_cmd
 from tfdo._internal.core.cmd_destroy import destroy_cmd as _destroy_cmd
 from tfdo._internal.core.cmd_init import init_cmd as _init_cmd
 from tfdo._internal.core.cmd_plan import plan_cmd as _plan_cmd
+from tfdo._internal.models import InitMode as _InitMode
 
 apply_cmd = _apply_cmd
 check_cmd = _check_cmd
 destroy_cmd = _destroy_cmd
 init_cmd = _init_cmd
 plan_cmd = _plan_cmd
+InitMode = _InitMode

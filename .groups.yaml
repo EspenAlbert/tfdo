@@ -5,6 +5,7 @@ groups:
   - _internal.settings
   - _internal.typer_app
   owned_refs:
+  - _internal.settings.InteractiveMode
   - _internal.settings.TfDoSettings
   - _internal.typer_app.get_settings
   - _internal.typer_app.main_callback
@@ -15,9 +16,11 @@ groups:
   - _internal.core.cmd_destroy
   - _internal.core.cmd_init
   - _internal.core.cmd_plan
+  - _internal.models
   owned_refs:
   - _internal.core.cmd_apply.apply_cmd
   - _internal.core.cmd_check.check_cmd
   - _internal.core.cmd_destroy.destroy_cmd
   - _internal.core.cmd_init.init_cmd
   - _internal.core.cmd_plan.plan_cmd
+  - _internal.models.InitMode
