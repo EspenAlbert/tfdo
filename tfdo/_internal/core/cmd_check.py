@@ -1,13 +1,51 @@
 import logging
+from pathlib import Path
 
 import typer
 
 from tfdo._internal import cmd_options
 from tfdo._internal.core import check_logic
-from tfdo._internal.models import CheckInput, InitMode
+from tfdo._internal.models import CheckInput, CheckResult, DirCheckResult, InitMode
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
+
+
+def _log_dir(dr: DirCheckResult, work_dir: Path) -> None:
+    rel = dr.directory.relative_to(work_dir)
+    if dr.skipped:
+        logger.warning(f"  {rel}: skipped (not initialized)")
+        return
+    if not dr.has_issues:
+        logger.info(f"  {rel}: ok")
+        return
+    issues: list[str] = []
+    if dr.fmt_files:
+        issues.append(f"{len(dr.fmt_files)} fmt")
+    if dr.validation_errors:
+        issues.append(f"{len(dr.validation_errors)} validate")
+    logger.error(f"  {rel}: {', '.join(issues)}")
+    for f in dr.fmt_files:
+        logger.error(f"    fmt: {f}")
+    for err in dr.validation_errors:
+        logger.error(f"    validate: {err}")
+
+
+def _log_result(result: CheckResult, work_dir: Path) -> None:
+    for dr in result.dir_results:
+        _log_dir(dr, work_dir)
+    fmt = len(result.total_fmt_files)
+    errors = len(result.total_validation_errors)
+    skipped = len(result.directories_skipped)
+    parts = [f"{result.directories_checked} checked"]
+    if fmt:
+        parts.append(f"{fmt} fmt issues")
+    if errors:
+        parts.append(f"{errors} validation errors")
+    if skipped:
+        parts.append(f"{skipped} skipped")
+    log = logger.error if result.exit_code else logger.info
+    log(f"check: {', '.join(parts)}")
 
 
 @app.command("check")
@@ -31,7 +69,5 @@ def check_cmd(
         exclude_patterns=exclude,
     )
     result = check_logic.check(input_model)
-    if result.directories_skipped:
-        lines = "\n".join(f"- '{d}'" for d in result.directories_skipped)
-        logger.warning(f"skipped validate in {len(result.directories_skipped)} directories:\n{lines}")
+    _log_result(result, settings.work_dir)
     raise typer.Exit(result.exit_code)

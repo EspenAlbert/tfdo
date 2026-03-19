@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from functools import total_ordering
 from pathlib import Path
 from typing import Self
 
@@ -104,9 +105,44 @@ class ValidateOutput(BaseModel):
         return [d.summary for d in self.diagnostics if d.summary]
 
 
+@total_ordering
+class DirCheckResult(BaseModel):
+    directory: Path
+    fmt_files: list[str] = []
+    validation_errors: list[str] = []
+    skipped: bool = False
+
+    @property
+    def has_issues(self) -> bool:
+        return bool(self.fmt_files) or bool(self.validation_errors)
+
+    def __lt__(self, other: Self) -> bool:
+        if not isinstance(other, DirCheckResult):
+            return NotImplemented
+        return self.directory < other.directory
+
+
 class CheckResult(BaseModel):
     exit_code: int
-    fmt_issues: int = 0
-    validation_errors: list[str] = []
-    directories_checked: int = 0
-    directories_skipped: list[Path] = []
+    dir_results: list[DirCheckResult] = []
+
+    @model_validator(mode="after")
+    def _sort_dir_results(self) -> Self:
+        self.dir_results.sort()
+        return self
+
+    @property
+    def total_fmt_files(self) -> list[str]:
+        return [f for d in self.dir_results for f in d.fmt_files]
+
+    @property
+    def total_validation_errors(self) -> list[str]:
+        return [e for d in self.dir_results for e in d.validation_errors]
+
+    @property
+    def directories_checked(self) -> int:
+        return sum(1 for d in self.dir_results if not d.skipped)
+
+    @property
+    def directories_skipped(self) -> list[Path]:
+        return [d.directory for d in self.dir_results if d.skipped]

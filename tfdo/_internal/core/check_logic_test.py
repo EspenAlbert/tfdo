@@ -8,12 +8,11 @@ from tfdo._internal.core import check_logic
 from tfdo._internal.core.check_logic import (
     _build_fmt_command,
     _build_validate_command,
-    _check_directory,
-    _parse_fmt_stdout,
+    _parse_fmt_files,
     check,
 )
 from tfdo._internal.core.tf_files import find_tf_directories
-from tfdo._internal.models import CheckInput, InitMode, ValidateDiagnostic, ValidateOutput
+from tfdo._internal.models import CheckInput, DirCheckResult, InitMode, ValidateDiagnostic, ValidateOutput
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 module_name = check.__module__
@@ -104,10 +103,10 @@ def test_build_fmt_command():
     assert _build_fmt_command("terraform", fix=False, diff=True) == "terraform fmt -check -diff ."
 
 
-def test_parse_fmt_stdout():
-    assert _parse_fmt_stdout("") == 0
-    assert _parse_fmt_stdout("main.tf\nmodules/vpc/vpc.tf\n") == 2
-    assert _parse_fmt_stdout("  \n") == 0
+def test_parse_fmt_files():
+    assert _parse_fmt_files("") == []
+    assert _parse_fmt_files("main.tf\nmodules/vpc/vpc.tf\n") == ["main.tf", "modules/vpc/vpc.tf"]
+    assert _parse_fmt_files("  \n") == []
 
 
 def test_build_validate_command():
@@ -132,9 +131,10 @@ def test_check_no_issues(tmp_path: Path):
     with patch(_patch_run, return_value=mock_run):
         result = check(CheckInput(settings=settings))
     assert result.exit_code == 0
-    assert result.fmt_issues == 0
-    assert result.validation_errors == []
+    assert result.total_fmt_files == []
+    assert result.total_validation_errors == []
     assert result.directories_checked == 2
+    assert len(result.dir_results) == 2
 
 
 def test_check_fmt_issues(tmp_path: Path):
@@ -146,7 +146,7 @@ def test_check_fmt_issues(tmp_path: Path):
     with patch(_patch_run, side_effect=[fmt_run, validate_run]):
         result = check(CheckInput(settings=settings))
     assert result.exit_code == 1
-    assert result.fmt_issues == 1
+    assert result.total_fmt_files == ["main.tf"]
 
 
 def test_check_fix_mode_ignores_fmt_issues(tmp_path: Path):
@@ -158,7 +158,7 @@ def test_check_fix_mode_ignores_fmt_issues(tmp_path: Path):
     with patch(_patch_run, side_effect=[fmt_run, validate_run]):
         result = check(CheckInput(settings=settings, fix=True))
     assert result.exit_code == 0
-    assert result.fmt_issues == 0
+    assert result.total_fmt_files == []
 
 
 def test_check_validation_errors(tmp_path: Path):
@@ -170,7 +170,7 @@ def test_check_validation_errors(tmp_path: Path):
     with patch(_patch_run, side_effect=[fmt_run, validate_run]):
         result = check(CheckInput(settings=settings))
     assert result.exit_code == 1
-    assert len(result.validation_errors) == 2
+    assert len(result.total_validation_errors) == 2
 
 
 def test_check_skips_uninitialized_dir_never_mode(tmp_path: Path):
@@ -210,19 +210,29 @@ def test_check_with_exclude(tmp_path: Path):
     assert result.directories_checked == 2
 
 
-def test_check_directory_runs_fmt_and_validate(tmp_path: Path):
+def test_check_dir_results_have_correct_issues(tmp_path: Path):
     (tmp_path / "main.tf").touch()
     (tmp_path / ".terraform").mkdir()
     settings = _make_settings(tmp_path)
-    fmt_run = _mock_run(exit_code=0, stdout="main.tf\n")
-    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    fmt_run = _mock_run(exit_code=3, stdout="main.tf\n")
+    validate_run = _mock_run(validate_output=INVALID_OUTPUT)
     with patch(_patch_run, side_effect=[fmt_run, validate_run]):
-        dir_result = _check_directory(
-            tmp_path, "terraform", fix=False, diff=False, init_mode=InitMode.AUTO, settings=settings
-        )
-    assert dir_result.fmt.issues == 1
-    assert dir_result.validation_errors == []
-    assert not dir_result.skipped
+        result = check(CheckInput(settings=settings))
+    assert len(result.dir_results) == 1
+    dr = result.dir_results[0]
+    assert dr.directory == tmp_path
+    assert dr.fmt_files == ["main.tf"]
+    assert len(dr.validation_errors) == 2
+    assert dr.has_issues
+
+
+def test_dir_check_result_properties():
+    ok = DirCheckResult(directory=Path("/a"))
+    assert not ok.has_issues
+    fmt_bad = DirCheckResult(directory=Path("/b"), fmt_files=["x.tf", "y.tf"])
+    assert fmt_bad.has_issues
+    val_bad = DirCheckResult(directory=Path("/c"), validation_errors=["err"])
+    assert val_bad.has_issues
 
 
 def test_check_cmd_via_cli(tmp_path: Path):
