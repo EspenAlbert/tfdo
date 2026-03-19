@@ -4,6 +4,7 @@
 <!-- === OK_EDIT: pkg-ext header === -->
 
 <!-- === DO_NOT_EDIT: pkg-ext symbols === -->
+- [`InitMode`](#initmode_def)
 - [`apply_cmd`](#apply_cmd_def)
 - [`check_cmd`](#check_cmd_def)
 - [`destroy_cmd`](#destroy_cmd_def)
@@ -19,11 +20,11 @@
 <a id="apply_cmd_def"></a>
 
 ### cli_command: `apply_cmd`
-- [source](../../tfdo/_internal/core/cmd_apply.py#L13)
+- [source](../../tfdo/_internal/core/cmd_apply.py#L11)
 > **Since:** 0.1.0
 
 ```python
-def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = ..., init_first: bool = False) -> None:
+def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = ..., init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
     ...
 ```
 
@@ -31,11 +32,11 @@ Run terraform apply.
 
 **CLI Options:**
 
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--auto-approve` | `bool` | `False` | Skip interactive approval prompts |
-| `--var-file`, `-f` | `Path | None` | *required* | Path to a terraform .tfvars file |
-| `--init` | `bool` | `False` | Run terraform init before the command |
+| Flag | Type | Default | Env Var | Description |
+|---|---|---|---|---|
+| `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
+| `--var-file`, `-f` | `Path | None` | *required* | - | Path to a terraform .tfvars file |
+| `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
 
 ### Changes
 
@@ -51,7 +52,7 @@ Run terraform apply.
 > **Since:** 0.1.0
 
 ```python
-def check_cmd(*, fix: bool = False, diff: bool = False, init_first: bool = False) -> None:
+def check_cmd(*, fix: bool = False, diff: bool = False, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
     ...
 ```
 
@@ -59,11 +60,11 @@ Run terraform fmt check + validate (ruff-style).
 
 **CLI Options:**
 
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--fix` | `bool` | `False` | Auto-format instead of checking |
-| `--diff` | `bool` | `False` | Show what would change |
-| `--init` | `bool` | `False` | Run terraform init before the command |
+| Flag | Type | Default | Env Var | Description |
+|---|---|---|---|---|
+| `--fix` | `bool` | `False` | - | Auto-format instead of checking |
+| `--diff` | `bool` | `False` | - | Show what would change |
+| `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
 
 ### Changes
 
@@ -75,11 +76,11 @@ Run terraform fmt check + validate (ruff-style).
 <a id="destroy_cmd_def"></a>
 
 ### cli_command: `destroy_cmd`
-- [source](../../tfdo/_internal/core/cmd_destroy.py#L13)
+- [source](../../tfdo/_internal/core/cmd_destroy.py#L11)
 > **Since:** 0.1.0
 
 ```python
-def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = ..., init_first: bool = False) -> None:
+def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = ..., init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
     ...
 ```
 
@@ -87,11 +88,11 @@ Run terraform destroy.
 
 **CLI Options:**
 
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--auto-approve` | `bool` | `False` | Skip interactive approval prompts |
-| `--var-file`, `-f` | `Path | None` | *required* | Path to a terraform .tfvars file |
-| `--init` | `bool` | `False` | Run terraform init before the command |
+| Flag | Type | Default | Env Var | Description |
+|---|---|---|---|---|
+| `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
+| `--var-file`, `-f` | `Path | None` | *required* | - | Path to a terraform .tfvars file |
+| `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
 
 ### Changes
 
@@ -129,11 +130,11 @@ Run terraform init with retry on transient errors.
 <a id="plan_cmd_def"></a>
 
 ### cli_command: `plan_cmd`
-- [source](../../tfdo/_internal/core/cmd_plan.py#L13)
+- [source](../../tfdo/_internal/core/cmd_plan.py#L11)
 > **Since:** 0.1.0
 
 ```python
-def plan_cmd(*, out: Path | None = ..., json_output: bool = False, var_file: Path | None = ..., init_first: bool = False) -> None:
+def plan_cmd(*, out: Path | None = ..., json_output: bool = False, var_file: Path | None = ..., init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
     ...
 ```
 
@@ -141,12 +142,12 @@ Run terraform plan.
 
 **CLI Options:**
 
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `-o`, `--out` | `Path | None` | *required* | Write the plan to a file |
-| `--json` | `bool` | `False` | Output plan in JSON format |
-| `--var-file`, `-f` | `Path | None` | *required* | Path to a terraform .tfvars file |
-| `--init` | `bool` | `False` | Run terraform init before the command |
+| Flag | Type | Default | Env Var | Description |
+|---|---|---|---|---|
+| `-o`, `--out` | `Path | None` | *required* | - | Write the plan to a file |
+| `--json` | `bool` | `False` | - | Output plan in JSON format |
+| `--var-file`, `-f` | `Path | None` | *required* | - | Path to a terraform .tfvars file |
+| `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
 
 ### Changes
 
@@ -154,3 +155,21 @@ Run terraform plan.
 |---------|--------|
 | 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext plan_cmd_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext initmode_def === -->
+<a id="initmode_def"></a>
+
+### class: `InitMode`
+- [source](../../tfdo/_internal/models.py#L12)
+> **Since:** unreleased
+
+```python
+class InitMode(StrEnum):
+    ...
+```
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| unreleased | Made public |
+<!-- === OK_EDIT: pkg-ext initmode_def === -->

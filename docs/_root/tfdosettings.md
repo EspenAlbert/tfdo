@@ -2,7 +2,7 @@
 
 <!-- === DO_NOT_EDIT: pkg-ext tfdosettings_def === -->
 ## class: TfDoSettings
-- [source](../../tfdo/_internal/settings.py#L10)
+- [source](../../tfdo/_internal/settings.py#L18)
 > **Since:** 0.1.0
 
 ```python
@@ -13,6 +13,7 @@ class TfDoSettings(StaticSettings):
     binary: str = 'terraform'
     tf_version: str | None = None
     work_dir: Path = ...
+    interactive: InteractiveMode = <InteractiveMode.AUTO: 'auto'>
     log_level: str = 'INFO'
     passthrough: bool = False
 ```
@@ -45,6 +46,7 @@ class TfDoSettings(StaticSettings):
 
 | Version | Change |
 |---------|--------|
+| unreleased | added optional field 'interactive' (default: <InteractiveMode.AUTO: 'auto'>) |
 | 0.1.1 | added optional field 'work_dir' (default: ...) |
 | 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tfdosettings_changes === -->

@@ -4,7 +4,20 @@ from pathlib import Path
 
 from ask_shell.shell import AbortRetryError, ShellError, ShellRun, run_and_wait
 
-from tfdo._internal.models import InitInput, InitResult
+from tfdo._internal.models import (
+    ApplyInput,
+    ApplyResult,
+    DestroyInput,
+    DestroyResult,
+    InitInput,
+    InitMode,
+    InitResult,
+    LifecycleInput,
+    LifecycleResult,
+    PlanInput,
+    PlanResult,
+)
+from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
 
@@ -88,3 +101,86 @@ def init(input_model: InitInput) -> InitResult:
         return InitResult(exit_code=e.exit_code or 1, attempts_used=e.run.current_attempt)
     except AbortRetryError:
         return InitResult(exit_code=1, attempts_used=1)
+
+
+INIT_NEEDED_PATTERNS: list[str] = [
+    "terraform init",
+    "provider not installed",
+    "Missing required provider",
+    "Backend initialization required",
+    "Module not installed",
+]
+
+
+def _needs_init(stderr: str) -> bool:
+    lower = stderr.lower()
+    return any(p.lower() in lower for p in INIT_NEEDED_PATTERNS)
+
+
+def _build_lifecycle_command(binary: str, subcommand: str, var_file: Path | None, extra_flags: list[str]) -> str:
+    parts = [binary, subcommand]
+    if var_file:
+        parts.append(f"-var-file={var_file}")
+    parts.extend(extra_flags)
+    return " ".join(parts)
+
+
+def _run_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, result_cls: type[T]) -> tuple[T, str]:
+    try:
+        run = run_and_wait(
+            cmd,
+            cwd=settings.work_dir,
+            allow_non_zero_exit=True,
+            skip_binary_check=True,
+            user_input=settings.is_interactive,
+        )
+        return result_cls(exit_code=run.exit_code or 0), run.stderr
+    except ShellError as e:
+        return result_cls(exit_code=e.exit_code or 1), e.stderr
+
+
+def _run_lifecycle[T: LifecycleResult](
+    input_model: LifecycleInput, subcommand: str, extra_flags: list[str], result_cls: type[T]
+) -> T:
+    settings = input_model.settings
+    mode = input_model.init_mode
+
+    if mode == InitMode.ALWAYS:
+        init_result = init(InitInput(settings=settings))
+        if init_result.exit_code != 0:
+            return result_cls(exit_code=init_result.exit_code)
+
+    cmd = _build_lifecycle_command(settings.binary, subcommand, input_model.var_file, extra_flags)
+    result, stderr = _run_command(settings, cmd, result_cls)
+
+    if result.exit_code != 0 and mode == InitMode.AUTO and _needs_init(stderr):
+        logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
+        init_result = init(InitInput(settings=settings))
+        if init_result.exit_code != 0:
+            return result_cls(exit_code=init_result.exit_code)
+        result, _ = _run_command(settings, cmd, result_cls)
+
+    return result
+
+
+def plan(input_model: PlanInput) -> PlanResult:
+    extra_flags: list[str] = []
+    if input_model.out:
+        extra_flags.append(f"-out={input_model.out}")
+    if input_model.json_output:
+        extra_flags.append("-json")
+    return _run_lifecycle(input_model, "plan", extra_flags, PlanResult)
+
+
+def apply(input_model: ApplyInput) -> ApplyResult:
+    extra_flags: list[str] = []
+    if input_model.auto_approve:
+        extra_flags.append("-auto-approve")
+    return _run_lifecycle(input_model, "apply", extra_flags, ApplyResult)
+
+
+def destroy(input_model: DestroyInput) -> DestroyResult:
+    extra_flags: list[str] = []
+    if input_model.auto_approve:
+        extra_flags.append("-auto-approve")
+    return _run_lifecycle(input_model, "destroy", extra_flags, DestroyResult)

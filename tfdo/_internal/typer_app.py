@@ -2,7 +2,7 @@ from pathlib import Path
 
 import typer
 
-from tfdo._internal.settings import TfDoSettings
+from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 app = typer.Typer(
     name="tfdo",
@@ -24,12 +24,20 @@ def main_callback(
     work_dir: Path | None = typer.Option(
         None, "-w", "--work-dir", envvar="TFDO_WORK_DIR", help="Working directory for terraform commands"
     ),
+    interactive: InteractiveMode = typer.Option(
+        InteractiveMode.AUTO,
+        "--interactive",
+        envvar="TFDO_INTERACTIVE",
+        help="Interactive mode: auto (detect TTY), always (force stdin), never (no stdin)",
+    ),
     log_level: str = typer.Option("INFO", "--log-level", help="Log level for tfdo"),
     passthrough: bool = typer.Option(
         False, "--passthrough", help="Disable parsed output, pass raw ANSI from terraform"
     ),
 ) -> None:
-    kwargs: dict = dict(binary=binary, tf_version=tf_version, log_level=log_level, passthrough=passthrough)
+    kwargs: dict = dict(
+        binary=binary, tf_version=tf_version, interactive=interactive, log_level=log_level, passthrough=passthrough
+    )
     if work_dir is not None:
         kwargs["work_dir"] = work_dir
     ctx.obj = TfDoSettings(**kwargs)

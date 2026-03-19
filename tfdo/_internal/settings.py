@@ -1,10 +1,18 @@
+from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
+from ask_shell.console import interactive_shell
 from model_lib import StaticSettings
 from pydantic import ConfigDict, Field
 
 ENV_PREFIX = "TFDO_"
+
+
+class InteractiveMode(StrEnum):
+    AUTO = "auto"
+    ALWAYS = "always"
+    NEVER = "never"
 
 
 class TfDoSettings(StaticSettings):
@@ -31,5 +39,20 @@ class TfDoSettings(StaticSettings):
         description="Working directory for terraform commands",
     )
 
+    ENV_NAME_INTERACTIVE: ClassVar[str] = f"{ENV_PREFIX}INTERACTIVE"
+    interactive: InteractiveMode = Field(
+        default=InteractiveMode.AUTO,
+        alias=f"{ENV_PREFIX}INTERACTIVE",
+        description="Interactive mode: auto (detect TTY), always (force stdin), never (no stdin, require --auto-approve)",
+    )
+
     log_level: str = Field(default="INFO", description="Log level for tfdo")
     passthrough: bool = Field(default=False, description="Disable parsed output, pass raw ANSI from terraform")
+
+    @property
+    def is_interactive(self) -> bool:
+        if self.interactive == InteractiveMode.ALWAYS:
+            return True
+        if self.interactive == InteractiveMode.NEVER:
+            return False
+        return interactive_shell()

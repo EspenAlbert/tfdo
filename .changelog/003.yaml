@@ -1,0 +1,72 @@
+name: plan
+ts: 2026-03-19 08:28:49.184038+00:00
+type: keep_private
+full_path: _internal.core.executor.plan
+---
+name: apply
+ts: 2026-03-19 08:28:49.184080+00:00
+type: keep_private
+full_path: _internal.core.executor.apply
+---
+name: destroy
+ts: 2026-03-19 08:28:49.184087+00:00
+type: keep_private
+full_path: _internal.core.executor.destroy
+---
+name: init_mode_option
+ts: 2026-03-19 08:28:53.327159+00:00
+type: keep_private
+full_path: _internal.cmd_options.init_mode_option
+---
+name: InteractiveMode
+ts: 2026-03-19 08:29:10.278434+00:00
+type: make_public
+details: created in _internal/settings.py
+full_path: _internal.settings.InteractiveMode
+group: __ROOT__
+---
+name: core
+ts: 2026-03-19 08:29:52.037304+00:00
+type: group_module
+module_path: _internal.models
+---
+name: InitMode
+ts: 2026-03-19 08:29:52.038350+00:00
+type: make_public
+details: created in _internal/models.py
+full_path: _internal.models.InitMode
+group: core
+---
+name: LifecycleInput
+ts: 2026-03-19 08:29:52.039227+00:00
+type: keep_private
+full_path: _internal.models.LifecycleInput
+---
+name: LifecycleResult
+ts: 2026-03-19 08:29:52.040270+00:00
+type: keep_private
+full_path: _internal.models.LifecycleResult
+---
+name: PlanResult
+ts: 2026-03-19 08:29:52.040283+00:00
+type: keep_private
+full_path: _internal.models.PlanResult
+---
+name: ApplyResult
+ts: 2026-03-19 08:29:52.040289+00:00
+type: keep_private
+full_path: _internal.models.ApplyResult
+---
+name: DestroyResult
+ts: 2026-03-19 08:29:52.040294+00:00
+type: keep_private
+full_path: _internal.models.DestroyResult
+---
+name: TfDoSettings
+ts: 2026-03-19 08:29:52.301288+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''interactive'' (default: <InteractiveMode.AUTO: ''auto''>)'
+field_name: interactive
+group: __ROOT__
