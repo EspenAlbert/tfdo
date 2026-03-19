@@ -1,11 +1,12 @@
 from pathlib import Path
+from shutil import which
 from unittest.mock import MagicMock, patch
 
 import pytest
 from ask_shell.shell import AbortRetryError, ShellRun
 from typer.testing import CliRunner
 
-from tfdo._internal.core import executor
+from tfdo._internal.core import binary, executor
 from tfdo._internal.core.executor import (
     _build_init_command,
     _build_lifecycle_command,
@@ -25,10 +26,15 @@ from tfdo._internal.settings import InteractiveMode, TfDoSettings
 module_name = init.__module__
 runner = CliRunner()
 _patch_run = f"{module_name}.{executor.run_and_wait.__name__}"
+_patch_which = f"{binary.resolve_binary.__module__}.{which.__name__}"
 
 
-def _make_settings(tmp_path: Path, interactive: InteractiveMode = InteractiveMode.ALWAYS) -> TfDoSettings:
-    return TfDoSettings.for_testing(tmp_path, work_dir=tmp_path, interactive=interactive)
+def _make_settings(
+    tmp_path: Path,
+    interactive: InteractiveMode = InteractiveMode.ALWAYS,
+    tf_version: str | None = None,
+) -> TfDoSettings:
+    return TfDoSettings.for_testing(tmp_path, work_dir=tmp_path, interactive=interactive, tf_version=tf_version)
 
 
 def _mock_run(exit_code: int = 0, stderr: str = "", attempt: int = 1, cwd: Path | None = None) -> MagicMock:
@@ -87,6 +93,7 @@ def test_clean_terraform_cache(tmp_path: Path):
 def test_build_init_command():
     assert _build_init_command("terraform", []) == "terraform init"
     assert _build_init_command("tofu", ["-upgrade", "-input=false"]) == "tofu init -upgrade -input=false"
+    assert _build_init_command("mise x terraform@1.14 -- terraform", []) == "mise x terraform@1.14 -- terraform init"
 
 
 def test_init_success(tmp_path: Path):
@@ -285,6 +292,27 @@ def test_destroy_cmd_via_cli(tmp_path: Path):
     with patch(_patch_run, return_value=run):
         result = runner.invoke(app, ["--work-dir", str(tmp_path), "destroy", "--auto-approve"])
     assert result.exit_code == 0
+
+
+# --- mise version selection ---
+
+
+def test_init_with_tf_version(tmp_path: Path):
+    settings = _make_settings(tmp_path, tf_version="1.14.0")
+    run = _mock_run(exit_code=0, attempt=1)
+    with patch(_patch_which, return_value="/usr/local/bin/mise"), patch(_patch_run, return_value=run) as mock_raw:
+        result = init(InitInput(settings=settings))
+    assert result.exit_code == 0
+    assert mock_raw.call_args[0][0] == "mise x terraform@1.14.0 -- terraform init"
+
+
+def test_plan_with_tf_version(tmp_path: Path):
+    settings = _make_settings(tmp_path, tf_version="1.14.0")
+    run = _mock_run(exit_code=0)
+    with patch(_patch_which, return_value="/usr/local/bin/mise"), patch(_patch_run, return_value=run) as mock_raw:
+        result = plan(PlanInput(settings=settings))
+    assert result.exit_code == 0
+    assert mock_raw.call_args[0][0] == "mise x terraform@1.14.0 -- terraform plan"
 
 
 # --- interactive / approval validation ---

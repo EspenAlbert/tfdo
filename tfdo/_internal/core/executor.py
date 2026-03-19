@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ask_shell.shell import AbortRetryError, ShellError, ShellRun, run_and_wait
 
+from tfdo._internal.core import binary
 from tfdo._internal.models import (
     ApplyInput,
     ApplyResult,
@@ -80,7 +81,7 @@ def _build_init_command(binary: str, extra_args: list[str]) -> str:
 
 def init(input_model: InitInput) -> InitResult:
     settings = input_model.settings
-    cmd = _build_init_command(settings.binary, input_model.extra_args)
+    cmd = _build_init_command(binary.resolve_binary(settings), input_model.extra_args)
     try:
         run = run_and_wait(
             cmd,
@@ -150,7 +151,7 @@ def _run_lifecycle[T: LifecycleResult](
         if init_result.exit_code != 0:
             return result_cls(exit_code=init_result.exit_code)
 
-    cmd = _build_lifecycle_command(settings.binary, subcommand, input_model.var_file, extra_flags)
+    cmd = _build_lifecycle_command(binary.resolve_binary(settings), subcommand, input_model.var_file, extra_flags)
     result, stderr = _run_command(settings, cmd, result_cls)
 
     if result.exit_code != 0 and mode == InitMode.AUTO and _needs_init(stderr):
