@@ -1,12 +1,35 @@
 pkg_import_name: tfdo
-version: 0.1.1
+version: 0.2.0
 groups:
 - name: __ROOT__
   symbols:
+  - name: InteractiveMode
+    module_path: _internal.settings
+    docstring: ''
+    line_number: 12
+    type: class
+    mro_bases:
+    - StrEnum
+    - str
+    - ReprEnum
+    - Enum
+    num_direct_bases: 1
+    init_signature:
+      parameters:
+      - name: self
+        kind: positional_or_keyword
+        type_imports: []
+      - name: args
+        kind: var_positional
+        type_imports: []
+      - name: kwds
+        kind: var_keyword
+        type_imports: []
+      return_type_imports: []
   - name: TfDoSettings
     module_path: _internal.settings
     docstring: ''
-    line_number: 10
+    line_number: 18
     type: class
     mro_bases:
     - StaticSettings
@@ -83,6 +106,19 @@ groups:
       env_vars:
       - tfdo_work_dir
       - work_dir
+    - name: interactive
+      type_annotation: InteractiveMode
+      type_imports:
+      - tfdo._internal.settings.InteractiveMode
+      default:
+        value_repr: '<InteractiveMode.AUTO: ''auto''>'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      description: 'Interactive mode: auto (detect TTY), always (force stdin), never (no stdin, require --auto-approve)'
+      env_vars:
+      - tfdo_interactive
+      - interactive
     - name: log_level
       type_annotation: str
       type_imports: []
@@ -108,7 +144,7 @@ groups:
   - name: get_settings
     module_path: _internal.typer_app
     docstring: ''
-    line_number: 38
+    line_number: 46
     type: cli_command
     signature:
       parameters:
@@ -152,6 +188,14 @@ groups:
         type_annotation: Path | None
         type_imports:
         - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: interactive
+        kind: positional_or_keyword
+        type_annotation: InteractiveMode
+        type_imports:
+        - tfdo._internal.settings.InteractiveMode
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -203,6 +247,20 @@ groups:
       envvar: TFDO_WORK_DIR
       is_argument: false
       hidden: false
+    - param_name: interactive
+      type_annotation: InteractiveMode
+      flags:
+      - --interactive
+      help: 'Interactive mode: auto (detect TTY), always (force stdin), never (no stdin)'
+      default_repr: '<InteractiveMode.AUTO: ''auto''>'
+      required: false
+      envvar: TFDO_INTERACTIVE
+      is_argument: false
+      hidden: false
+      choices:
+      - auto
+      - always
+      - never
     - param_name: log_level
       type_annotation: str
       flags:
@@ -226,7 +284,7 @@ groups:
   - name: apply_cmd
     module_path: _internal.core.cmd_apply
     docstring: Run terraform apply.
-    line_number: 13
+    line_number: 11
     type: cli_command
     signature:
       parameters:
@@ -250,10 +308,11 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
-      - name: init_first
+      - name: init_mode
         kind: positional_or_keyword
-        type_annotation: bool
-        type_imports: []
+        type_annotation: InitMode
+        type_imports:
+        - tfdo._internal.models.InitMode
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -278,15 +337,21 @@ groups:
       required: true
       is_argument: false
       hidden: false
-    - param_name: init_first
-      type_annotation: bool
+    - param_name: init_mode
+      type_annotation: InitMode
       flags:
-      - --init
-      help: Run terraform init before the command
-      default_repr: 'False'
+      - --init-mode
+      - -I
+      help: 'Init behavior: auto (run init on error related to init), always (run init first), never (skip init)'
+      default_repr: '<InitMode.AUTO: ''auto''>'
       required: false
+      envvar: TFDO_INIT_MODE
       is_argument: false
       hidden: false
+      choices:
+      - auto
+      - always
+      - never
   - name: check_cmd
     module_path: _internal.core.cmd_check
     docstring: Run terraform fmt check + validate (ruff-style).
@@ -313,10 +378,11 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
-      - name: init_first
+      - name: init_mode
         kind: positional_or_keyword
-        type_annotation: bool
-        type_imports: []
+        type_annotation: InitMode
+        type_imports:
+        - tfdo._internal.models.InitMode
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -341,19 +407,25 @@ groups:
       required: false
       is_argument: false
       hidden: false
-    - param_name: init_first
-      type_annotation: bool
+    - param_name: init_mode
+      type_annotation: InitMode
       flags:
-      - --init
-      help: Run terraform init before the command
-      default_repr: 'False'
+      - --init-mode
+      - -I
+      help: 'Init behavior: auto (run init on error related to init), always (run init first), never (skip init)'
+      default_repr: '<InitMode.AUTO: ''auto''>'
       required: false
+      envvar: TFDO_INIT_MODE
       is_argument: false
       hidden: false
+      choices:
+      - auto
+      - always
+      - never
   - name: destroy_cmd
     module_path: _internal.core.cmd_destroy
     docstring: Run terraform destroy.
-    line_number: 13
+    line_number: 11
     type: cli_command
     signature:
       parameters:
@@ -377,10 +449,11 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
-      - name: init_first
+      - name: init_mode
         kind: positional_or_keyword
-        type_annotation: bool
-        type_imports: []
+        type_annotation: InitMode
+        type_imports:
+        - tfdo._internal.models.InitMode
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -405,15 +478,21 @@ groups:
       required: true
       is_argument: false
       hidden: false
-    - param_name: init_first
-      type_annotation: bool
+    - param_name: init_mode
+      type_annotation: InitMode
       flags:
-      - --init
-      help: Run terraform init before the command
-      default_repr: 'False'
+      - --init-mode
+      - -I
+      help: 'Init behavior: auto (run init on error related to init), always (run init first), never (skip init)'
+      default_repr: '<InitMode.AUTO: ''auto''>'
       required: false
+      envvar: TFDO_INIT_MODE
       is_argument: false
       hidden: false
+      choices:
+      - auto
+      - always
+      - never
   - name: init_cmd
     module_path: _internal.core.cmd_init
     docstring: Run terraform init with retry on transient errors.
@@ -446,7 +525,7 @@ groups:
   - name: plan_cmd
     module_path: _internal.core.cmd_plan
     docstring: Run terraform plan.
-    line_number: 13
+    line_number: 11
     type: cli_command
     signature:
       parameters:
@@ -478,10 +557,11 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
-      - name: init_first
+      - name: init_mode
         kind: positional_or_keyword
-        type_annotation: bool
-        type_imports: []
+        type_annotation: InitMode
+        type_imports:
+        - tfdo._internal.models.InitMode
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -515,13 +595,42 @@ groups:
       required: true
       is_argument: false
       hidden: false
-    - param_name: init_first
-      type_annotation: bool
+    - param_name: init_mode
+      type_annotation: InitMode
       flags:
-      - --init
-      help: Run terraform init before the command
-      default_repr: 'False'
+      - --init-mode
+      - -I
+      help: 'Init behavior: auto (run init on error related to init), always (run init first), never (skip init)'
+      default_repr: '<InitMode.AUTO: ''auto''>'
       required: false
+      envvar: TFDO_INIT_MODE
       is_argument: false
       hidden: false
-dumped_at: 2026-03-18 07:45:24.707378+00:00
+      choices:
+      - auto
+      - always
+      - never
+  - name: InitMode
+    module_path: _internal.models
+    docstring: ''
+    line_number: 12
+    type: class
+    mro_bases:
+    - StrEnum
+    - str
+    - ReprEnum
+    - Enum
+    num_direct_bases: 1
+    init_signature:
+      parameters:
+      - name: self
+        kind: positional_or_keyword
+        type_imports: []
+      - name: args
+        kind: var_positional
+        type_imports: []
+      - name: kwds
+        kind: var_keyword
+        type_imports: []
+      return_type_imports: []
+dumped_at: 2026-03-19 08:39:08.102947+00:00

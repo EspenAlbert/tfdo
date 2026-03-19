@@ -160,7 +160,7 @@ Run terraform plan.
 
 ### class: `InitMode`
 - [source](../../tfdo/_internal/models.py#L12)
-> **Since:** unreleased
+> **Since:** 0.2.0
 
 ```python
 class InitMode(StrEnum):
@@ -171,5 +171,5 @@ class InitMode(StrEnum):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.2.0 | Made public |
 <!-- === OK_EDIT: pkg-ext initmode_def === -->

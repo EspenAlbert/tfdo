@@ -46,7 +46,7 @@ class TfDoSettings(StaticSettings):
 
 | Version | Change |
 |---------|--------|
-| unreleased | added optional field 'interactive' (default: <InteractiveMode.AUTO: 'auto'>) |
+| 0.2.0 | added optional field 'interactive' (default: <InteractiveMode.AUTO: 'auto'>) |
 | 0.1.1 | added optional field 'work_dir' (default: ...) |
 | 0.1.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tfdosettings_changes === -->

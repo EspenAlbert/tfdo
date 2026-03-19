@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 2026-03-19T08-39Z
+
+### __Root__
+- New class `InteractiveMode`
+- `__ROOT__.TfDoSettings`: added optional field 'interactive' (default: <InteractiveMode.AUTO: 'auto'>)
+
+### Core
+- New class `InitMode`
+
+
 ## 0.1.1 2026-03-18T07-45Z
 
 ### __Root__

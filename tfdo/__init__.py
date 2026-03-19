@@ -6,7 +6,7 @@ from tfdo._internal.typer_app import main_callback
 from tfdo._internal.settings import InteractiveMode
 from tfdo._internal.settings import TfDoSettings
 
-VERSION = "0.1.1"
+VERSION = "0.2.0"
 __all__ = [
     "core",
     "get_settings",

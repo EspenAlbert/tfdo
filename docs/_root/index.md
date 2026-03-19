@@ -66,7 +66,7 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., wo
 
 ### class: `InteractiveMode`
 - [source](../../tfdo/_internal/settings.py#L12)
-> **Since:** unreleased
+> **Since:** 0.2.0
 
 ```python
 class InteractiveMode(StrEnum):
@@ -77,5 +77,5 @@ class InteractiveMode(StrEnum):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.2.0 | Made public |
 <!-- === OK_EDIT: pkg-ext interactivemode_def === -->
