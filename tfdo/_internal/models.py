@@ -86,3 +86,11 @@ class ApplyResult(LifecycleResult):
 
 class DestroyResult(LifecycleResult):
     pass
+
+
+class CheckResult(BaseModel):
+    exit_code: int
+    fmt_issues: int = 0
+    validation_errors: list[str] = []
+    directories_checked: int = 0
+    directories_skipped: int = 0
