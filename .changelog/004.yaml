@@ -1,0 +1,9 @@
+name: resolve_binary
+ts: 2026-03-19 09:12:43.299285+00:00
+type: keep_private
+full_path: _internal.core.binary.resolve_binary
+---
+name: MiseMissingError
+ts: 2026-03-19 09:13:12.900382+00:00
+type: keep_private
+full_path: _internal.core.binary.MiseMissingError
