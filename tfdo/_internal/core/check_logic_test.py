@@ -8,6 +8,7 @@ from tfdo._internal.core import check_logic
 from tfdo._internal.core.check_logic import (
     _build_fmt_command,
     _build_validate_command,
+    _check_directory,
     _parse_fmt_stdout,
     check,
 )
@@ -47,7 +48,6 @@ def _mock_run(
 
 
 def _create_tf_tree(tmp_path: Path) -> list[Path]:
-    """Creates root/ with main.tf, modules/vpc/ with vpc.tf, and .terraform/ (excluded)."""
     (tmp_path / "main.tf").touch()
     mod_dir = tmp_path / "modules" / "vpc"
     mod_dir.mkdir(parents=True)
@@ -56,6 +56,14 @@ def _create_tf_tree(tmp_path: Path) -> list[Path]:
     tf_internal.mkdir(parents=True)
     (tf_internal / "something.tf").touch()
     return [tmp_path, mod_dir]
+
+
+def _create_tf_tree_with_examples(tmp_path: Path) -> list[Path]:
+    _create_tf_tree(tmp_path)
+    examples_dir = tmp_path / "examples" / "demo"
+    examples_dir.mkdir(parents=True)
+    (examples_dir / "main.tf").touch()
+    return [examples_dir, tmp_path / "modules" / "vpc", tmp_path]
 
 
 # --- pure function tests ---
@@ -67,10 +75,33 @@ def test_find_tf_directories(tmp_path: Path):
     assert result == sorted(expected)
 
 
+def test_find_tf_directories_with_exclude(tmp_path: Path):
+    _create_tf_tree_with_examples(tmp_path)
+    result = find_tf_directories(tmp_path, exclude_patterns=["examples/*"])
+    assert tmp_path / "examples" / "demo" not in result
+    assert tmp_path / "modules" / "vpc" in result
+    assert tmp_path in result
+
+
+def test_find_tf_directories_with_include(tmp_path: Path):
+    _create_tf_tree_with_examples(tmp_path)
+    result = find_tf_directories(tmp_path, include_patterns=["modules/*"])
+    assert result == [tmp_path / "modules" / "vpc"]
+
+
+def test_find_tf_directories_include_and_exclude(tmp_path: Path):
+    _create_tf_tree_with_examples(tmp_path)
+    legacy = tmp_path / "modules" / "legacy-net"
+    legacy.mkdir(parents=True)
+    (legacy / "main.tf").touch()
+    result = find_tf_directories(tmp_path, include_patterns=["modules/*"], exclude_patterns=["modules/legacy*"])
+    assert result == [tmp_path / "modules" / "vpc"]
+
+
 def test_build_fmt_command():
-    assert _build_fmt_command("terraform", fix=False, diff=False) == "terraform fmt -check -recursive ."
-    assert _build_fmt_command("terraform", fix=True, diff=False) == "terraform fmt -recursive ."
-    assert _build_fmt_command("terraform", fix=False, diff=True) == "terraform fmt -check -diff -recursive ."
+    assert _build_fmt_command("terraform", fix=False, diff=False) == "terraform fmt -check ."
+    assert _build_fmt_command("terraform", fix=True, diff=False) == "terraform fmt ."
+    assert _build_fmt_command("terraform", fix=False, diff=True) == "terraform fmt -check -diff ."
 
 
 def test_parse_fmt_stdout():
@@ -97,12 +128,8 @@ def test_check_no_issues(tmp_path: Path):
     for d in [tmp_path, tmp_path / "modules" / "vpc"]:
         (d / ".terraform").mkdir(exist_ok=True)
     settings = _make_settings(tmp_path)
-    fmt_run = _mock_run(exit_code=0, stdout="")
-    validate_runs = [
-        _mock_run(validate_output=VALID_OUTPUT),
-        _mock_run(validate_output=VALID_OUTPUT),
-    ]
-    with patch(_patch_run, side_effect=[fmt_run, *validate_runs]):
+    mock_run = _mock_run(exit_code=0, stdout="", validate_output=VALID_OUTPUT)
+    with patch(_patch_run, return_value=mock_run):
         result = check(CheckInput(settings=settings))
     assert result.exit_code == 0
     assert result.fmt_issues == 0
@@ -172,14 +199,52 @@ def test_check_auto_init_on_missing_terraform_dir(tmp_path: Path):
     mock_init.assert_called_once()
 
 
+def test_check_with_exclude(tmp_path: Path):
+    _create_tf_tree_with_examples(tmp_path)
+    for d in [tmp_path, tmp_path / "modules" / "vpc"]:
+        (d / ".terraform").mkdir(exist_ok=True)
+    settings = _make_settings(tmp_path)
+    mock_run = _mock_run(exit_code=0, validate_output=VALID_OUTPUT)
+    with patch(_patch_run, return_value=mock_run):
+        result = check(CheckInput(settings=settings, exclude_patterns=["examples/*"]))
+    assert result.directories_checked == 2
+
+
+def test_check_directory_runs_fmt_and_validate(tmp_path: Path):
+    (tmp_path / "main.tf").touch()
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    fmt_run = _mock_run(exit_code=0, stdout="main.tf\n")
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        dir_result = _check_directory(
+            tmp_path, "terraform", fix=False, diff=False, init_mode=InitMode.AUTO, settings=settings
+        )
+    assert dir_result.fmt.issues == 1
+    assert dir_result.validation_errors == []
+    assert not dir_result.skipped
+
+
 def test_check_cmd_via_cli(tmp_path: Path):
     from tfdo._internal.core import cmd_check  # noqa: F401
     from tfdo._internal.typer_app import app
 
     (tmp_path / "main.tf").touch()
     (tmp_path / ".terraform").mkdir()
-    fmt_run = _mock_run(exit_code=0)
-    validate_run = _mock_run(validate_output=VALID_OUTPUT)
-    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+    mock_run = _mock_run(exit_code=0, validate_output=VALID_OUTPUT)
+    with patch(_patch_run, return_value=mock_run):
         result = runner.invoke(app, ["--work-dir", str(tmp_path), "check"])
+    assert result.exit_code == 0
+
+
+def test_check_cmd_with_exclude_via_cli(tmp_path: Path):
+    from tfdo._internal.core import cmd_check  # noqa: F401
+    from tfdo._internal.typer_app import app
+
+    _create_tf_tree_with_examples(tmp_path)
+    for d in [tmp_path, tmp_path / "modules" / "vpc"]:
+        (d / ".terraform").mkdir(exist_ok=True)
+    mock_run = _mock_run(exit_code=0, validate_output=VALID_OUTPUT)
+    with patch(_patch_run, return_value=mock_run):
+        result = runner.invoke(app, ["--work-dir", str(tmp_path), "check", "--exclude", "examples/*"])
     assert result.exit_code == 0

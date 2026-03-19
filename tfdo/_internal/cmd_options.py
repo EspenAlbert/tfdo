@@ -21,3 +21,11 @@ def init_mode_option() -> InitMode:
         envvar="TFDO_INIT_MODE",
         help="Init behavior: auto (run init on error related to init), always (run init first), never (skip init)",
     )
+
+
+def include_option() -> list[str]:
+    return typer.Option([], "--include", help="Glob patterns: only matching directories are checked")
+
+
+def exclude_option() -> list[str]:
+    return typer.Option([], "--exclude", help="Glob patterns: matching directories are skipped")

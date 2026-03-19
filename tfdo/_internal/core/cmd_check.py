@@ -17,10 +17,19 @@ def check_cmd(
     fix: bool = typer.Option(False, "--fix", help="Auto-format instead of checking"),
     diff: bool = typer.Option(False, "--diff", help="Show what would change"),
     init_mode: InitMode = cmd_options.init_mode_option(),
+    include: list[str] = cmd_options.include_option(),
+    exclude: list[str] = cmd_options.exclude_option(),
 ) -> None:
     """Run terraform fmt check + validate (ruff-style)."""
     settings = get_settings(ctx)
-    input_model = CheckInput(settings=settings, fix=fix, diff=diff, init_mode=init_mode)
+    input_model = CheckInput(
+        settings=settings,
+        fix=fix,
+        diff=diff,
+        init_mode=init_mode,
+        include_patterns=include,
+        exclude_patterns=exclude,
+    )
     result = check_logic.check(input_model)
     if result.directories_skipped:
         lines = "\n".join(f"- '{d}'" for d in result.directories_skipped)

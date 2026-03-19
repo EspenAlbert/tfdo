@@ -65,6 +65,8 @@ class CheckInput(TfDoBaseInput):
     fix: bool = False
     diff: bool = False
     init_mode: InitMode = InitMode.AUTO
+    include_patterns: list[str] = []
+    exclude_patterns: list[str] = []
 
 
 class InitResult(BaseModel):
