@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -9,11 +8,11 @@ from tfdo._internal.core import check_logic
 from tfdo._internal.core.check_logic import (
     _build_fmt_command,
     _build_validate_command,
-    _find_tf_directories,
+    _extract_diagnostics,
     _parse_fmt_stdout,
-    _parse_validate_json,
     check,
 )
+from tfdo._internal.core.tf_files import find_tf_directories
 from tfdo._internal.models import CheckInput, InitMode
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
@@ -22,29 +21,28 @@ _patch_run = f"{module_name}.{check_logic.run_and_wait.__name__}"
 _patch_init = f"{module_name}.{check_logic.init.__name__}"
 runner = CliRunner()
 
+VALID_DICT: dict = {"valid": True, "diagnostics": []}
+INVALID_DICT: dict = {
+    "valid": False,
+    "diagnostics": [
+        {"severity": "error", "summary": "Missing required argument"},
+        {"severity": "error", "summary": "Unsupported block type"},
+    ],
+}
+
 
 def _make_settings(tmp_path: Path) -> TfDoSettings:
     return TfDoSettings.for_testing(tmp_path, work_dir=tmp_path, interactive=InteractiveMode.ALWAYS)
 
 
-def _mock_run(exit_code: int = 0, stdout: str = "", stderr: str = "") -> MagicMock:
+def _mock_run(exit_code: int = 0, stdout: str = "", stderr: str = "", parsed_output: dict | None = None) -> MagicMock:
     run = MagicMock(spec=ShellRun)
     run.exit_code = exit_code
     run.stdout = stdout
+    run.stdout_one_line = "".join(stdout.splitlines()).strip()
     run.stderr = stderr
+    run.parse_output.return_value = parsed_output or {}
     return run
-
-
-VALID_JSON = json.dumps({"valid": True, "diagnostics": []})
-INVALID_JSON = json.dumps(
-    {
-        "valid": False,
-        "diagnostics": [
-            {"severity": "error", "summary": "Missing required argument"},
-            {"severity": "error", "summary": "Unsupported block type"},
-        ],
-    }
-)
 
 
 def _create_tf_tree(tmp_path: Path) -> list[Path]:
@@ -64,7 +62,7 @@ def _create_tf_tree(tmp_path: Path) -> list[Path]:
 
 def test_find_tf_directories(tmp_path: Path):
     expected = _create_tf_tree(tmp_path)
-    result = _find_tf_directories(tmp_path)
+    result = find_tf_directories(tmp_path)
     assert result == sorted(expected)
 
 
@@ -84,11 +82,11 @@ def test_build_validate_command():
     assert _build_validate_command("tofu") == "tofu validate -json"
 
 
-def test_parse_validate_json():
-    assert _parse_validate_json(VALID_JSON) == []
-    errors = _parse_validate_json(INVALID_JSON)
+def test_extract_diagnostics():
+    assert _extract_diagnostics(VALID_DICT) == []
+    errors = _extract_diagnostics(INVALID_DICT)
     assert errors == ["Missing required argument", "Unsupported block type"]
-    assert _parse_validate_json("") == []
+    assert _extract_diagnostics({}) == []
 
 
 # --- integration tests ---
@@ -100,7 +98,10 @@ def test_check_no_issues(tmp_path: Path):
         (d / ".terraform").mkdir(exist_ok=True)
     settings = _make_settings(tmp_path)
     fmt_run = _mock_run(exit_code=0, stdout="")
-    validate_runs = [_mock_run(stdout=VALID_JSON), _mock_run(stdout=VALID_JSON)]
+    validate_runs = [
+        _mock_run(parsed_output=VALID_DICT),
+        _mock_run(parsed_output=VALID_DICT),
+    ]
     with patch(_patch_run, side_effect=[fmt_run, *validate_runs]):
         result = check(CheckInput(settings=settings))
     assert result.exit_code == 0
@@ -114,7 +115,7 @@ def test_check_fmt_issues(tmp_path: Path):
     (tmp_path / ".terraform").mkdir()
     settings = _make_settings(tmp_path)
     fmt_run = _mock_run(exit_code=3, stdout="main.tf\n")
-    validate_run = _mock_run(stdout=VALID_JSON)
+    validate_run = _mock_run(parsed_output=VALID_DICT)
     with patch(_patch_run, side_effect=[fmt_run, validate_run]):
         result = check(CheckInput(settings=settings))
     assert result.exit_code == 1
@@ -126,7 +127,7 @@ def test_check_fix_mode_ignores_fmt_issues(tmp_path: Path):
     (tmp_path / ".terraform").mkdir()
     settings = _make_settings(tmp_path)
     fmt_run = _mock_run(exit_code=0, stdout="main.tf\n")
-    validate_run = _mock_run(stdout=VALID_JSON)
+    validate_run = _mock_run(parsed_output=VALID_DICT)
     with patch(_patch_run, side_effect=[fmt_run, validate_run]):
         result = check(CheckInput(settings=settings, fix=True))
     assert result.exit_code == 0
@@ -138,7 +139,7 @@ def test_check_validation_errors(tmp_path: Path):
     (tmp_path / ".terraform").mkdir()
     settings = _make_settings(tmp_path)
     fmt_run = _mock_run(exit_code=0)
-    validate_run = _mock_run(stdout=INVALID_JSON)
+    validate_run = _mock_run(parsed_output=INVALID_DICT)
     with patch(_patch_run, side_effect=[fmt_run, validate_run]):
         result = check(CheckInput(settings=settings))
     assert result.exit_code == 1
@@ -151,7 +152,7 @@ def test_check_skips_uninitialized_dir_never_mode(tmp_path: Path):
     fmt_run = _mock_run(exit_code=0)
     with patch(_patch_run, return_value=fmt_run):
         result = check(CheckInput(settings=settings, init_mode=InitMode.NEVER))
-    assert result.directories_skipped == 1
+    assert result.directories_skipped == [tmp_path]
     assert result.directories_checked == 0
 
 
@@ -159,7 +160,7 @@ def test_check_auto_init_on_missing_terraform_dir(tmp_path: Path):
     (tmp_path / "main.tf").touch()
     settings = _make_settings(tmp_path)
     fmt_run = _mock_run(exit_code=0)
-    validate_run = _mock_run(stdout=VALID_JSON)
+    validate_run = _mock_run(parsed_output=VALID_DICT)
     mock_init_result = MagicMock()
     mock_init_result.exit_code = 0
     with (
@@ -178,7 +179,7 @@ def test_check_cmd_via_cli(tmp_path: Path):
     (tmp_path / "main.tf").touch()
     (tmp_path / ".terraform").mkdir()
     fmt_run = _mock_run(exit_code=0)
-    validate_run = _mock_run(stdout=VALID_JSON)
+    validate_run = _mock_run(parsed_output=VALID_DICT)
     with patch(_patch_run, side_effect=[fmt_run, validate_run]):
         result = runner.invoke(app, ["--work-dir", str(tmp_path), "check"])
     assert result.exit_code == 0

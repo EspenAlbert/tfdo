@@ -1,9 +1,13 @@
+import logging
+
 import typer
 
 from tfdo._internal import cmd_options
 from tfdo._internal.core import check_logic
 from tfdo._internal.models import CheckInput, InitMode
 from tfdo._internal.typer_app import app, get_settings
+
+logger = logging.getLogger(__name__)
 
 
 @app.command("check")
@@ -18,4 +22,8 @@ def check_cmd(
     settings = get_settings(ctx)
     input_model = CheckInput(settings=settings, fix=fix, diff=diff, init_mode=init_mode)
     result = check_logic.check(input_model)
+    if result.directories_skipped:
+        logger.warning(
+            f"skipped validate in {len(result.directories_skipped)} directories: {result.directories_skipped}"
+        )
     raise typer.Exit(result.exit_code)

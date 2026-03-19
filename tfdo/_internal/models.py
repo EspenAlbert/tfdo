@@ -93,4 +93,4 @@ class CheckResult(BaseModel):
     fmt_issues: int = 0
     validation_errors: list[str] = []
     directories_checked: int = 0
-    directories_skipped: int = 0
+    directories_skipped: list[Path] = []
