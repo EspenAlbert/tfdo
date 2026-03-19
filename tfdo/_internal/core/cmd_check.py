@@ -23,7 +23,6 @@ def check_cmd(
     input_model = CheckInput(settings=settings, fix=fix, diff=diff, init_mode=init_mode)
     result = check_logic.check(input_model)
     if result.directories_skipped:
-        logger.warning(
-            f"skipped validate in {len(result.directories_skipped)} directories: {result.directories_skipped}"
-        )
+        lines = "\n".join(f"- '{d}'" for d in result.directories_skipped)
+        logger.warning(f"skipped validate in {len(result.directories_skipped)} directories:\n{lines}")
     raise typer.Exit(result.exit_code)

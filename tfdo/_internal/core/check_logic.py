@@ -9,7 +9,7 @@ from ask_shell.shell import ShellError, run_and_wait
 from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
 from tfdo._internal.core.tf_files import TERRAFORM_DIR, find_tf_directories
-from tfdo._internal.models import CheckInput, CheckResult, InitInput, InitMode
+from tfdo._internal.models import CheckInput, CheckResult, InitInput, InitMode, ValidateOutput
 from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
@@ -35,10 +35,6 @@ def _build_validate_command(resolved_binary: str) -> str:
     return f"{resolved_binary} validate -json"
 
 
-def _extract_diagnostics(data: dict) -> list[str]:
-    return [d["summary"] for d in data.get("diagnostics", []) if "summary" in d]
-
-
 class _FmtResult(NamedTuple):
     issues: int
     stdout: str
@@ -59,11 +55,11 @@ def _run_validate(resolved_binary: str, cwd: Path) -> list[str]:
     cmd = _build_validate_command(resolved_binary)
     try:
         run = run_and_wait(cmd, cwd=cwd, allow_non_zero_exit=True, skip_binary_check=True)
-        data = run.parse_output(dict)
-        return _extract_diagnostics(data)
+        output = run.parse_output(ValidateOutput)
+        return output.error_summaries
     except ShellError as e:
-        data = e.run.parse_output(dict)
-        return _extract_diagnostics(data)
+        output = e.run.parse_output(ValidateOutput)
+        return output.error_summaries
     except Exception:
         return []
 

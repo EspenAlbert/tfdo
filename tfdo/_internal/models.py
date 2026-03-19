@@ -88,6 +88,20 @@ class DestroyResult(LifecycleResult):
     pass
 
 
+class ValidateDiagnostic(BaseModel):
+    severity: str = ""
+    summary: str = ""
+
+
+class ValidateOutput(BaseModel):
+    valid: bool = True
+    diagnostics: list[ValidateDiagnostic] = []
+
+    @property
+    def error_summaries(self) -> list[str]:
+        return [d.summary for d in self.diagnostics if d.summary]
+
+
 class CheckResult(BaseModel):
     exit_code: int
     fmt_issues: int = 0
