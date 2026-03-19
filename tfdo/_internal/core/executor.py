@@ -132,6 +132,7 @@ def _run_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, result_cl
             cwd=settings.work_dir,
             allow_non_zero_exit=True,
             skip_binary_check=True,
+            user_input=settings.is_interactive,
         )
         return result_cls(exit_code=run.exit_code or 0), run.stderr
     except ShellError as e:

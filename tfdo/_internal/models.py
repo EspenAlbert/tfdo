@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from enum import StrEnum
 from pathlib import Path
+from typing import Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from tfdo._internal.settings import TfDoSettings
 
@@ -31,12 +34,31 @@ class PlanInput(LifecycleInput):
     json_output: bool = False
 
 
+def _check_interactive_approval(subcommand: str, auto_approve: bool, settings: TfDoSettings) -> None:
+    if auto_approve or settings.is_interactive:
+        return
+    raise ValueError(
+        f"terraform {subcommand} requires approval but no interactive terminal is available. "
+        f"Run with --auto-approve or set {TfDoSettings.ENV_NAME_INTERACTIVE}=always (--interactive always) to force interactive mode."
+    )
+
+
 class ApplyInput(LifecycleInput):
     auto_approve: bool = False
+
+    @model_validator(mode="after")
+    def _require_approval_source(self) -> Self:
+        _check_interactive_approval("apply", self.auto_approve, self.settings)
+        return self
 
 
 class DestroyInput(LifecycleInput):
     auto_approve: bool = False
+
+    @model_validator(mode="after")
+    def _require_approval_source(self) -> Self:
+        _check_interactive_approval("destroy", self.auto_approve, self.settings)
+        return self
 
 
 class CheckInput(TfDoBaseInput):

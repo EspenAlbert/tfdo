@@ -20,15 +20,15 @@ from tfdo._internal.core.executor import (
     plan,
 )
 from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, PlanInput
-from tfdo._internal.settings import TfDoSettings
+from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 module_name = init.__module__
 runner = CliRunner()
 _patch_run = f"{module_name}.{executor.run_and_wait.__name__}"
 
 
-def _make_settings(tmp_path: Path) -> TfDoSettings:
-    return TfDoSettings.for_testing(tmp_path, work_dir=tmp_path)
+def _make_settings(tmp_path: Path, interactive: InteractiveMode = InteractiveMode.ALWAYS) -> TfDoSettings:
+    return TfDoSettings.for_testing(tmp_path, work_dir=tmp_path, interactive=interactive)
 
 
 def _mock_run(exit_code: int = 0, stderr: str = "", attempt: int = 1, cwd: Path | None = None) -> MagicMock:
@@ -285,3 +285,29 @@ def test_destroy_cmd_via_cli(tmp_path: Path):
     with patch(_patch_run, return_value=run):
         result = runner.invoke(app, ["--work-dir", str(tmp_path), "destroy", "--auto-approve"])
     assert result.exit_code == 0
+
+
+# --- interactive / approval validation ---
+
+
+def test_apply_rejects_no_approve_non_interactive(tmp_path: Path):
+    settings = _make_settings(tmp_path, interactive=InteractiveMode.NEVER)
+    with pytest.raises(ValueError, match="terraform apply requires approval"):
+        ApplyInput(settings=settings)
+
+
+def test_apply_allows_auto_approve_non_interactive(tmp_path: Path):
+    settings = _make_settings(tmp_path, interactive=InteractiveMode.NEVER)
+    model = ApplyInput(settings=settings, auto_approve=True)
+    assert model.auto_approve
+
+
+def test_destroy_rejects_no_approve_non_interactive(tmp_path: Path):
+    settings = _make_settings(tmp_path, interactive=InteractiveMode.NEVER)
+    with pytest.raises(ValueError, match="terraform destroy requires approval"):
+        DestroyInput(settings=settings)
+
+
+def test_is_interactive_modes(tmp_path: Path):
+    assert _make_settings(tmp_path, interactive=InteractiveMode.ALWAYS).is_interactive
+    assert not _make_settings(tmp_path, interactive=InteractiveMode.NEVER).is_interactive
