@@ -5,6 +5,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
+import platformdirs
 import yaml
 from ask_shell.console import interactive_shell
 from model_lib import StaticSettings
@@ -66,7 +67,7 @@ class TfDoSettings(StaticSettings):
 
     @property
     def user_config_path(self) -> Path:
-        return self.static_root / USER_CONFIG_FILENAME
+        return Path(platformdirs.user_config_dir(self.app_name())) / USER_CONFIG_FILENAME
 
 
 class CheckConfig(BaseModel):

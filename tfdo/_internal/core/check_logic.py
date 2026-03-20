@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import shutil
 from pathlib import Path
@@ -95,19 +94,15 @@ def _run_tflint(cwd: Path) -> list[TflintIssue]:
     cmd = f"{TFLINT_BINARY} --format json"
     try:
         run = run_and_wait(cmd, cwd=cwd, allow_non_zero_exit=True, skip_binary_check=True)
-        stdout = run.stdout
+        output = run.parse_output(TflintOutput)
     except ShellError as e:
-        stdout = e.run.stdout
-    try:
-        data = json.loads(stdout)
-        output = TflintOutput(**data)
-        if output.errors:
-            for err in output.errors:
-                logger.warning(f"tflint error in {cwd}: {err.message}")
-        return output.issues
-    except (json.JSONDecodeError, ValueError):
-        logger.warning(f"tflint: failed to parse JSON output in {cwd}")
+        output = e.run.parse_output(TflintOutput)
+    except Exception:
+        logger.warning(f"tflint: failed to parse output in {cwd}", exc_info=True)
         return []
+    for err in output.errors:
+        logger.warning(f"tflint error in {cwd}: {err.message}")
+    return output.issues
 
 
 def _ensure_initialized(tf_dir: Path, mode: InitMode, settings: TfDoSettings) -> bool:
