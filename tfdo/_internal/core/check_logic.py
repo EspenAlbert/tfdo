@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
+import shutil
 from pathlib import Path
 from typing import NamedTuple
 
@@ -10,7 +12,16 @@ from ask_shell.shell import ShellError, run_and_wait
 from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
 from tfdo._internal.core.tf_files import TERRAFORM_DIR, find_tf_directories
-from tfdo._internal.models import CheckInput, CheckResult, DirCheckResult, InitInput, InitMode, ValidateOutput
+from tfdo._internal.models import (
+    CheckInput,
+    CheckResult,
+    DirCheckResult,
+    InitInput,
+    InitMode,
+    TflintIssue,
+    TflintOutput,
+    ValidateOutput,
+)
 from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
@@ -44,6 +55,7 @@ class _FmtResult(NamedTuple):
 class _DirRunResult(NamedTuple):
     fmt: _FmtResult
     validation_errors: list[str]
+    tflint_issues: list[TflintIssue]
     skipped: bool
 
 
@@ -68,6 +80,33 @@ def _run_validate(resolved_binary: str, cwd: Path) -> list[str]:
         output = e.run.parse_output(ValidateOutput)
         return output.error_summaries
     except Exception:
+        logger.warning(f"validate parse failed in {cwd}", exc_info=True)
+        return []
+
+
+TFLINT_BINARY = "tflint"
+
+
+def _tflint_available() -> bool:
+    return shutil.which(TFLINT_BINARY) is not None
+
+
+def _run_tflint(cwd: Path) -> list[TflintIssue]:
+    cmd = f"{TFLINT_BINARY} --format json"
+    try:
+        run = run_and_wait(cmd, cwd=cwd, allow_non_zero_exit=True, skip_binary_check=True)
+        stdout = run.stdout
+    except ShellError as e:
+        stdout = e.run.stdout
+    try:
+        data = json.loads(stdout)
+        output = TflintOutput(**data)
+        if output.errors:
+            for err in output.errors:
+                logger.warning(f"tflint error in {cwd}: {err.message}")
+        return output.issues
+    except (json.JSONDecodeError, ValueError):
+        logger.warning(f"tflint: failed to parse JSON output in {cwd}")
         return []
 
 
@@ -92,23 +131,34 @@ def _check_directory(
     diff: bool,
     init_mode: InitMode,
     settings: TfDoSettings,
+    run_tflint: bool = False,
 ) -> _DirRunResult:
     fmt = _run_fmt(resolved_binary, tf_dir, fix, diff)
     if not _ensure_initialized(tf_dir, init_mode, settings):
-        return _DirRunResult(fmt=fmt, validation_errors=[], skipped=True)
+        return _DirRunResult(fmt=fmt, validation_errors=[], tflint_issues=[], skipped=True)
     errors = _run_validate(resolved_binary, tf_dir)
-    return _DirRunResult(fmt=fmt, validation_errors=errors, skipped=False)
+    tflint_issues = _run_tflint(tf_dir) if run_tflint else []
+    return _DirRunResult(fmt=fmt, validation_errors=errors, tflint_issues=tflint_issues, skipped=False)
 
 
 def check(input_model: CheckInput) -> CheckResult:
     settings = input_model.settings
     resolved_binary = binary.resolve_binary(settings)
 
+    run_tflint = input_model.tflint
+    if run_tflint and not _tflint_available():
+        logger.warning("tflint requested but not found on PATH, skipping")
+        run_tflint = False
+
     tf_dirs = find_tf_directories(
         settings.work_dir,
         include_patterns=input_model.include_patterns or None,
         exclude_patterns=input_model.exclude_patterns or None,
     )
+
+    if not tf_dirs:
+        logger.warning("no .tf directories found, skipping check")
+        return CheckResult(exit_code=0)
 
     run_results: dict[Path, _DirRunResult] = {}
     with run_pool(task_name="tfdo check", total=len(tf_dirs)) as pool:
@@ -121,6 +171,7 @@ def check(input_model: CheckInput) -> CheckResult:
                 input_model.diff,
                 input_model.init_mode,
                 settings,
+                run_tflint,
             )
             for tf_dir in tf_dirs
         }
@@ -132,6 +183,7 @@ def check(input_model: CheckInput) -> CheckResult:
             directory=tf_dir,
             fmt_files=run_result.fmt.files,
             validation_errors=run_result.validation_errors,
+            tflint_issues=run_result.tflint_issues,
             skipped=run_result.skipped,
         )
         for tf_dir, run_result in run_results.items()
@@ -139,6 +191,7 @@ def check(input_model: CheckInput) -> CheckResult:
 
     has_fmt_issues = any(d.fmt_files for d in dir_results) and not input_model.fix
     has_errors = any(d.validation_errors for d in dir_results)
-    exit_code = 1 if has_fmt_issues or has_errors else 0
+    has_tflint = any(d.tflint_issues for d in dir_results)
+    exit_code = 1 if has_fmt_issues or has_errors or has_tflint else 0
 
     return CheckResult(exit_code=exit_code, dir_results=dir_results)

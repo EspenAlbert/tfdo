@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -9,15 +10,34 @@ from tfdo._internal.core.check_logic import (
     _build_fmt_command,
     _build_validate_command,
     _parse_fmt_files,
+    _run_tflint,
     check,
 )
 from tfdo._internal.core.tf_files import find_tf_directories
-from tfdo._internal.models import CheckInput, DirCheckResult, InitMode, ValidateDiagnostic, ValidateOutput
-from tfdo._internal.settings import InteractiveMode, TfDoSettings
+from tfdo._internal.models import (
+    CheckInput,
+    DirCheckResult,
+    InitMode,
+    TflintIssue,
+    TflintOutput,
+    TflintRange,
+    TflintRule,
+    ValidateDiagnostic,
+    ValidateOutput,
+)
+from tfdo._internal.settings import (
+    CheckConfig,
+    InteractiveMode,
+    TfDoSettings,
+    TfDoUserConfig,
+    load_user_config,
+    resolve_tflint_flag,
+)
 
 module_name = check.__module__
 _patch_run = f"{module_name}.{check_logic.run_and_wait.__name__}"
 _patch_init = f"{module_name}.{check_logic.init.__name__}"
+_patch_tflint_available = f"{module_name}.{check_logic._tflint_available.__name__}"
 runner = CliRunner()
 
 VALID_OUTPUT = ValidateOutput()
@@ -235,6 +255,41 @@ def test_dir_check_result_properties():
     assert val_bad.has_issues
 
 
+def test_check_init_failure_skips_directory(tmp_path: Path):
+    (tmp_path / "main.tf").touch()
+    settings = _make_settings(tmp_path)
+    fmt_run = _mock_run(exit_code=0)
+    mock_init_result = MagicMock()
+    mock_init_result.exit_code = 1
+    with (
+        patch(_patch_run, return_value=fmt_run),
+        patch(_patch_init, return_value=mock_init_result),
+    ):
+        result = check(CheckInput(settings=settings, init_mode=InitMode.AUTO))
+    assert result.directories_skipped == [tmp_path]
+    assert result.directories_checked == 0
+    assert result.exit_code == 0
+
+
+def test_check_empty_repo(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    result = check(CheckInput(settings=settings))
+    assert result.exit_code == 0
+    assert result.dir_results == []
+    assert result.directories_checked == 0
+
+
+def test_validate_output_ignores_warnings():
+    output = ValidateOutput(
+        valid=False,
+        diagnostics=[
+            ValidateDiagnostic(severity="warning", summary="Deprecated attribute"),
+            ValidateDiagnostic(severity="error", summary="Missing required argument"),
+        ],
+    )
+    assert output.error_summaries == ["Missing required argument"]
+
+
 def test_check_cmd_via_cli(tmp_path: Path):
     from tfdo._internal.core import cmd_check  # noqa: F401
     from tfdo._internal.typer_app import app
@@ -258,3 +313,195 @@ def test_check_cmd_with_exclude_via_cli(tmp_path: Path):
     with patch(_patch_run, return_value=mock_run):
         result = runner.invoke(app, ["--work-dir", str(tmp_path), "check", "--exclude", "examples/*"])
     assert result.exit_code == 0
+
+
+# --- tflint tests ---
+
+TFLINT_JSON_CLEAN = json.dumps({"issues": [], "errors": []})
+
+TFLINT_JSON_ISSUES = json.dumps(
+    {
+        "issues": [
+            {
+                "rule": {
+                    "name": "terraform_unused_declarations",
+                    "severity": "warning",
+                    "link": "https://github.com/terraform-linters/tflint-ruleset-terraform/blob/main/docs/rules/terraform_unused_declarations.md",
+                },
+                "message": 'variable "unused" is declared but not used',
+                "range": {
+                    "filename": "variables.tf",
+                    "start": {"line": 3, "column": 1},
+                    "end": {"line": 3, "column": 20},
+                },
+                "callers": [],
+                "fixable": False,
+                "fixed": False,
+            },
+            {
+                "rule": {"name": "terraform_naming_convention", "severity": "notice", "link": ""},
+                "message": "variable name 'BadName' must match snake_case",
+                "range": {
+                    "filename": "variables.tf",
+                    "start": {"line": 7, "column": 1},
+                    "end": {"line": 7, "column": 15},
+                },
+                "callers": [],
+                "fixable": False,
+                "fixed": False,
+            },
+        ],
+        "errors": [],
+    }
+)
+
+
+def test_tflint_output_parsing():
+    output = TflintOutput(**json.loads(TFLINT_JSON_CLEAN))
+    assert output.issues == []
+    assert output.errors == []
+
+
+def test_tflint_output_parsing_with_issues():
+    output = TflintOutput(**json.loads(TFLINT_JSON_ISSUES))
+    assert len(output.issues) == 2
+    assert output.issues[0].rule.name == "terraform_unused_declarations"
+    assert output.issues[0].rule.severity == "warning"
+    assert output.issues[0].range.filename == "variables.tf"
+    assert output.issues[0].range.start.line == 3
+    assert output.issues[1].message == "variable name 'BadName' must match snake_case"
+
+
+def test_tflint_issue_display():
+    issue = TflintIssue(
+        rule=TflintRule(name="terraform_unused_declarations", severity="warning"),
+        message='variable "foo" is declared but not used',
+        range=TflintRange(filename="variables.tf"),
+    )
+    assert "[warning]" in issue.display
+    assert "terraform_unused_declarations" in issue.display
+    assert "variables.tf" in issue.display
+
+
+def test_run_tflint_clean(tmp_path: Path):
+    mock_run = _mock_run(exit_code=0, stdout=TFLINT_JSON_CLEAN)
+    with patch(_patch_run, return_value=mock_run):
+        issues = _run_tflint(tmp_path)
+    assert issues == []
+
+
+def test_run_tflint_with_issues(tmp_path: Path):
+    mock_run = _mock_run(exit_code=2, stdout=TFLINT_JSON_ISSUES)
+    with patch(_patch_run, return_value=mock_run):
+        issues = _run_tflint(tmp_path)
+    assert len(issues) == 2
+
+
+def test_run_tflint_invalid_json(tmp_path: Path):
+    mock_run = _mock_run(exit_code=1, stdout="not json")
+    with patch(_patch_run, return_value=mock_run):
+        issues = _run_tflint(tmp_path)
+    assert issues == []
+
+
+def test_check_with_tflint(tmp_path: Path):
+    (tmp_path / "main.tf").touch()
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    tflint_run = _mock_run(exit_code=2, stdout=TFLINT_JSON_ISSUES)
+    with (
+        patch(_patch_run, side_effect=[fmt_run, validate_run, tflint_run]),
+        patch(_patch_tflint_available, return_value=True),
+    ):
+        result = check(CheckInput(settings=settings, tflint=True))
+    assert result.exit_code == 1
+    assert len(result.total_tflint_issues) == 2
+    assert result.dir_results[0].has_issues
+
+
+def test_check_tflint_false_skips(tmp_path: Path):
+    (tmp_path / "main.tf").touch()
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    mock_run = _mock_run(exit_code=0, validate_output=VALID_OUTPUT)
+    with patch(_patch_run, return_value=mock_run):
+        result = check(CheckInput(settings=settings, tflint=False))
+    assert result.exit_code == 0
+    assert result.total_tflint_issues == []
+
+
+def test_check_tflint_not_on_path(tmp_path: Path):
+    (tmp_path / "main.tf").touch()
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    mock_run = _mock_run(exit_code=0, validate_output=VALID_OUTPUT)
+    with (
+        patch(_patch_run, return_value=mock_run),
+        patch(_patch_tflint_available, return_value=False),
+    ):
+        result = check(CheckInput(settings=settings, tflint=True))
+    assert result.exit_code == 0
+    assert result.total_tflint_issues == []
+
+
+def test_dir_check_result_tflint_has_issues():
+    issue = TflintIssue(rule=TflintRule(name="test_rule", severity="warning"), message="test")
+    dr = DirCheckResult(directory=Path("/a"), tflint_issues=[issue])
+    assert dr.has_issues
+
+
+# --- user config / resolve_tflint_flag tests ---
+
+
+def test_resolve_tflint_flag_cli_overrides(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    assert resolve_tflint_flag(True, settings)
+    assert not resolve_tflint_flag(False, settings)
+
+
+def test_resolve_tflint_flag_user_config(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    config_path = settings.user_config_path
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text("check:\n  tflint: true\n")
+    assert resolve_tflint_flag(None, settings)
+
+
+def test_resolve_tflint_flag_default(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    assert not resolve_tflint_flag(None, settings)
+
+
+def test_load_user_config_missing_file(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    config = load_user_config(settings)
+    assert config.check is None
+
+
+def test_load_user_config_valid(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    config_path = settings.user_config_path
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text("check:\n  tflint: true\n")
+    config = load_user_config(settings)
+    assert config.check is not None
+    assert config.check.tflint
+
+
+def test_load_user_config_invalid_yaml(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    config_path = settings.user_config_path
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text("check:\n  tflint: [invalid\n")
+    config = load_user_config(settings)
+    assert config.check is None
+
+
+def test_user_config_model():
+    config = TfDoUserConfig(check=CheckConfig(tflint=True))
+    assert config.check is not None
+    assert config.check.tflint
+    empty = TfDoUserConfig()
+    assert empty.check is None

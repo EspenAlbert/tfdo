@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import total_ordering
 from pathlib import Path
-from typing import Self
+from typing import ClassVar, Self
 
 from pydantic import BaseModel, model_validator
 
@@ -68,6 +68,7 @@ class CheckInput(TfDoBaseInput):
     init_mode: InitMode = InitMode.AUTO
     include_patterns: list[str] = []
     exclude_patterns: list[str] = []
+    tflint: bool = False
 
 
 class InitResult(BaseModel):
@@ -100,9 +101,54 @@ class ValidateOutput(BaseModel):
     valid: bool = True
     diagnostics: list[ValidateDiagnostic] = []
 
+    ERROR_SEVERITY: ClassVar[str] = "error"
+
     @property
     def error_summaries(self) -> list[str]:
-        return [d.summary for d in self.diagnostics if d.summary]
+        return [d.summary for d in self.diagnostics if d.severity == self.ERROR_SEVERITY and d.summary]
+
+
+class TflintPos(BaseModel):
+    line: int = 0
+    column: int = 0
+
+
+class TflintRange(BaseModel):
+    filename: str = ""
+    start: TflintPos = TflintPos()
+    end: TflintPos = TflintPos()
+
+
+class TflintRule(BaseModel):
+    name: str = ""
+    severity: str = ""
+    link: str = ""
+
+
+class TflintIssue(BaseModel):
+    rule: TflintRule = TflintRule()
+    message: str = ""
+    range: TflintRange = TflintRange()
+    callers: list[TflintRange] = []
+    fixable: bool = False
+    fixed: bool = False
+
+    @property
+    def display(self) -> str:
+        r = self.range
+        return f"[{self.rule.severity}] {self.rule.name}: {self.message} ({r.filename}:{r.start.line})"
+
+
+class TflintError(BaseModel):
+    summary: str = ""
+    message: str = ""
+    severity: str = ""
+    range: TflintRange | None = None
+
+
+class TflintOutput(BaseModel):
+    issues: list[TflintIssue] = []
+    errors: list[TflintError] = []
 
 
 @total_ordering
@@ -110,15 +156,16 @@ class DirCheckResult(BaseModel):
     directory: Path
     fmt_files: list[str] = []
     validation_errors: list[str] = []
+    tflint_issues: list[TflintIssue] = []
     skipped: bool = False
 
     @property
     def has_issues(self) -> bool:
-        return bool(self.fmt_files) or bool(self.validation_errors)
+        return bool(self.fmt_files) or bool(self.validation_errors) or bool(self.tflint_issues)
 
     def __lt__(self, other: Self) -> bool:
         if not isinstance(other, DirCheckResult):
-            return NotImplemented
+            raise NotImplementedError
         return self.directory < other.directory
 
 
@@ -138,6 +185,10 @@ class CheckResult(BaseModel):
     @property
     def total_validation_errors(self) -> list[str]:
         return [e for d in self.dir_results for e in d.validation_errors]
+
+    @property
+    def total_tflint_issues(self) -> list[TflintIssue]:
+        return [i for d in self.dir_results for i in d.tflint_issues]
 
     @property
     def directories_checked(self) -> int:

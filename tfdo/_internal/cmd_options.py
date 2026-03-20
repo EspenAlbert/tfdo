@@ -29,3 +29,9 @@ def include_option() -> list[str]:
 
 def exclude_option() -> list[str]:
     return typer.Option([], "--exclude", help="Glob patterns: matching directories are skipped")
+
+
+def tflint_option() -> bool | None:
+    return typer.Option(
+        None, "--tflint/--no-tflint", envvar="TFDO_TFLINT", help="Run tflint linter alongside fmt+validate"
+    )
