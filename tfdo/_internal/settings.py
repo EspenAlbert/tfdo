@@ -1,12 +1,20 @@
+from __future__ import annotations
+
+import logging
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
+import platformdirs
+import yaml
 from ask_shell.console import interactive_shell
 from model_lib import StaticSettings
-from pydantic import ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+logger = logging.getLogger(__name__)
 
 ENV_PREFIX = "TFDO_"
+USER_CONFIG_FILENAME = "config.yaml"
 
 
 class InteractiveMode(StrEnum):
@@ -56,3 +64,36 @@ class TfDoSettings(StaticSettings):
         if self.interactive == InteractiveMode.NEVER:
             return False
         return interactive_shell()
+
+    @property
+    def user_config_path(self) -> Path:
+        return Path(platformdirs.user_config_dir(self.app_name())) / USER_CONFIG_FILENAME
+
+
+class CheckConfig(BaseModel):
+    tflint: bool = False
+
+
+class TfDoUserConfig(BaseModel):
+    check: CheckConfig | None = None
+
+
+def load_user_config(settings: TfDoSettings) -> TfDoUserConfig:
+    path = settings.user_config_path
+    if not path.is_file():
+        return TfDoUserConfig()
+    try:
+        data = yaml.safe_load(path.read_text()) or {}
+        return TfDoUserConfig(**data)
+    except Exception:
+        logger.warning(f"failed to parse user config at {path}")
+        return TfDoUserConfig()
+
+
+def resolve_tflint_flag(cli_value: bool | None, settings: TfDoSettings) -> bool:
+    if cli_value is not None:
+        return cli_value
+    user_config = load_user_config(settings)
+    if user_config.check and user_config.check.tflint:
+        return True
+    return False
