@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from ask_shell.shell import ShellRun
 from typer.testing import CliRunner
 
@@ -389,9 +390,8 @@ def test_run_tflint_with_issues(tmp_path: Path):
 def test_run_tflint_parse_failure(tmp_path: Path):
     mock_run = MagicMock(spec=ShellRun)
     mock_run.parse_output.side_effect = ValueError("bad data")
-    with patch(_patch_run, return_value=mock_run):
-        issues = _run_tflint(tmp_path)
-    assert issues == []
+    with pytest.raises(ValueError, match="bad data"), patch(_patch_run, return_value=mock_run):
+        _run_tflint(tmp_path)
 
 
 def test_check_with_tflint(tmp_path: Path):

@@ -33,7 +33,7 @@ def _print_info(settings: TfDoSettings) -> None:
         lines.append(f"  check.tflint: {user_config.check.tflint}")
     else:
         lines.append("  (no user config found)")
-    typer.echo("\n".join(lines))
+    logger.info("\n".join(lines))
 
 
 @app.command("info")

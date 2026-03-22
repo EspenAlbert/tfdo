@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 import typer
 
@@ -12,13 +11,13 @@ from tfdo._internal.typer_app import app, get_settings
 logger = logging.getLogger(__name__)
 
 
-def _log_dir(dr: DirCheckResult, work_dir: Path) -> None:
-    rel = dr.directory.relative_to(work_dir)
+def _log_dir(dr: DirCheckResult) -> None:
+    d = dr.directory
     if dr.skipped:
-        logger.warning(f"  {rel}: skipped (not initialized)")
+        logger.warning(f"  {d}: skipped (not initialized)")
         return
     if not dr.has_issues:
-        logger.info(f"  {rel}: ok")
+        logger.info(f"  {d}: ok")
         return
     issues: list[str] = []
     if dr.fmt_files:
@@ -27,7 +26,7 @@ def _log_dir(dr: DirCheckResult, work_dir: Path) -> None:
         issues.append(f"{len(dr.validation_errors)} validate")
     if dr.tflint_issues:
         issues.append(f"{len(dr.tflint_issues)} tflint")
-    logger.error(f"  {rel}: {', '.join(issues)}")
+    logger.error(f"  {d}: {', '.join(issues)}")
     for f in dr.fmt_files:
         logger.error(f"    fmt: {f}")
     for err in dr.validation_errors:
@@ -36,9 +35,9 @@ def _log_dir(dr: DirCheckResult, work_dir: Path) -> None:
         logger.error(f"    tflint: {issue.display}")
 
 
-def _log_result(result: CheckResult, work_dir: Path) -> None:
+def _log_result(result: CheckResult) -> None:
     for dr in result.dir_results:
-        _log_dir(dr, work_dir)
+        _log_dir(dr)
     fmt = len(result.total_fmt_files)
     errors = len(result.total_validation_errors)
     tflint = len(result.total_tflint_issues)
@@ -80,5 +79,5 @@ def check_cmd(
         tflint=tflint_enabled,
     )
     result = check_logic.check(input_model)
-    _log_result(result, settings.work_dir)
+    _log_result(result)
     raise typer.Exit(result.exit_code)

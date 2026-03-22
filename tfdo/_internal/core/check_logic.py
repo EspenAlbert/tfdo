@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from ask_shell._internal.run_pool import run_pool
-from ask_shell.shell import ShellError, run_and_wait
+from ask_shell.shell import run_and_wait
 
 from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
@@ -60,27 +60,16 @@ class _DirRunResult(NamedTuple):
 
 def _run_fmt(resolved_binary: str, cwd: Path, fix: bool, diff: bool) -> _FmtResult:
     cmd = _build_fmt_command(resolved_binary, fix, diff)
-    try:
-        run = run_and_wait(cmd, cwd=cwd, allow_non_zero_exit=True, skip_binary_check=True)
-        files = [] if fix else _parse_fmt_files(run.stdout)
-        return _FmtResult(files=files, stdout=run.stdout)
-    except ShellError as e:
-        files = [] if fix else _parse_fmt_files(e.run.stdout)
-        return _FmtResult(files=files, stdout=e.run.stdout)
+    run = run_and_wait(cmd, cwd=cwd, allow_non_zero_exit=True, skip_binary_check=True)
+    files = [] if fix else _parse_fmt_files(run.stdout)
+    return _FmtResult(files=files, stdout=run.stdout)
 
 
 def _run_validate(resolved_binary: str, cwd: Path) -> list[str]:
     cmd = _build_validate_command(resolved_binary)
-    try:
-        run = run_and_wait(cmd, cwd=cwd, allow_non_zero_exit=True, skip_binary_check=True)
-        output = run.parse_output(ValidateOutput)
-        return output.error_summaries
-    except ShellError as e:
-        output = e.run.parse_output(ValidateOutput)
-        return output.error_summaries
-    except Exception:
-        logger.warning(f"validate parse failed in {cwd}", exc_info=True)
-        return []
+    run = run_and_wait(cmd, cwd=cwd, allow_non_zero_exit=True, skip_binary_check=True)
+    output = run.parse_output(ValidateOutput)
+    return output.error_summaries
 
 
 TFLINT_BINARY = "tflint"
@@ -92,14 +81,8 @@ def _tflint_available() -> bool:
 
 def _run_tflint(cwd: Path) -> list[TflintIssue]:
     cmd = f"{TFLINT_BINARY} --format json"
-    try:
-        run = run_and_wait(cmd, cwd=cwd, allow_non_zero_exit=True, skip_binary_check=True)
-        output = run.parse_output(TflintOutput)
-    except ShellError as e:
-        output = e.run.parse_output(TflintOutput)
-    except Exception:
-        logger.warning(f"tflint: failed to parse output in {cwd}", exc_info=True)
-        return []
+    run = run_and_wait(cmd, cwd=cwd, allow_non_zero_exit=True, skip_binary_check=True)
+    output = run.parse_output(TflintOutput)
     for err in output.errors:
         logger.warning(f"tflint error in {cwd}: {err.message}")
     return output.issues
