@@ -1,11 +1,11 @@
 from typer.testing import CliRunner
 
-from tfdo._internal.core import cmd_apply, cmd_check, cmd_destroy, cmd_init, cmd_plan  # noqa: F401
+from tfdo._internal.core import cmd_apply, cmd_check, cmd_destroy, cmd_info, cmd_init, cmd_plan  # noqa: F401
 from tfdo._internal.typer_app import app
 
 runner = CliRunner()
 
-EXPECTED_COMMANDS = {"init", "i", "plan", "p", "apply", "a", "destroy", "d", "check", "c"}
+EXPECTED_COMMANDS = {"init", "i", "plan", "p", "apply", "a", "destroy", "d", "check", "c", "info"}
 
 
 def test_help_shows_all_commands():
