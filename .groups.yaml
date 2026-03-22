@@ -2,11 +2,15 @@
 groups:
 - name: __ROOT__
   owned_modules:
+  - _internal.core.cmd_info
   - _internal.settings
   - _internal.typer_app
   owned_refs:
+  - _internal.core.cmd_info.info_cmd
+  - _internal.settings.CheckConfig
   - _internal.settings.InteractiveMode
   - _internal.settings.TfDoSettings
+  - _internal.settings.TfDoUserConfig
   - _internal.typer_app.get_settings
   - _internal.typer_app.main_callback
 - name: core

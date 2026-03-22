@@ -4,9 +4,12 @@
 <!-- === OK_EDIT: pkg-ext header === -->
 
 <!-- === DO_NOT_EDIT: pkg-ext symbols === -->
+- [`CheckConfig`](#checkconfig_def)
 - [`InteractiveMode`](#interactivemode_def)
 - [TfDoSettings](./tfdosettings.md)
+- [`TfDoUserConfig`](#tfdouserconfig_def)
 - [`get_settings`](#get_settings_def)
+- [`info_cmd`](#info_cmd_def)
 - [`main_callback`](#main_callback_def)
 <!-- === OK_EDIT: pkg-ext symbols === -->
 
@@ -65,7 +68,7 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., wo
 <a id="interactivemode_def"></a>
 
 ### class: `InteractiveMode`
-- [source](../../tfdo/_internal/settings.py#L12)
+- [source](../../tfdo/_internal/settings.py#L20)
 > **Since:** 0.2.0
 
 ```python
@@ -79,3 +82,67 @@ class InteractiveMode(StrEnum):
 |---------|--------|
 | 0.2.0 | Made public |
 <!-- === OK_EDIT: pkg-ext interactivemode_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext checkconfig_def === -->
+<a id="checkconfig_def"></a>
+
+### class: `CheckConfig`
+- [source](../../tfdo/_internal/settings.py#L73)
+> **Since:** unreleased
+
+```python
+class CheckConfig(BaseModel):
+    tflint: bool = False
+```
+
+| Field | Type | Default | Since |
+|---|---|---|---|
+| tflint | `bool` | `False` | unreleased |
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| unreleased | Made public |
+<!-- === OK_EDIT: pkg-ext checkconfig_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext tfdouserconfig_def === -->
+<a id="tfdouserconfig_def"></a>
+
+### class: `TfDoUserConfig`
+- [source](../../tfdo/_internal/settings.py#L77)
+> **Since:** unreleased
+
+```python
+class TfDoUserConfig(BaseModel):
+    check: CheckConfig | None = None
+```
+
+| Field | Type | Default | Since |
+|---|---|---|---|
+| check | `CheckConfig | None` | `None` | unreleased |
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| unreleased | Made public |
+<!-- === OK_EDIT: pkg-ext tfdouserconfig_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext info_cmd_def === -->
+<a id="info_cmd_def"></a>
+
+### cli_command: `info_cmd`
+- [source](../../tfdo/_internal/core/cmd_info.py#L39)
+> **Since:** unreleased
+
+```python
+def info_cmd() -> None:
+    ...
+```
+
+Show resolved settings, paths, and user config.
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| unreleased | Made public |
+<!-- === OK_EDIT: pkg-ext info_cmd_def === -->
