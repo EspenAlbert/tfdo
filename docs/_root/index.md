@@ -87,7 +87,7 @@ class InteractiveMode(StrEnum):
 
 ### class: `CheckConfig`
 - [source](../../tfdo/_internal/settings.py#L73)
-> **Since:** unreleased
+> **Since:** 0.3.0
 
 ```python
 class CheckConfig(BaseModel):
@@ -96,20 +96,20 @@ class CheckConfig(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| tflint | `bool` | `False` | unreleased |
+| tflint | `bool` | `False` | 0.3.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.3.0 | Made public |
 <!-- === OK_EDIT: pkg-ext checkconfig_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext tfdouserconfig_def === -->
 <a id="tfdouserconfig_def"></a>
 
 ### class: `TfDoUserConfig`
 - [source](../../tfdo/_internal/settings.py#L77)
-> **Since:** unreleased
+> **Since:** 0.3.0
 
 ```python
 class TfDoUserConfig(BaseModel):
@@ -118,20 +118,20 @@ class TfDoUserConfig(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| check | `CheckConfig | None` | `None` | unreleased |
+| check | `CheckConfig | None` | `None` | 0.3.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.3.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tfdouserconfig_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext info_cmd_def === -->
 <a id="info_cmd_def"></a>
 
 ### cli_command: `info_cmd`
 - [source](../../tfdo/_internal/core/cmd_info.py#L39)
-> **Since:** unreleased
+> **Since:** 0.3.0
 
 ```python
 def info_cmd() -> None:
@@ -144,5 +144,5 @@ Show resolved settings, paths, and user config.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.3.0 | Made public |
 <!-- === OK_EDIT: pkg-ext info_cmd_def === -->

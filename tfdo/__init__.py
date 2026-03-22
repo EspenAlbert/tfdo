@@ -9,7 +9,7 @@ from tfdo._internal.core.cmd_info import info_cmd
 from tfdo._internal.typer_app import get_settings
 from tfdo._internal.typer_app import main_callback
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 __all__ = [
     "CheckConfig",
     "InteractiveMode",

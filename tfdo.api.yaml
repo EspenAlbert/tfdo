@@ -1,12 +1,44 @@
 pkg_import_name: tfdo
-version: 0.2.0
+version: 0.3.0
 groups:
 - name: __ROOT__
   symbols:
+  - name: info_cmd
+    module_path: _internal.core.cmd_info
+    docstring: Show resolved settings, paths, and user config.
+    line_number: 39
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      return_annotation: None
+      return_type_imports: []
+    cli_params: []
+  - name: CheckConfig
+    module_path: _internal.settings
+    docstring: ''
+    line_number: 73
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: tflint
+      type_annotation: bool
+      type_imports: []
+      default:
+        value_repr: 'False'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
   - name: InteractiveMode
     module_path: _internal.settings
     docstring: ''
-    line_number: 12
+    line_number: 20
     type: class
     mro_bases:
     - StrEnum
@@ -29,7 +61,7 @@ groups:
   - name: TfDoSettings
     module_path: _internal.settings
     docstring: ''
-    line_number: 18
+    line_number: 26
     type: class
     mro_bases:
     - StaticSettings
@@ -141,6 +173,24 @@ groups:
       description: Disable parsed output, pass raw ANSI from terraform
       env_vars:
       - passthrough
+  - name: TfDoUserConfig
+    module_path: _internal.settings
+    docstring: ''
+    line_number: 77
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: check
+      type_annotation: CheckConfig | None
+      type_imports:
+      - tfdo._internal.settings.CheckConfig
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
   - name: get_settings
     module_path: _internal.typer_app
     docstring: ''
@@ -355,7 +405,7 @@ groups:
   - name: check_cmd
     module_path: _internal.core.cmd_check
     docstring: Run terraform fmt check + validate (ruff-style).
-    line_number: 12
+    line_number: 58
     type: cli_command
     signature:
       parameters:
@@ -383,6 +433,27 @@ groups:
         type_annotation: InitMode
         type_imports:
         - tfdo._internal.models.InitMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: include
+        kind: positional_or_keyword
+        type_annotation: list[str]
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: exclude
+        kind: positional_or_keyword
+        type_annotation: list[str]
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: tflint
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -422,6 +493,33 @@ groups:
       - auto
       - always
       - never
+    - param_name: include
+      type_annotation: list[str]
+      flags:
+      - --include
+      help: 'Glob patterns: only matching directories are checked'
+      default_repr: '[]'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: exclude
+      type_annotation: list[str]
+      flags:
+      - --exclude
+      help: 'Glob patterns: matching directories are skipped'
+      default_repr: '[]'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: tflint
+      type_annotation: bool | None
+      flags:
+      - --tflint/--no-tflint
+      help: Run tflint linter alongside fmt+validate
+      required: true
+      envvar: TFDO_TFLINT
+      is_argument: false
+      hidden: false
   - name: destroy_cmd
     module_path: _internal.core.cmd_destroy
     docstring: Run terraform destroy.
@@ -613,7 +711,7 @@ groups:
   - name: InitMode
     module_path: _internal.models
     docstring: ''
-    line_number: 12
+    line_number: 13
     type: class
     mro_bases:
     - StrEnum
@@ -633,4 +731,4 @@ groups:
         kind: var_keyword
         type_imports: []
       return_type_imports: []
-dumped_at: 2026-03-19 08:39:08.102947+00:00
+dumped_at: 2026-03-22 21:01:03.120875+00:00

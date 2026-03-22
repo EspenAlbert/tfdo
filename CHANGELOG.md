@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 2026-03-22T21-01Z
+
+### __Root__
+- New function `info_cmd`
+- New class `CheckConfig`
+- New class `TfDoUserConfig`
+
+
 ## 0.2.0 2026-03-19T08-39Z
 
 ### __Root__

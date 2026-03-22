@@ -108,3 +108,8 @@ type: make_public
 details: created in _internal/settings.py
 full_path: _internal.settings.TfDoUserConfig
 group: __ROOT__
+---
+name: 0.3.0
+ts: 2026-03-22 21:01:03.155896+00:00
+type: release
+old_version: 0.2.0
