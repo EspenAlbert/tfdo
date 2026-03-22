@@ -48,11 +48,11 @@ Run terraform apply.
 <a id="check_cmd_def"></a>
 
 ### cli_command: `check_cmd`
-- [source](../../tfdo/_internal/core/cmd_check.py#L12)
+- [source](../../tfdo/_internal/core/cmd_check.py#L59)
 > **Since:** 0.1.0
 
 ```python
-def check_cmd(*, fix: bool = False, diff: bool = False, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def check_cmd(*, fix: bool = False, diff: bool = False, init_mode: InitMode = <InitMode.AUTO: 'auto'>, include: list[str] = [], exclude: list[str] = [], tflint: bool | None = ...) -> None:
     ...
 ```
 
@@ -65,6 +65,9 @@ Run terraform fmt check + validate (ruff-style).
 | `--fix` | `bool` | `False` | - | Auto-format instead of checking |
 | `--diff` | `bool` | `False` | - | Show what would change |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
+| `--include` | `list[str]` | `[]` | - | Glob patterns: only matching directories are checked |
+| `--exclude` | `list[str]` | `[]` | - | Glob patterns: matching directories are skipped |
+| `--tflint/--no-tflint` | `bool | None` | *required* | `TFDO_TFLINT` | Run tflint linter alongside fmt+validate |
 
 ### Changes
 
@@ -159,7 +162,7 @@ Run terraform plan.
 <a id="initmode_def"></a>
 
 ### class: `InitMode`
-- [source](../../tfdo/_internal/models.py#L12)
+- [source](../../tfdo/_internal/models.py#L13)
 > **Since:** 0.2.0
 
 ```python
