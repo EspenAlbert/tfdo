@@ -7,6 +7,12 @@ from tfdo._internal.inspect.hcl_resource_paths import (
     collect_resource_argument_paths,
 )
 
+
+class _ExcWithNonPositiveLineCol(Exception):
+    line = 0
+    column = 0
+
+
 _SAMPLE_OK_MAIN = """
 resource "aws_s3_bucket" "logs" {
   bucket = "mybucket"
@@ -96,17 +102,13 @@ def test_hcl_resource_paths_canonical_json_relativize_falls_back_outside_root(tm
 
 
 def test_to_parse_error_clamps_non_positive_line_column() -> None:
-    class ExcWithLineCol(Exception):
-        line = 0
-        column = 0
-
-    e = hrp._to_parse_error(Path("a.tf"), ExcWithLineCol())
+    e = hrp._to_parse_error(Path("a.tf"), _ExcWithNonPositiveLineCol())
     assert e.line is None
     assert e.column is None
 
 
 def test_merge_skips_non_object_resource_entries() -> None:
-    acc: dict = {}
+    acc: dict[tuple[Path, str], set[str]] = {}
     hrp._merge_parsed_into_file(
         {"resource": [1, {"aws_instance": "bad"}, {"aws_instance": {"lbl": "notdict"}}]}, Path("f.tf"), acc
     )

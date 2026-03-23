@@ -9,6 +9,12 @@ from ask_shell.shell import ShellError, ShellRun
 from tfdo._internal.schema import inspect as schema_inspect
 from tfdo._internal.settings import TfDoSettings
 
+_executor_init = schema_inspect.executor.init
+_read_resolved_version_from_lock = schema_inspect.schema_cache.read_resolved_version_from_lock
+_try_read_cached_schema = schema_inspect.schema_cache.try_read_cached_schema
+_write_cached_schema = schema_inspect.schema_cache.write_cached_schema
+_run_and_wait = schema_inspect.run_and_wait
+
 
 def test_schema_cache_dir_uses_schemas_leaf() -> None:
     assert TfDoSettings().schema_cache_dir.name == "schemas"
@@ -16,15 +22,17 @@ def test_schema_cache_dir_uses_schemas_leaf() -> None:
 
 def test_fetch_providers_schema_json_cache_hit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     payload = {"format_version": "1.0", "provider_schemas": {}}
-    monkeypatch.setattr(schema_inspect.executor, "init", MagicMock(return_value=MagicMock(exit_code=0)))
+    monkeypatch.setattr(
+        schema_inspect.executor, _executor_init.__name__, MagicMock(return_value=MagicMock(exit_code=0))
+    )
     monkeypatch.setattr(
         schema_inspect.schema_cache,
-        "read_resolved_version_from_lock",
+        _read_resolved_version_from_lock.__name__,
         lambda **_: "1.0.0",
     )
-    monkeypatch.setattr(schema_inspect.schema_cache, "try_read_cached_schema", lambda _p: payload)
+    monkeypatch.setattr(schema_inspect.schema_cache, _try_read_cached_schema.__name__, lambda _p: payload)
     run_mock = MagicMock()
-    monkeypatch.setattr(schema_inspect, "run_and_wait", run_mock)
+    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, run_mock)
     out = schema_inspect.fetch_providers_schema_json(
         TfDoSettings(),
         local_name="aws",
@@ -38,18 +46,20 @@ def test_fetch_providers_schema_json_cache_hit(monkeypatch: pytest.MonkeyPatch, 
 
 def test_fetch_providers_schema_json_miss_writes_cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     payload = {"format_version": "1.0", "provider_schemas": {}}
-    monkeypatch.setattr(schema_inspect.executor, "init", MagicMock(return_value=MagicMock(exit_code=0)))
+    monkeypatch.setattr(
+        schema_inspect.executor, _executor_init.__name__, MagicMock(return_value=MagicMock(exit_code=0))
+    )
     monkeypatch.setattr(
         schema_inspect.schema_cache,
-        "read_resolved_version_from_lock",
+        _read_resolved_version_from_lock.__name__,
         lambda **_: "1.0.0",
     )
-    monkeypatch.setattr(schema_inspect.schema_cache, "try_read_cached_schema", lambda _p: None)
+    monkeypatch.setattr(schema_inspect.schema_cache, _try_read_cached_schema.__name__, lambda _p: None)
     write_mock = MagicMock()
-    monkeypatch.setattr(schema_inspect.schema_cache, "write_cached_schema", write_mock)
+    monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
     run = MagicMock(exit_code=0)
     run.parse_output = MagicMock(return_value=payload)
-    monkeypatch.setattr(schema_inspect, "run_and_wait", MagicMock(return_value=run))
+    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(return_value=run))
     out = schema_inspect.fetch_providers_schema_json(
         TfDoSettings(),
         local_name="aws",
@@ -66,15 +76,21 @@ def test_fetch_providers_schema_json_unresolved_version_skips_cache_io(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     payload = {"provider_schemas": {}}
-    monkeypatch.setattr(schema_inspect.executor, "init", MagicMock(return_value=MagicMock(exit_code=0)))
-    monkeypatch.setattr(schema_inspect.schema_cache, "read_resolved_version_from_lock", lambda **_: None)
+    monkeypatch.setattr(
+        schema_inspect.executor, _executor_init.__name__, MagicMock(return_value=MagicMock(exit_code=0))
+    )
+    monkeypatch.setattr(
+        schema_inspect.schema_cache,
+        _read_resolved_version_from_lock.__name__,
+        lambda **_: None,
+    )
     try_read = MagicMock()
-    monkeypatch.setattr(schema_inspect.schema_cache, "try_read_cached_schema", try_read)
+    monkeypatch.setattr(schema_inspect.schema_cache, _try_read_cached_schema.__name__, try_read)
     write_mock = MagicMock()
-    monkeypatch.setattr(schema_inspect.schema_cache, "write_cached_schema", write_mock)
+    monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
     run = MagicMock(exit_code=0)
     run.parse_output = MagicMock(return_value=payload)
-    monkeypatch.setattr(schema_inspect, "run_and_wait", MagicMock(return_value=run))
+    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(return_value=run))
     schema_inspect.fetch_providers_schema_json(
         TfDoSettings(),
         local_name="aws",
@@ -88,19 +104,21 @@ def test_fetch_providers_schema_json_unresolved_version_skips_cache_io(
 
 def test_fetch_providers_schema_json_no_cache_skips_cache_io(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     payload = {"provider_schemas": {}}
-    monkeypatch.setattr(schema_inspect.executor, "init", MagicMock(return_value=MagicMock(exit_code=0)))
+    monkeypatch.setattr(
+        schema_inspect.executor, _executor_init.__name__, MagicMock(return_value=MagicMock(exit_code=0))
+    )
     monkeypatch.setattr(
         schema_inspect.schema_cache,
-        "read_resolved_version_from_lock",
+        _read_resolved_version_from_lock.__name__,
         lambda **_: "1.0.0",
     )
     try_read = MagicMock()
-    monkeypatch.setattr(schema_inspect.schema_cache, "try_read_cached_schema", try_read)
+    monkeypatch.setattr(schema_inspect.schema_cache, _try_read_cached_schema.__name__, try_read)
     write_mock = MagicMock()
-    monkeypatch.setattr(schema_inspect.schema_cache, "write_cached_schema", write_mock)
+    monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
     run = MagicMock(exit_code=0)
     run.parse_output = MagicMock(return_value=payload)
-    monkeypatch.setattr(schema_inspect, "run_and_wait", MagicMock(return_value=run))
+    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(return_value=run))
     schema_inspect.fetch_providers_schema_json(
         TfDoSettings(),
         local_name="aws",
@@ -114,7 +132,9 @@ def test_fetch_providers_schema_json_no_cache_skips_cache_io(monkeypatch: pytest
 
 
 def test_fetch_providers_schema_json_init_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(schema_inspect.executor, "init", MagicMock(return_value=MagicMock(exit_code=1)))
+    monkeypatch.setattr(
+        schema_inspect.executor, _executor_init.__name__, MagicMock(return_value=MagicMock(exit_code=1))
+    )
     with pytest.raises(RuntimeError, match="terraform init failed"):
         schema_inspect.fetch_providers_schema_json(
             TfDoSettings(),
@@ -128,9 +148,15 @@ def test_fetch_providers_schema_json_shell_error_wraps_stderr(monkeypatch: pytes
     run = MagicMock(spec=ShellRun)
     run.stderr = "schema cmd failed on stderr"
     err = ShellError(run)
-    monkeypatch.setattr(schema_inspect.executor, "init", MagicMock(return_value=MagicMock(exit_code=0)))
-    monkeypatch.setattr(schema_inspect.schema_cache, "read_resolved_version_from_lock", lambda **_: None)
-    monkeypatch.setattr(schema_inspect, "run_and_wait", MagicMock(side_effect=err))
+    monkeypatch.setattr(
+        schema_inspect.executor, _executor_init.__name__, MagicMock(return_value=MagicMock(exit_code=0))
+    )
+    monkeypatch.setattr(
+        schema_inspect.schema_cache,
+        _read_resolved_version_from_lock.__name__,
+        lambda **_: None,
+    )
+    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(side_effect=err))
     with pytest.raises(RuntimeError, match="terraform providers schema failed"):
         schema_inspect.fetch_providers_schema_json(
             TfDoSettings(),
@@ -142,12 +168,18 @@ def test_fetch_providers_schema_json_shell_error_wraps_stderr(monkeypatch: pytes
 
 
 def test_fetch_providers_schema_json_nonzero_exit_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(schema_inspect.executor, "init", MagicMock(return_value=MagicMock(exit_code=0)))
-    monkeypatch.setattr(schema_inspect.schema_cache, "read_resolved_version_from_lock", lambda **_: None)
+    monkeypatch.setattr(
+        schema_inspect.executor, _executor_init.__name__, MagicMock(return_value=MagicMock(exit_code=0))
+    )
+    monkeypatch.setattr(
+        schema_inspect.schema_cache,
+        _read_resolved_version_from_lock.__name__,
+        lambda **_: None,
+    )
     run = MagicMock()
     run.exit_code = 3
     run.stderr = "stderr detail"
-    monkeypatch.setattr(schema_inspect, "run_and_wait", MagicMock(return_value=run))
+    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(return_value=run))
     with pytest.raises(RuntimeError, match="exit 3"):
         schema_inspect.fetch_providers_schema_json(
             TfDoSettings(),

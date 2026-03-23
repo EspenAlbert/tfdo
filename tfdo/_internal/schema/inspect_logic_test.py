@@ -12,6 +12,8 @@ from tfdo._internal.schema.inspect_logic import (
 )
 from tfdo._internal.settings import TfDoSettings
 
+_fetch_providers_schema_json = schema_inspect.fetch_providers_schema_json
+
 _FIXTURE = Path(__file__).parent / "inspect_logic_test" / "minimal_schema.json"
 
 
@@ -23,7 +25,7 @@ def test_schema_show_lists_resource_types(monkeypatch: pytest.MonkeyPatch) -> No
     def fake_fetch(*_a: object, **_k: object) -> dict:
         return _fixture_dict()
 
-    monkeypatch.setattr(schema_inspect, "fetch_providers_schema_json", fake_fetch)
+    monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     out = schema_show(SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas"))
     assert out.resource_names == ["mongodbatlas_cluster", "mongodbatlas_project"]
     assert out.resource is None
@@ -33,7 +35,7 @@ def test_schema_show_one_resource(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_fetch(*_a: object, **_k: object) -> dict:
         return _fixture_dict()
 
-    monkeypatch.setattr(schema_inspect, "fetch_providers_schema_json", fake_fetch)
+    monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     out = schema_show(
         SchemaShowInput(
             settings=TfDoSettings(),
@@ -62,7 +64,7 @@ def test_schema_show_passes_no_cache_to_fetch(monkeypatch: pytest.MonkeyPatch) -
         seen["no_cache"] = no_cache
         return _fixture_dict()
 
-    monkeypatch.setattr(schema_inspect, "fetch_providers_schema_json", fake_fetch)
+    monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     schema_show(
         SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas", no_cache=True),
     )
@@ -113,7 +115,7 @@ def test_schema_show_invalid_provider_schemas_type(monkeypatch: pytest.MonkeyPat
     def fake_fetch(*_a: object, **_k: object) -> dict:
         return {"provider_schemas": "nope"}
 
-    monkeypatch.setattr(schema_inspect, "fetch_providers_schema_json", fake_fetch)
+    monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     with pytest.raises(ValueError, match="provider_schemas"):
         schema_show(SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas", source="mongodb/mongodbatlas"))
 
@@ -122,7 +124,7 @@ def test_schema_show_invalid_provider_entry(monkeypatch: pytest.MonkeyPatch) -> 
     def fake_fetch(*_a: object, **_k: object) -> dict:
         return {"provider_schemas": {"registry.terraform.io/mongodb/mongodbatlas": []}}
 
-    monkeypatch.setattr(schema_inspect, "fetch_providers_schema_json", fake_fetch)
+    monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     with pytest.raises(ValueError, match="Invalid provider entry"):
         schema_show(SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas", source="mongodb/mongodbatlas"))
 
@@ -135,7 +137,7 @@ def test_schema_show_resource_schemas_not_dict_becomes_empty(monkeypatch: pytest
             },
         }
 
-    monkeypatch.setattr(schema_inspect, "fetch_providers_schema_json", fake_fetch)
+    monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     out = schema_show(SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas", source="mongodb/mongodbatlas"))
     assert out.resource_names == []
 
@@ -144,7 +146,7 @@ def test_schema_show_result_to_canonical_json_includes_resource(monkeypatch: pyt
     def fake_fetch(*_a: object, **_k: object) -> dict:
         return _fixture_dict()
 
-    monkeypatch.setattr(schema_inspect, "fetch_providers_schema_json", fake_fetch)
+    monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     out = schema_show(
         SchemaShowInput(
             settings=TfDoSettings(),
@@ -161,7 +163,7 @@ def test_schema_show_unknown_resource_raises(monkeypatch: pytest.MonkeyPatch) ->
     def fake_fetch(*_a: object, **_k: object) -> dict:
         return _fixture_dict()
 
-    monkeypatch.setattr(schema_inspect, "fetch_providers_schema_json", fake_fetch)
+    monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     with pytest.raises(ValueError, match="not found"):
         schema_show(
             SchemaShowInput(
