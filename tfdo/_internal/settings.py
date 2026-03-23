@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 ENV_PREFIX = "TFDO_"
 USER_CONFIG_FILENAME = "config.yaml"
+SCHEMA_CACHE_SUBDIR = "schemas"
 
 
 class InteractiveMode(StrEnum):
@@ -68,6 +69,10 @@ class TfDoSettings(StaticSettings):
     @property
     def user_config_path(self) -> Path:
         return Path(platformdirs.user_config_dir(self.app_name())) / USER_CONFIG_FILENAME
+
+    @property
+    def schema_cache_dir(self) -> Path:
+        return Path(platformdirs.user_cache_dir(self.app_name())) / SCHEMA_CACHE_SUBDIR
 
 
 class CheckConfig(BaseModel):

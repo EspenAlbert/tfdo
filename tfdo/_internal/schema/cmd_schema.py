@@ -24,6 +24,7 @@ def schema_show_cmd(
     ),
     version: str = typer.Option(">= 1.0", "--version", help="required_providers version constraint"),
     resource: str | None = typer.Option(None, "--resource", help="Resource type; omit to list types for the provider"),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Skip schema cache read and write"),
     as_json: bool = typer.Option(False, "--json", help="Print JSON to stdout"),
 ) -> None:
     try:
@@ -34,6 +35,7 @@ def schema_show_cmd(
                 source=source,
                 version=version,
                 resource=resource,
+                no_cache=no_cache,
             )
         )
     except (ValueError, RuntimeError) as e:

@@ -42,6 +42,28 @@ def test_schema_show_one_resource(monkeypatch: pytest.MonkeyPatch) -> None:
     assert out.resource.block.attributes["name"].required
 
 
+def test_schema_show_passes_no_cache_to_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, bool] = {}
+
+    def fake_fetch(
+        _settings: object,
+        *,
+        local_name: str,
+        source: str,
+        version: str,
+        no_cache: bool = False,
+        schema_cache_root: object = None,
+    ) -> dict:
+        seen["no_cache"] = no_cache
+        return _fixture_dict()
+
+    monkeypatch.setattr(schema_inspect, "fetch_providers_schema_json", fake_fetch)
+    schema_show(
+        SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas", no_cache=True),
+    )
+    assert seen["no_cache"]
+
+
 def test_schema_show_unknown_resource_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_fetch(*_a: object, **_k: object) -> dict:
         return _fixture_dict()

@@ -44,6 +44,7 @@ class SchemaShowInput(BaseModel):
     source: str | None = None
     version: str = ">= 1.0"
     resource: str | None = None
+    no_cache: bool = False
 
 
 class SchemaShowResult(BaseModel):
@@ -64,6 +65,7 @@ def schema_show(input_model: SchemaShowInput) -> SchemaShowResult:
         local_name=input_model.provider,
         source=source,
         version=input_model.version,
+        no_cache=input_model.no_cache,
     )
     pschemas = raw.get("provider_schemas")
     if not isinstance(pschemas, dict):
