@@ -63,8 +63,7 @@ def _clean_terraform_cache(cwd: Path) -> bool:
     return cleaned
 
 
-def _init_should_retry(run: ShellRun) -> bool:
-    """Raises AbortRetryError for non-transient errors (d08-02)."""
+def terraform_init_should_retry(run: ShellRun) -> bool:
     stderr = run.stderr
     is_transient = _is_transient(stderr)
     is_checksum = _is_checksum_error(stderr)
@@ -86,7 +85,7 @@ def init(input_model: InitInput) -> InitResult:
         run = run_and_wait(
             cmd,
             attempts=4,
-            should_retry=_init_should_retry,
+            should_retry=terraform_init_should_retry,
             cwd=settings.work_dir,
             allow_non_zero_exit=True,
             skip_binary_check=True,
