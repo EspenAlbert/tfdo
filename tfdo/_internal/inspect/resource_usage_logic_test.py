@@ -20,7 +20,11 @@ def _fixture() -> dict:
 def test_inspect_resource_usage_included_and_skips_unknown_type(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(schema_inspect, _fetch.__name__, lambda *_a, **_k: _fixture())
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(_fixture(), "1.0.0"),
+    )
     (tmp_path / "main.tf").write_text(
         'resource "mongodbatlas_cluster" "c" {\n  name = "n"\n}\n'
         'resource "aws_instance" "x" {}\n'
@@ -46,7 +50,11 @@ def test_inspect_resource_usage_included_and_skips_unknown_type(
 
 
 def test_inspect_resource_usage_include_patterns(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(schema_inspect, _fetch.__name__, lambda *_a, **_k: _fixture())
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(_fixture(), "1.0.0"),
+    )
     keep = tmp_path / "keep" / "a.tf"
     keep.parent.mkdir(parents=True)
     keep.write_text('resource "mongodbatlas_cluster" "c" { name = "n" }\n', encoding="utf-8")
@@ -67,7 +75,11 @@ def test_inspect_resource_usage_include_patterns(monkeypatch: pytest.MonkeyPatch
 
 
 def test_inspect_resource_usage_rejects_no_input_only(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(schema_inspect, _fetch.__name__, lambda *_a, **_k: _fixture())
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(_fixture(), "1.0.0"),
+    )
     with pytest.raises(ValueError, match="Omit --no-input-only"):
         inspect_resource_usage(
             ResourceUsageInput(

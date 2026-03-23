@@ -91,7 +91,7 @@ def test_fetch_providers_schema_json_cache_hit(monkeypatch: pytest.MonkeyPatch, 
         version=">= 1.0",
         schema_cache_root=tmp_path,
     )
-    assert out is payload
+    assert out.payload is payload
     run_mock.assert_not_called()
 
 
@@ -118,7 +118,7 @@ def test_fetch_providers_schema_json_miss_writes_cache(monkeypatch: pytest.Monke
         version=">= 1.0",
         schema_cache_root=tmp_path,
     )
-    assert out == payload
+    assert out.payload == payload
     write_mock.assert_called_once()
     run.parse_output.assert_called_once_with(dict, output_format="json")
 
@@ -239,3 +239,49 @@ def test_fetch_providers_schema_json_nonzero_exit_raises(monkeypatch: pytest.Mon
             version=">= 1.0",
             schema_cache_root=tmp_path,
         )
+
+
+def test_fetch_use_dev_overrides_false_strips_tf_cli_config_and_uses_cache(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    cfg = tmp_path / "user.tfrc"
+    cfg.write_text(
+        """provider_installation {
+  dev_overrides = {
+    "hashicorp/aws" = "/plugins"
+  }
+  direct {}
+}
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(tf_cli.TF_CLI_CONFIG_FILE_ENV, str(cfg))
+    payload = {"provider_schemas": {}}
+    init_mock = MagicMock(return_value=MagicMock(exit_code=0))
+    monkeypatch.setattr(schema_inspect.executor, _executor_init.__name__, init_mock)
+    monkeypatch.setattr(
+        schema_inspect.schema_cache,
+        _read_resolved_version_from_lock.__name__,
+        lambda **_: "1.0.0",
+    )
+    try_read = MagicMock(return_value=payload)
+    monkeypatch.setattr(schema_inspect.schema_cache, _try_read_cached_schema.__name__, try_read)
+    write_mock = MagicMock()
+    monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
+    run_mock = MagicMock()
+    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, run_mock)
+    out = schema_inspect.fetch_providers_schema_json(
+        TfDoSettings(),
+        local_name="aws",
+        source="hashicorp/aws",
+        version=">= 1.0",
+        schema_cache_root=tmp_path,
+        use_dev_overrides=False,
+    )
+    assert out.payload is payload
+    try_read.assert_called_once()
+    write_mock.assert_not_called()
+    run_mock.assert_not_called()
+    init_env = init_mock.call_args[0][0].env
+    assert init_env is not None
+    assert tf_cli.TF_CLI_CONFIG_FILE_ENV not in init_env

@@ -21,9 +21,13 @@ def _fixture_dict() -> dict:
     return json.loads(_FIXTURE.read_text())
 
 
+def _as_fetch(d: dict) -> schema_inspect.FetchProvidersSchemaResult:
+    return schema_inspect.FetchProvidersSchemaResult(d, "1.0.0")
+
+
 def test_schema_show_lists_resource_types(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_fetch(*_a: object, **_k: object) -> dict:
-        return _fixture_dict()
+    def fake_fetch(*_a: object, **_k: object) -> schema_inspect.FetchProvidersSchemaResult:
+        return _as_fetch(_fixture_dict())
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     out = schema_show(SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas"))
@@ -32,8 +36,8 @@ def test_schema_show_lists_resource_types(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_schema_show_one_resource(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_fetch(*_a: object, **_k: object) -> dict:
-        return _fixture_dict()
+    def fake_fetch(*_a: object, **_k: object) -> schema_inspect.FetchProvidersSchemaResult:
+        return _as_fetch(_fixture_dict())
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     out = schema_show(
@@ -60,9 +64,10 @@ def test_schema_show_passes_no_cache_to_fetch(monkeypatch: pytest.MonkeyPatch) -
         version: str,
         no_cache: bool = False,
         schema_cache_root: object = None,
-    ) -> dict:
+        use_dev_overrides: bool = True,
+    ) -> schema_inspect.FetchProvidersSchemaResult:
         seen["no_cache"] = no_cache
-        return _fixture_dict()
+        return _as_fetch(_fixture_dict())
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     schema_show(
@@ -112,8 +117,8 @@ def test_pick_provider_key_not_found_lists_sample_keys() -> None:
 
 
 def test_schema_show_invalid_provider_schemas_type(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_fetch(*_a: object, **_k: object) -> dict:
-        return {"provider_schemas": "nope"}
+    def fake_fetch(*_a: object, **_k: object) -> schema_inspect.FetchProvidersSchemaResult:
+        return _as_fetch({"provider_schemas": "nope"})
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     with pytest.raises(ValueError, match="provider_schemas"):
@@ -121,8 +126,8 @@ def test_schema_show_invalid_provider_schemas_type(monkeypatch: pytest.MonkeyPat
 
 
 def test_schema_show_invalid_provider_entry(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_fetch(*_a: object, **_k: object) -> dict:
-        return {"provider_schemas": {"registry.terraform.io/mongodb/mongodbatlas": []}}
+    def fake_fetch(*_a: object, **_k: object) -> schema_inspect.FetchProvidersSchemaResult:
+        return _as_fetch({"provider_schemas": {"registry.terraform.io/mongodb/mongodbatlas": []}})
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     with pytest.raises(ValueError, match="Invalid provider entry"):
@@ -130,12 +135,14 @@ def test_schema_show_invalid_provider_entry(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_schema_show_resource_schemas_not_dict_becomes_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_fetch(*_a: object, **_k: object) -> dict:
-        return {
-            "provider_schemas": {
-                "registry.terraform.io/mongodb/mongodbatlas": {"resource_schemas": []},
-            },
-        }
+    def fake_fetch(*_a: object, **_k: object) -> schema_inspect.FetchProvidersSchemaResult:
+        return _as_fetch(
+            {
+                "provider_schemas": {
+                    "registry.terraform.io/mongodb/mongodbatlas": {"resource_schemas": []},
+                },
+            }
+        )
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     out = schema_show(SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas", source="mongodb/mongodbatlas"))
@@ -143,8 +150,8 @@ def test_schema_show_resource_schemas_not_dict_becomes_empty(monkeypatch: pytest
 
 
 def test_schema_show_result_to_canonical_json_includes_resource(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_fetch(*_a: object, **_k: object) -> dict:
-        return _fixture_dict()
+    def fake_fetch(*_a: object, **_k: object) -> schema_inspect.FetchProvidersSchemaResult:
+        return _as_fetch(_fixture_dict())
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     out = schema_show(
@@ -160,8 +167,8 @@ def test_schema_show_result_to_canonical_json_includes_resource(monkeypatch: pyt
 
 
 def test_schema_show_unknown_resource_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_fetch(*_a: object, **_k: object) -> dict:
-        return _fixture_dict()
+    def fake_fetch(*_a: object, **_k: object) -> schema_inspect.FetchProvidersSchemaResult:
+        return _as_fetch(_fixture_dict())
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
     with pytest.raises(ValueError, match="not found"):

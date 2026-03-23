@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import NamedTuple
 
 from ask_shell.shell import ShellError, run_and_wait
 from zero_3rdparty.file_utils import ensure_parents_write_text
@@ -15,6 +16,11 @@ from tfdo._internal.schema import terraform_cli_config as tf_cli
 from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
+
+
+class FetchProvidersSchemaResult(NamedTuple):
+    payload: dict
+    resolved_version: str | None
 
 
 def render_providers_tf(*, local_name: str, source: str, version: str) -> str:
@@ -29,6 +35,127 @@ def render_providers_tf(*, local_name: str, source: str, version: str) -> str:
 """
 
 
+def _env_registry_only() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k != tf_cli.TF_CLI_CONFIG_FILE_ENV}
+
+
+def _subprocess_sees_tf_cli_config_file(env_for_tf: dict[str, str] | None) -> bool:
+    if env_for_tf is not None:
+        return tf_cli.TF_CLI_CONFIG_FILE_ENV in env_for_tf
+    return bool(os.environ.get(tf_cli.TF_CLI_CONFIG_FILE_ENV, "").strip())
+
+
+def _skip_schema_disk_cache(
+    *,
+    no_cache: bool,
+    use_dev_overrides: bool,
+    env_for_tf: dict[str, str] | None,
+) -> bool:
+    if no_cache:
+        return True
+    if use_dev_overrides:
+        return _subprocess_sees_tf_cli_config_file(env_for_tf)
+    return False
+
+
+def _env_for_schema_fetch(
+    *,
+    use_dev_overrides: bool,
+    workspace_root: Path,
+    registry_source: str,
+) -> dict[str, str] | None:
+    if use_dev_overrides:
+        return tf_cli.subprocess_env_for_schema_temp_dir(
+            workspace_root=workspace_root,
+            registry_source=registry_source,
+        )
+    return _env_registry_only()
+
+
+def _warn_if_tf_cli_config_applies(env_for_tf: dict[str, str] | None) -> None:
+    if not _subprocess_sees_tf_cli_config_file(env_for_tf):
+        return
+    logger.warning("TF_CLI_CONFIG_FILE applies to this schema fetch; resolution may follow CLI config or dev_overrides")
+
+
+def _terraform_init_or_raise(settings: TfDoSettings, env_for_tf: dict[str, str] | None) -> None:
+    init_result = executor.init(InitInput(settings=settings, extra_args=["-input=false", "-no-color"], env=env_for_tf))
+    if init_result.exit_code != 0:
+        raise RuntimeError(f"terraform init failed (exit {init_result.exit_code})")
+
+
+def _read_resolved_version_or_warn(workspace_root: Path, source: str) -> str | None:
+    resolved = schema_cache.read_resolved_version_from_lock(workspace_root=workspace_root, source=source)
+    if resolved is None:
+        logger.warning(
+            "could not determine resolved provider version from lock file; schema cache disabled for this run"
+        )
+    return resolved
+
+
+def _try_disk_cache_read(
+    *,
+    skip_disk_cache: bool,
+    resolved: str | None,
+    cache_root: Path,
+    local_name: str,
+    source: str,
+) -> FetchProvidersSchemaResult | None:
+    if skip_disk_cache or resolved is None:
+        return None
+    rel = schema_cache.cache_relative_path(
+        local_name=local_name,
+        source=source,
+        resolved_version=resolved,
+    )
+    cached = schema_cache.try_read_cached_schema(cache_root / rel)
+    if cached is None:
+        return None
+    logger.info(f"schema cache hit for {local_name} {source} {resolved}")
+    return FetchProvidersSchemaResult(cached, resolved)
+
+
+def _providers_schema_json_or_raise(
+    settings: TfDoSettings,
+    workspace_root: Path,
+    env_for_tf: dict[str, str] | None,
+) -> dict:
+    cmd = f"{binary.resolve_binary(settings)} providers schema -json"
+    try:
+        run = run_and_wait(
+            cmd,
+            cwd=workspace_root,
+            env=env_for_tf,
+            ansi_content=False,
+            allow_non_zero_exit=True,
+            skip_binary_check=True,
+        )
+    except ShellError as e:
+        raise RuntimeError(f"terraform providers schema failed: {e.stderr[:800]}") from e
+    if run.exit_code != 0:
+        raise RuntimeError(f"terraform providers schema failed (exit {run.exit_code}): {run.stderr[:800]}")
+    return run.parse_output(dict, output_format="json")
+
+
+def _disk_cache_write_if_enabled(
+    *,
+    skip_disk_cache: bool,
+    resolved: str | None,
+    cache_root: Path,
+    local_name: str,
+    source: str,
+    payload: dict,
+) -> None:
+    if skip_disk_cache or resolved is None:
+        return
+    rel = schema_cache.cache_relative_path(
+        local_name=local_name,
+        source=source,
+        resolved_version=resolved,
+    )
+    schema_cache.write_cached_schema(cache_root, rel, payload)
+
+
 def fetch_providers_schema_json(
     settings: TfDoSettings,
     *,
@@ -37,9 +164,8 @@ def fetch_providers_schema_json(
     version: str,
     no_cache: bool = False,
     schema_cache_root: Path | None = None,
-) -> dict:
-    skip_disk_cache = no_cache or bool(os.environ.get(tf_cli.TF_CLI_CONFIG_FILE_ENV, "").strip())
-
+    use_dev_overrides: bool = True,
+) -> FetchProvidersSchemaResult:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         ensure_parents_write_text(
@@ -47,49 +173,38 @@ def fetch_providers_schema_json(
             render_providers_tf(local_name=local_name, source=source, version=version),
         )
         ws = settings.model_copy(update={"work_dir": root})
-        env_for_tf = tf_cli.subprocess_env_for_schema_temp_dir(workspace_root=root, registry_source=source)
+        env_for_tf = _env_for_schema_fetch(
+            use_dev_overrides=use_dev_overrides,
+            workspace_root=root,
+            registry_source=source,
+        )
+        _warn_if_tf_cli_config_applies(env_for_tf)
+        skip_disk_cache = _skip_schema_disk_cache(
+            no_cache=no_cache,
+            use_dev_overrides=use_dev_overrides,
+            env_for_tf=env_for_tf,
+        )
 
-        init_result = executor.init(InitInput(settings=ws, extra_args=["-input=false", "-no-color"], env=env_for_tf))
-        if init_result.exit_code != 0:
-            msg = f"terraform init failed (exit {init_result.exit_code})"
-            raise RuntimeError(msg)
-
-        resolved = schema_cache.read_resolved_version_from_lock(workspace_root=root, source=source)
-        if resolved is None:
-            logger.warning(
-                "could not determine resolved provider version from lock file; schema cache disabled for this run"
-            )
-
+        _terraform_init_or_raise(ws, env_for_tf)
+        resolved = _read_resolved_version_or_warn(root, source)
         cache_root = schema_cache_root if schema_cache_root is not None else settings.schema_cache_dir
-        rel: Path | None = None
-        if not skip_disk_cache and resolved is not None:
-            rel = schema_cache.cache_relative_path(
-                local_name=local_name,
-                source=source,
-                resolved_version=resolved,
-            )
-            cached = schema_cache.try_read_cached_schema(cache_root / rel)
-            if cached is not None:
-                logger.info(f"schema cache hit for {local_name} {source} {resolved}")
-                return cached
 
-        cmd = f"{binary.resolve_binary(settings)} providers schema -json"
-        try:
-            run = run_and_wait(
-                cmd,
-                cwd=root,
-                env=env_for_tf,
-                ansi_content=False,
-                allow_non_zero_exit=True,
-                skip_binary_check=True,
-            )
-        except ShellError as e:
-            raise RuntimeError(f"terraform providers schema failed: {e.stderr[:800]}") from e
-        if run.exit_code != 0:
-            raise RuntimeError(f"terraform providers schema failed (exit {run.exit_code}): {run.stderr[:800]}")
-        payload = run.parse_output(dict, output_format="json")
+        if hit := _try_disk_cache_read(
+            skip_disk_cache=skip_disk_cache,
+            resolved=resolved,
+            cache_root=cache_root,
+            local_name=local_name,
+            source=source,
+        ):
+            return hit
 
-        if not skip_disk_cache and resolved is not None and rel is not None:
-            schema_cache.write_cached_schema(cache_root, rel, payload)
-
-        return payload
+        payload = _providers_schema_json_or_raise(settings, root, env_for_tf)
+        _disk_cache_write_if_enabled(
+            skip_disk_cache=skip_disk_cache,
+            resolved=resolved,
+            cache_root=cache_root,
+            local_name=local_name,
+            source=source,
+            payload=payload,
+        )
+        return FetchProvidersSchemaResult(payload, resolved)

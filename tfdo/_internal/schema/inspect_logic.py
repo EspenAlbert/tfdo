@@ -65,15 +65,18 @@ def _raw_resource_schemas_for_provider(
     source: str | None,
     version: str,
     no_cache: bool,
-) -> dict[str, Any]:
+    use_dev_overrides: bool = True,
+) -> tuple[dict[str, Any], str | None]:
     source_resolved = resolve_registry_source(provider=provider, source=source)
-    raw = schema_inspect.fetch_providers_schema_json(
+    fetched = schema_inspect.fetch_providers_schema_json(
         settings,
         local_name=provider,
         source=source_resolved,
         version=version,
         no_cache=no_cache,
+        use_dev_overrides=use_dev_overrides,
     )
+    raw = fetched.payload
     pschemas = raw.get("provider_schemas")
     if not isinstance(pschemas, dict):
         raise ValueError("Invalid schema JSON: provider_schemas missing or not an object")
@@ -83,12 +86,12 @@ def _raw_resource_schemas_for_provider(
         raise ValueError(f"Invalid provider entry for {pkey!r}")
     rschemas = entry.get("resource_schemas")
     if not isinstance(rschemas, dict):
-        return {}
-    return rschemas
+        return {}, fetched.resolved_version
+    return rschemas, fetched.resolved_version
 
 
 def schema_show(input_model: SchemaShowInput) -> SchemaShowResult:
-    rschemas = _raw_resource_schemas_for_provider(
+    rschemas, _ = _raw_resource_schemas_for_provider(
         settings=input_model.settings,
         provider=input_model.provider,
         source=input_model.source,
@@ -106,6 +109,31 @@ def schema_show(input_model: SchemaShowInput) -> SchemaShowResult:
     return SchemaShowResult(resource_names=names, resource=parsed)
 
 
+def load_provider_resource_schemas_with_meta(
+    *,
+    settings: TfDoSettings,
+    provider: str,
+    source: str | None = None,
+    version: str = ">= 1.0",
+    no_cache: bool = False,
+    use_dev_overrides: bool = True,
+) -> tuple[dict[str, ResourceSchema], str | None]:
+    rschemas, ver = _raw_resource_schemas_for_provider(
+        settings=settings,
+        provider=provider,
+        source=source,
+        version=version,
+        no_cache=no_cache,
+        use_dev_overrides=use_dev_overrides,
+    )
+    out: dict[str, ResourceSchema] = {}
+    for name, data in rschemas.items():
+        if not isinstance(data, dict):
+            continue
+        out[name] = ResourceSchema.model_validate(data)
+    return out, ver
+
+
 def load_provider_resource_schemas(
     *,
     settings: TfDoSettings,
@@ -113,17 +141,14 @@ def load_provider_resource_schemas(
     source: str | None = None,
     version: str = ">= 1.0",
     no_cache: bool = False,
+    use_dev_overrides: bool = True,
 ) -> dict[str, ResourceSchema]:
-    rschemas = _raw_resource_schemas_for_provider(
+    schemas, _ = load_provider_resource_schemas_with_meta(
         settings=settings,
         provider=provider,
         source=source,
         version=version,
         no_cache=no_cache,
+        use_dev_overrides=use_dev_overrides,
     )
-    out: dict[str, ResourceSchema] = {}
-    for name, data in rschemas.items():
-        if not isinstance(data, dict):
-            continue
-        out[name] = ResourceSchema.model_validate(data)
-    return out
+    return schemas
