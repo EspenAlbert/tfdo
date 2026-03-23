@@ -1,0 +1,21 @@
+{
+  "errors": [],
+  "resources": {
+    "aws_instance.web": {
+      "paths": [
+        "ami",
+        "ebs_block_device.device_name",
+        "ebs_block_device.volume_size",
+        "ingress.from_port",
+        "instance_type"
+      ]
+    },
+    "aws_s3_bucket.logs": {
+      "paths": [
+        "bucket",
+        "force_destroy",
+        "tags"
+      ]
+    }
+  }
+}
