@@ -16,6 +16,7 @@ class SchemaInputClassifyMode(StrEnum):
     EXCLUDED = "excluded"
     ALL = "all"
 
+
 @total_ordering
 class SchemaInputClassifyRowInput(BaseModel):
     file: Path

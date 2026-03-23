@@ -87,6 +87,7 @@ def init(input_model: InitInput) -> InitResult:
             attempts=4,
             should_retry=terraform_init_should_retry,
             cwd=settings.work_dir,
+            env=input_model.env,
             allow_non_zero_exit=True,
             skip_binary_check=True,
             retry_initial_wait=5,

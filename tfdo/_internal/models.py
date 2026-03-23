@@ -23,6 +23,7 @@ class TfDoBaseInput(BaseModel):
 
 class InitInput(TfDoBaseInput):
     extra_args: list[str] = []
+    env: dict[str, str] | None = None
 
 
 class LifecycleInput(TfDoBaseInput):

@@ -7,6 +7,7 @@ import pytest
 from ask_shell.shell import ShellError, ShellRun
 
 from tfdo._internal.schema import inspect as schema_inspect
+from tfdo._internal.schema import terraform_cli_config as tf_cli
 from tfdo._internal.settings import TfDoSettings
 
 _executor_init = schema_inspect.executor.init
@@ -16,8 +17,58 @@ _write_cached_schema = schema_inspect.schema_cache.write_cached_schema
 _run_and_wait = schema_inspect.run_and_wait
 
 
+@pytest.fixture(autouse=True)
+def clear_tf_cli_config_file_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(tf_cli.TF_CLI_CONFIG_FILE_ENV, raising=False)
+
+
 def test_schema_cache_dir_uses_schemas_leaf() -> None:
     assert TfDoSettings().schema_cache_dir.name == "schemas"
+
+
+def test_fetch_tf_cli_config_file_skips_cache_and_sets_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    cfg = tmp_path / "user.tfrc"
+    cfg.write_text(
+        """provider_installation {
+  dev_overrides = {
+    "hashicorp/aws" = "/plugins"
+  }
+  direct {}
+}
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(tf_cli.TF_CLI_CONFIG_FILE_ENV, str(cfg))
+    payload = {"provider_schemas": {}}
+    init_mock = MagicMock(return_value=MagicMock(exit_code=0))
+    monkeypatch.setattr(schema_inspect.executor, _executor_init.__name__, init_mock)
+    monkeypatch.setattr(
+        schema_inspect.schema_cache,
+        _read_resolved_version_from_lock.__name__,
+        lambda **_: "1.0.0",
+    )
+    try_read = MagicMock()
+    monkeypatch.setattr(schema_inspect.schema_cache, _try_read_cached_schema.__name__, try_read)
+    write_mock = MagicMock()
+    monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
+    run = MagicMock(exit_code=0)
+    run.parse_output = MagicMock(return_value=payload)
+    run_mock = MagicMock(return_value=run)
+    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, run_mock)
+    schema_inspect.fetch_providers_schema_json(
+        TfDoSettings(),
+        local_name="aws",
+        source="hashicorp/aws",
+        version=">= 1.0",
+        schema_cache_root=tmp_path,
+    )
+    try_read.assert_not_called()
+    write_mock.assert_not_called()
+    init_in = init_mock.call_args[0][0]
+    assert init_in.env is not None
+    assert tf_cli.TF_CLI_CONFIG_FILE_ENV in init_in.env
+    assert init_in.env[tf_cli.TF_CLI_CONFIG_FILE_ENV].endswith("tfdo.dev.tfrc")
+    assert run_mock.call_args.kwargs.get("env") == init_in.env
 
 
 def test_fetch_providers_schema_json_cache_hit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
