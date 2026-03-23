@@ -9,55 +9,71 @@ from pydantic import BaseModel, Field
 
 from tfdo._internal.core.tf_files import iter_tf_files
 
+_TERRAFORM_META_PATHS: frozenset[str] = frozenset({"count", "depends_on", "for_each", "provider"})
+_TERRAFORM_META_PREFIXES: tuple[str, ...] = ("lifecycle.", "provisioner.", "connection.")
+
 
 class HclParseError(BaseModel):
-    path: str
+    path: Path
     message: str
     line: int | None = None
     column: int | None = None
 
 
-class ResourcePathsEntry(BaseModel):
-    paths: list[str] = Field(default_factory=list)
+class ResourcePathsRow(BaseModel):
+    file: Path
+    address: str
+    attribute_paths: list[str] = Field(default_factory=list)
 
 
 class HclResourcePathsResult(BaseModel):
-    resources: dict[str, ResourcePathsEntry] = Field(default_factory=dict)
+    rows: list[ResourcePathsRow] = Field(default_factory=list)
     errors: list[HclParseError] = Field(default_factory=list)
 
     def to_canonical_json(self, *, error_paths_relative_to: Path | None = None) -> str:
         errors_out: list[dict[str, Any]] = []
         root_resolved = error_paths_relative_to.resolve() if error_paths_relative_to is not None else None
         for e in self.errors:
-            d = e.model_dump(mode="json", exclude_none=True)
+            out_path = e.path
             if root_resolved is not None:
-                ep = Path(d["path"])
                 try:
-                    d["path"] = ep.resolve().relative_to(root_resolved).as_posix()
+                    out_path = e.path.resolve().relative_to(root_resolved)
                 except ValueError:
-                    pass
-            errors_out.append(d)
+                    out_path = e.path
+            errors_out.append(e.model_copy(update={"path": out_path}).model_dump(mode="json", exclude_none=True))
         payload = {
             "errors": errors_out,
-            "resources": {addr: {"paths": entry.paths} for addr, entry in self.resources.items()},
+            "rows": [r.model_dump(mode="json") for r in self.rows],
         }
         return json.dumps(payload, indent=2, sort_keys=True)
 
 
 def collect_resource_argument_paths(root: Path) -> HclResourcePathsResult:
-    merged: dict[str, set[str]] = {}
+    root_resolved = root.resolve()
+    acc: dict[tuple[Path, str], set[str]] = {}
     errors: list[HclParseError] = []
     for path in iter_tf_files(root):
+        rel_file = path.resolve().relative_to(root_resolved)
         try:
             with path.open(encoding="utf-8") as f:
                 parsed = hcl2_load(f)
         except Exception as exc:
             errors.append(_to_parse_error(path, exc))
             continue
-        _merge_parsed_into(parsed, merged)
-    resources = {addr: ResourcePathsEntry(paths=sorted(paths)) for addr, paths in sorted(merged.items())}
+        _merge_parsed_into_file(parsed, rel_file, acc)
+    rows = [ResourcePathsRow(file=f, address=a, attribute_paths=sorted(paths)) for (f, a), paths in sorted(acc.items())]
     errors.sort(key=lambda e: (e.path, e.message))
-    return HclResourcePathsResult(resources=resources, errors=errors)
+    return HclResourcePathsResult(rows=rows, errors=errors)
+
+
+def _is_terraform_meta_path(path: str) -> bool:
+    if path in _TERRAFORM_META_PATHS:
+        return True
+    return any(path.startswith(p) for p in _TERRAFORM_META_PREFIXES)
+
+
+def _filter_meta_paths(paths: set[str]) -> set[str]:
+    return {p for p in paths if not _is_terraform_meta_path(p)}
 
 
 def _to_parse_error(path: Path, exc: BaseException) -> HclParseError:
@@ -67,10 +83,10 @@ def _to_parse_error(path: Path, exc: BaseException) -> HclParseError:
         line = None
     if isinstance(column, int) and column < 1:
         column = None
-    return HclParseError(path=str(path), message=str(exc), line=line, column=column)
+    return HclParseError(path=path, message=str(exc), line=line, column=column)
 
 
-def _merge_parsed_into(parsed: dict[str, Any], merged: dict[str, set[str]]) -> None:
+def _merge_parsed_into_file(parsed: dict[str, Any], rel_file: Path, acc: dict[tuple[Path, str], set[str]]) -> None:
     for top in parsed.get("resource") or []:
         if not isinstance(top, dict):
             continue
@@ -81,8 +97,9 @@ def _merge_parsed_into(parsed: dict[str, Any], merged: dict[str, set[str]]) -> N
                 if not isinstance(body, dict):
                     continue
                 addr = f"{rtype}.{label}"
-                paths = _paths_from_resource_body(body)
-                merged.setdefault(addr, set()).update(paths)
+                attr_paths = _filter_meta_paths(_paths_from_resource_body(body))
+                key = (rel_file, addr)
+                acc.setdefault(key, set()).update(attr_paths)
 
 
 def _paths_from_resource_body(body: dict[str, Any]) -> set[str]:

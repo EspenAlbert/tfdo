@@ -1,13 +1,13 @@
 from tfdo._internal.inspect.hcl_resource_paths import (
     HclParseError,
     HclResourcePathsResult,
-    ResourcePathsEntry,
+    ResourcePathsRow,
     collect_resource_argument_paths,
 )
 
 __all__ = [
     "HclParseError",
     "HclResourcePathsResult",
-    "ResourcePathsEntry",
+    "ResourcePathsRow",
     "collect_resource_argument_paths",
 ]

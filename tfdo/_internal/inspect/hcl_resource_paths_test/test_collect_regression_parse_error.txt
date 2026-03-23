@@ -7,5 +7,5 @@
       "path": "broken.tf"
     }
   ],
-  "resources": {}
+  "rows": []
 }

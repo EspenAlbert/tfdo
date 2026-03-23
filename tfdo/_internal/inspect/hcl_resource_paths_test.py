@@ -5,6 +5,7 @@ from tfdo._internal.inspect.hcl_resource_paths import collect_resource_argument_
 _SAMPLE_OK_MAIN = """
 resource "aws_s3_bucket" "logs" {
   bucket = "mybucket"
+  count  = 1
   tags = {
     Env = "prod"
   }
@@ -13,6 +14,10 @@ resource "aws_s3_bucket" "logs" {
 resource "aws_instance" "web" {
   ami           = "ami-123"
   instance_type = "t3.micro"
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
 
   ebs_block_device {
     volume_size = 10
@@ -61,7 +66,7 @@ def test_collect_regression_parse_error(file_regression, tmp_path: Path) -> None
 
 def test_empty_directory(tmp_path: Path) -> None:
     result = collect_resource_argument_paths(tmp_path)
-    assert not result.resources
+    assert not result.rows
     assert not result.errors
 
 
@@ -71,6 +76,6 @@ def test_hidden_dir_tf_is_scanned_parse_error_recorded(tmp_path: Path) -> None:
     hidden.mkdir()
     (hidden / "bad.tf").write_text("not valid hcl {{{\n", encoding="utf-8")
     result = collect_resource_argument_paths(tmp_path)
-    assert "null_resource.a" in result.resources
+    assert any(r.address == "null_resource.a" for r in result.rows)
     assert len(result.errors) == 1
-    assert result.errors[0].path.endswith("bad.tf")
+    assert result.errors[0].path.name == "bad.tf"
