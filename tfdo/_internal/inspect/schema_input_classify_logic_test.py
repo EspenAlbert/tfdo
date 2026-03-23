@@ -9,6 +9,45 @@ from tfdo._internal.inspect.schema_input_classify_logic import (
 )
 
 
+def test_rows_sorted_by_address_then_file() -> None:
+    rows = [
+        SchemaInputClassifyRowInput(
+            file=Path("z.tf"),
+            address="b.r",
+            schema_input_paths=frozenset({"a"}),
+            config_paths=frozenset({"a"}),
+        ),
+        SchemaInputClassifyRowInput(
+            file=Path("a.tf"),
+            address="a.r",
+            schema_input_paths=frozenset({"a"}),
+            config_paths=frozenset({"a"}),
+        ),
+        SchemaInputClassifyRowInput(
+            file=Path("m.tf"),
+            address="a.r",
+            schema_input_paths=frozenset({"b"}),
+            config_paths=frozenset({"b"}),
+        ),
+    ]
+    result = classify_schema_inputs(SchemaInputClassifyInput(mode=SchemaInputClassifyMode.INCLUDED, rows=rows))
+    assert [r.address for r in result.rows] == ["a.r", "a.r", "b.r"]
+
+
+def test_all_mode_json_omits_empty_unknown_and_invalid() -> None:
+    row = SchemaInputClassifyRowInput(
+        file=Path("a.tf"),
+        address="x.y",
+        schema_input_paths=frozenset({"k"}),
+        config_paths=frozenset({"k"}),
+    )
+    text = classify_schema_inputs(
+        SchemaInputClassifyInput(mode=SchemaInputClassifyMode.ALL, rows=[row])
+    ).to_canonical_json()
+    assert "unknown_in_config" not in text
+    assert "invalid_in_config" not in text
+
+
 def test_classify_all_mode_partitions_unknown_and_invalid() -> None:
     row = SchemaInputClassifyRowInput(
         file=Path("a.tf"),

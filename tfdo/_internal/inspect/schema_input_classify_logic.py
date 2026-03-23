@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from enum import StrEnum
+from functools import total_ordering
 from pathlib import Path
 from typing import Any
 
@@ -15,13 +16,18 @@ class SchemaInputClassifyMode(StrEnum):
     EXCLUDED = "excluded"
     ALL = "all"
 
-
+@total_ordering
 class SchemaInputClassifyRowInput(BaseModel):
     file: Path
     address: str
     schema_input_paths: frozenset[str]
     config_paths: frozenset[str]
     invalid_in_config: frozenset[str] = Field(default_factory=frozenset)
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, SchemaInputClassifyRowInput):
+            return NotImplemented
+        return (self.file, self.address) < (other.file, other.address)
 
 
 class SchemaInputClassifyInput(BaseModel):
@@ -65,7 +71,7 @@ class SchemaInputClassifyResult(BaseModel):
 def classify_schema_inputs(input_model: SchemaInputClassifyInput) -> SchemaInputClassifyResult:
     mode = input_model.mode
     sorted_errors = sorted(input_model.errors, key=lambda e: (str(e.path), e.message))
-    sorted_rows_in = sorted(input_model.rows, key=lambda r: (str(r.file), r.address))
+    sorted_rows_in = sorted(input_model.rows)
     out_rows: list[SchemaInputClassifyRowResult] = []
     for row in sorted_rows_in:
         schema_paths = row.schema_input_paths
@@ -86,8 +92,8 @@ def classify_schema_inputs(input_model: SchemaInputClassifyInput) -> SchemaInput
                 address=row.address,
                 included=included,
                 excluded=excluded,
-                unknown_in_config=unknown,
-                invalid_in_config=invalid,
+                unknown_in_config=unknown or None,
+                invalid_in_config=invalid or None,
             )
         )
     return SchemaInputClassifyResult(errors=sorted_errors, rows=out_rows)

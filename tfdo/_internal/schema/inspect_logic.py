@@ -58,25 +58,43 @@ class SchemaShowResult(BaseModel):
         return json.dumps(payload, indent=2, sort_keys=True)
 
 
-def schema_show(input_model: SchemaShowInput) -> SchemaShowResult:
-    source = resolve_registry_source(provider=input_model.provider, source=input_model.source)
+def _raw_resource_schemas_for_provider(
+    *,
+    settings: TfDoSettings,
+    provider: str,
+    source: str | None,
+    version: str,
+    no_cache: bool,
+) -> dict[str, Any]:
+    source_resolved = resolve_registry_source(provider=provider, source=source)
     raw = schema_inspect.fetch_providers_schema_json(
-        input_model.settings,
-        local_name=input_model.provider,
-        source=source,
-        version=input_model.version,
-        no_cache=input_model.no_cache,
+        settings,
+        local_name=provider,
+        source=source_resolved,
+        version=version,
+        no_cache=no_cache,
     )
     pschemas = raw.get("provider_schemas")
     if not isinstance(pschemas, dict):
         raise ValueError("Invalid schema JSON: provider_schemas missing or not an object")
-    pkey = pick_provider_key(pschemas, local_name=input_model.provider, source=source)
+    pkey = pick_provider_key(pschemas, local_name=provider, source=source_resolved)
     entry = pschemas[pkey]
     if not isinstance(entry, dict):
         raise ValueError(f"Invalid provider entry for {pkey!r}")
     rschemas = entry.get("resource_schemas")
     if not isinstance(rschemas, dict):
-        rschemas = {}
+        return {}
+    return rschemas
+
+
+def schema_show(input_model: SchemaShowInput) -> SchemaShowResult:
+    rschemas = _raw_resource_schemas_for_provider(
+        settings=input_model.settings,
+        provider=input_model.provider,
+        source=input_model.source,
+        version=input_model.version,
+        no_cache=input_model.no_cache,
+    )
     names = sorted(rschemas.keys())
     if input_model.resource is None:
         return SchemaShowResult(resource_names=names)
@@ -86,3 +104,26 @@ def schema_show(input_model: SchemaShowInput) -> SchemaShowResult:
         raise ValueError(f"Resource {input_model.resource!r} not found. Sample: {preview}{tail}")
     parsed = ResourceSchema.model_validate(rschemas[input_model.resource])
     return SchemaShowResult(resource_names=names, resource=parsed)
+
+
+def load_provider_resource_schemas(
+    *,
+    settings: TfDoSettings,
+    provider: str,
+    source: str | None = None,
+    version: str = ">= 1.0",
+    no_cache: bool = False,
+) -> dict[str, ResourceSchema]:
+    rschemas = _raw_resource_schemas_for_provider(
+        settings=settings,
+        provider=provider,
+        source=source,
+        version=version,
+        no_cache=no_cache,
+    )
+    out: dict[str, ResourceSchema] = {}
+    for name, data in rschemas.items():
+        if not isinstance(data, dict):
+            continue
+        out[name] = ResourceSchema.model_validate(data)
+    return out
