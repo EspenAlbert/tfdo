@@ -103,6 +103,16 @@ def test_init_success(tmp_path: Path):
         result = init(InitInput(settings=settings))
     assert result.exit_code == 0
     assert result.attempts_used == 1
+    assert result.stderr is None
+
+
+def test_init_failure_includes_stderr(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=1, stderr="Error: provider install failed\n", attempt=1)
+    with patch(_patch_run, return_value=run):
+        result = init(InitInput(settings=settings))
+    assert result.exit_code == 1
+    assert result.stderr == "Error: provider install failed"
 
 
 def test_init_extra_args_forwarded(tmp_path: Path):

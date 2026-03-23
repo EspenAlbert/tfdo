@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from ask_shell.shell import ShellError, ShellRun
 
+from tfdo._internal.models import InitResult
 from tfdo._internal.schema import inspect as schema_inspect
 from tfdo._internal.schema import terraform_cli_config as tf_cli
 from tfdo._internal.settings import TfDoSettings
@@ -184,15 +185,24 @@ def test_fetch_providers_schema_json_no_cache_skips_cache_io(monkeypatch: pytest
 
 def test_fetch_providers_schema_json_init_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        schema_inspect.executor, _executor_init.__name__, MagicMock(return_value=MagicMock(exit_code=1))
+        schema_inspect.executor,
+        _executor_init.__name__,
+        MagicMock(
+            return_value=InitResult(
+                exit_code=1,
+                attempts_used=1,
+                stderr="Error: invalid provider constraint",
+            )
+        ),
     )
-    with pytest.raises(RuntimeError, match="terraform init failed"):
+    with pytest.raises(RuntimeError, match="terraform init failed") as exc_info:
         schema_inspect.fetch_providers_schema_json(
             TfDoSettings(),
             local_name="aws",
             source="hashicorp/aws",
             version=">= 1.0",
         )
+    assert "Error: invalid provider constraint" in str(exc_info.value)
 
 
 def test_fetch_providers_schema_json_shell_error_wraps_stderr(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

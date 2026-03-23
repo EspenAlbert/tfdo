@@ -131,17 +131,15 @@ def resolve_schema_diff_sides(from_raw: str | None, to_raw: str | None) -> tuple
 
 def ensure_dev_overrides_ready(*, registry_source: str) -> None:
     raw = os.environ.get(tf_cli.TF_CLI_CONFIG_FILE_ENV, "").strip()
-    if not raw:
-        raise ValueError("dev side requires TF_CLI_CONFIG_FILE in the environment")
-    cfg = Path(raw).expanduser()
-    if not cfg.is_file():
+    if raw:
+        cfg = Path(raw).expanduser()
+        if cfg.is_file():
+            overrides = tf_cli.parse_dev_overrides(cfg)
+            if tf_cli.lookup_plugin_dir(overrides, registry_source=registry_source) is None:
+                raise ValueError(f"no dev_overrides entry for registry source {registry_source!r} in {raw}")
+            return
         raise ValueError(f"TF_CLI_CONFIG_FILE is not a file: {raw}")
-    overrides = tf_cli.parse_dev_overrides(cfg)
-    if tf_cli.lookup_plugin_dir(overrides, registry_source=registry_source) is None:
-        raise ValueError(
-            f"no dev_overrides entry for registry source {registry_source!r} in {raw} "
-            "(quoted keys required for python-hcl2)"
-        )
+    raise ValueError("dev side requires TF_CLI_CONFIG_FILE in the environment")
 
 
 def join_path(prefix: str, name: str) -> str:

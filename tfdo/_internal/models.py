@@ -75,6 +75,7 @@ class CheckInput(TfDoBaseInput):
 class InitResult(BaseModel):
     exit_code: int
     attempts_used: int
+    stderr: str | None = None
 
 
 class LifecycleResult(BaseModel):

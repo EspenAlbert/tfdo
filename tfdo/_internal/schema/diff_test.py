@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-import pytest
+from pathlib import Path
 
+import pytest
+from zero_3rdparty.file_utils import ensure_parents_write_text
+
+from tfdo._internal.schema import terraform_cli_config as tf_cli
 from tfdo._internal.schema.diff import (
     compute_schema_diff,
+    ensure_dev_overrides_ready,
     resolve_schema_diff_sides,
 )
 from tfdo._internal.schema.models import ResourceSchema, SchemaAttribute, SchemaBlock, SchemaBlockType
@@ -17,6 +22,14 @@ def test_resolve_schema_diff_sides_inference_and_errors() -> None:
     assert x.use_dev_overrides and not y.use_dev_overrides
     with pytest.raises(ValueError, match="dev to dev"):
         resolve_schema_diff_sides("dev", "dev")
+
+
+def test_ensure_dev_overrides_ready_parse_failure_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    p = tmp_path / "cli.tfrc"
+    ensure_parents_write_text(p, "{{{ not valid hcl")
+    monkeypatch.setenv(tf_cli.TF_CLI_CONFIG_FILE_ENV, str(p))
+    with pytest.raises(ValueError, match="not valid HCL2"):
+        ensure_dev_overrides_ready(registry_source="hashicorp/aws")
 
 
 def test_compute_schema_diff_type_required_and_path_filter() -> None:

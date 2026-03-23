@@ -22,6 +22,18 @@ from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
 
+_INIT_FAILURE_STDERR_MAX = 4000
+
+
+def _truncate_init_stderr(text: str) -> str:
+    stripped = text.strip()
+    if not stripped:
+        return ""
+    if len(stripped) <= _INIT_FAILURE_STDERR_MAX:
+        return stripped
+    return f"{stripped[:_INIT_FAILURE_STDERR_MAX]}... (truncated, {len(stripped)} chars total)"
+
+
 TRANSIENT_PATTERNS: list[str] = [
     "timeout",
     "TLS handshake timeout",
@@ -81,27 +93,25 @@ def _build_init_command(binary: str, extra_args: list[str]) -> str:
 def init(input_model: InitInput) -> InitResult:
     settings = input_model.settings
     cmd = _build_init_command(binary.resolve_binary(settings), input_model.extra_args)
-    try:
-        run = run_and_wait(
-            cmd,
-            attempts=4,
-            should_retry=terraform_init_should_retry,
-            cwd=settings.work_dir,
-            env=input_model.env,
-            allow_non_zero_exit=True,
-            skip_binary_check=True,
-            retry_initial_wait=5,
-            retry_max_wait=60,
-            retry_jitter=5,
-        )
-        return InitResult(
-            exit_code=run.exit_code or 0,
-            attempts_used=run.current_attempt,
-        )
-    except ShellError as e:
-        return InitResult(exit_code=e.exit_code or 1, attempts_used=e.run.current_attempt)
-    except AbortRetryError:
-        return InitResult(exit_code=1, attempts_used=1)
+    run = run_and_wait(
+        cmd,
+        attempts=4,
+        should_retry=terraform_init_should_retry,
+        cwd=settings.work_dir,
+        env=input_model.env,
+        allow_non_zero_exit=True,
+        skip_binary_check=True,
+        retry_initial_wait=5,
+        retry_max_wait=60,
+        retry_jitter=5,
+    )
+    exit_code = run.exit_code or 0
+    stderr_detail = _truncate_init_stderr(run.stderr) if exit_code != 0 else ""
+    return InitResult(
+        exit_code=exit_code,
+        attempts_used=run.current_attempt,
+        stderr=stderr_detail or None,
+    )
 
 
 INIT_NEEDED_PATTERNS: list[str] = [

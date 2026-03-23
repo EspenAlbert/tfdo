@@ -81,7 +81,10 @@ def _warn_if_tf_cli_config_applies(env_for_tf: dict[str, str] | None) -> None:
 def _terraform_init_or_raise(settings: TfDoSettings, env_for_tf: dict[str, str] | None) -> None:
     init_result = executor.init(InitInput(settings=settings, extra_args=["-input=false", "-no-color"], env=env_for_tf))
     if init_result.exit_code != 0:
-        raise RuntimeError(f"terraform init failed (exit {init_result.exit_code})")
+        msg = f"terraform init failed (exit {init_result.exit_code})"
+        if init_result.stderr:
+            raise RuntimeError(f"{msg}\n{init_result.stderr}")
+        raise RuntimeError(msg)
 
 
 def _read_resolved_version_or_warn(workspace_root: Path, source: str) -> str | None:
