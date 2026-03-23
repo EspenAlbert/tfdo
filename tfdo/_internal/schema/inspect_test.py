@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+from ask_shell.shell import ShellError, ShellRun
 
 from tfdo._internal.schema import inspect as schema_inspect
 from tfdo._internal.settings import TfDoSettings
@@ -120,4 +121,38 @@ def test_fetch_providers_schema_json_init_failure(monkeypatch: pytest.MonkeyPatc
             local_name="aws",
             source="hashicorp/aws",
             version=">= 1.0",
+        )
+
+
+def test_fetch_providers_schema_json_shell_error_wraps_stderr(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    run = MagicMock(spec=ShellRun)
+    run.stderr = "schema cmd failed on stderr"
+    err = ShellError(run)
+    monkeypatch.setattr(schema_inspect.executor, "init", MagicMock(return_value=MagicMock(exit_code=0)))
+    monkeypatch.setattr(schema_inspect.schema_cache, "read_resolved_version_from_lock", lambda **_: None)
+    monkeypatch.setattr(schema_inspect, "run_and_wait", MagicMock(side_effect=err))
+    with pytest.raises(RuntimeError, match="terraform providers schema failed"):
+        schema_inspect.fetch_providers_schema_json(
+            TfDoSettings(),
+            local_name="aws",
+            source="hashicorp/aws",
+            version=">= 1.0",
+            schema_cache_root=tmp_path,
+        )
+
+
+def test_fetch_providers_schema_json_nonzero_exit_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(schema_inspect.executor, "init", MagicMock(return_value=MagicMock(exit_code=0)))
+    monkeypatch.setattr(schema_inspect.schema_cache, "read_resolved_version_from_lock", lambda **_: None)
+    run = MagicMock()
+    run.exit_code = 3
+    run.stderr = "stderr detail"
+    monkeypatch.setattr(schema_inspect, "run_and_wait", MagicMock(return_value=run))
+    with pytest.raises(RuntimeError, match="exit 3"):
+        schema_inspect.fetch_providers_schema_json(
+            TfDoSettings(),
+            local_name="aws",
+            source="hashicorp/aws",
+            version=">= 1.0",
+            schema_cache_root=tmp_path,
         )

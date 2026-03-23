@@ -1,6 +1,11 @@
 from pathlib import Path
 
-from tfdo._internal.inspect.hcl_resource_paths import collect_resource_argument_paths
+from tfdo._internal.inspect import hcl_resource_paths as hrp
+from tfdo._internal.inspect.hcl_resource_paths import (
+    HclParseError,
+    HclResourcePathsResult,
+    collect_resource_argument_paths,
+)
 
 _SAMPLE_OK_MAIN = """
 resource "aws_s3_bucket" "logs" {
@@ -82,6 +87,39 @@ def test_inline_object_nested_dict_emits_parent_child_only(tmp_path: Path) -> No
     result = collect_resource_argument_paths(tmp_path)
     row = next(r for r in result.rows if r.address == "null_resource.x")
     assert set(row.attribute_paths) == {"outer.inner"}
+
+
+def test_hcl_resource_paths_canonical_json_relativize_falls_back_outside_root(tmp_path: Path) -> None:
+    err = HclParseError(path=Path("/nope/out.tf"), message="m")
+    text = HclResourcePathsResult(errors=[err]).to_canonical_json(error_paths_relative_to=tmp_path)
+    assert "out.tf" in text
+
+
+def test_to_parse_error_clamps_non_positive_line_column() -> None:
+    class ExcWithLineCol(Exception):
+        line = 0
+        column = 0
+
+    e = hrp._to_parse_error(Path("a.tf"), ExcWithLineCol())
+    assert e.line is None
+    assert e.column is None
+
+
+def test_merge_skips_non_object_resource_entries() -> None:
+    acc: dict = {}
+    hrp._merge_parsed_into_file(
+        {"resource": [1, {"aws_instance": "bad"}, {"aws_instance": {"lbl": "notdict"}}]}, Path("f.tf"), acc
+    )
+    assert acc == {}
+
+
+def test_paths_helpers_cover_dynamic_and_nested_branches() -> None:
+    assert hrp._paths_from_dynamic("x") == set()
+    assert hrp._paths_from_nested_block("blk", [{"k": [{"nested_arg": 1}]}]) == set()
+    assert hrp._paths_from_dynamic_block("d", "nope") == set()
+    assert hrp._paths_from_dynamic_block("d", {"content": {}}) == set()
+    got = hrp._paths_from_dynamic_block("d", {"content": [[], {"a": {"x": 1}}]})
+    assert "d.a.x" in got
 
 
 def test_hidden_dir_tf_is_scanned_parse_error_recorded(tmp_path: Path) -> None:

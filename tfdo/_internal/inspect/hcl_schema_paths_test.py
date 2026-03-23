@@ -33,6 +33,58 @@ def test_collect_resource_body_paths_unknown_and_invalid() -> None:
     assert "a" in r.attribute_paths
 
 
+def test_collect_assisted_hits_block_list_dynamic_and_nested_list() -> None:
+    schema = ResourceSchema.model_validate(
+        {
+            "version": 0,
+            "block": {
+                "attributes": {
+                    "plain": {"type": "string", "optional": True},
+                    "tags": {"type": ["map", "string"], "optional": True},
+                    "items": {
+                        "optional": True,
+                        "nested_type": {
+                            "nesting_mode": "list",
+                            "attributes": {
+                                "name": {"type": "string", "optional": True},
+                                "id": {"type": "string", "computed": True},
+                            },
+                        },
+                    },
+                    "computed_top": {"type": "string", "computed": True},
+                },
+                "block_types": {
+                    "disk": {
+                        "nesting_mode": "list",
+                        "block": {
+                            "attributes": {
+                                "size": {"type": "number", "required": True},
+                            },
+                        },
+                    },
+                },
+            },
+        }
+    )
+    body = {
+        "disk": "not_list",
+        "plain": "v",
+        "tags": {"a": "b"},
+        "items": [{"name": "n", "ghost": 1, "id": "x"}],
+        "computed_top": "set",
+        "dynamic": [{"disk": {"content": [{"size": 9}]}}],
+    }
+    r = collect_resource_body_paths_assisted(body, schema)
+    assert "disk" in r.invalid_in_config
+    assert "items.ghost" in r.unknown_in_config
+    assert "items.id" in r.invalid_in_config
+    assert "computed_top" in r.invalid_in_config
+    assert "plain" in r.attribute_paths
+    assert "tags" in r.attribute_paths
+    assert "items.name" in r.attribute_paths
+    assert "disk.size" in r.attribute_paths
+
+
 def test_mongodbatlas_advanced_cluster_assisted_subset_of_schema_paths() -> None:
     schema = ResourceSchema.model_validate(
         json.loads((_FIXTURE_DIR / "mongodbatlas_advanced_cluster_schema.json").read_text())
