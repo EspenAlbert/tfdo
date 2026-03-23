@@ -65,11 +65,12 @@ def test_empty_directory(tmp_path: Path) -> None:
     assert not result.errors
 
 
-def test_skips_dot_path_segments(tmp_path: Path) -> None:
+def test_hidden_dir_tf_is_scanned_parse_error_recorded(tmp_path: Path) -> None:
     (tmp_path / "ok.tf").write_text('resource "null_resource" "a" { }\n', encoding="utf-8")
     hidden = tmp_path / ".hidden"
     hidden.mkdir()
     (hidden / "bad.tf").write_text("not valid hcl {{{\n", encoding="utf-8")
     result = collect_resource_argument_paths(tmp_path)
     assert "null_resource.a" in result.resources
-    assert not result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].path.endswith("bad.tf")

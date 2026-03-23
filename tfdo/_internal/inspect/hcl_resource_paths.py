@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 from hcl2.api import load as hcl2_load
 from pydantic import BaseModel, Field
+
+from tfdo._internal.core.tf_files import iter_tf_files
 
 
 class HclParseError(BaseModel):
@@ -46,7 +47,7 @@ class HclResourcePathsResult(BaseModel):
 def collect_resource_argument_paths(root: Path) -> HclResourcePathsResult:
     merged: dict[str, set[str]] = {}
     errors: list[HclParseError] = []
-    for path in _iter_tf_paths(root):
+    for path in iter_tf_files(root):
         try:
             with path.open(encoding="utf-8") as f:
                 parsed = hcl2_load(f)
@@ -57,16 +58,6 @@ def collect_resource_argument_paths(root: Path) -> HclResourcePathsResult:
     resources = {addr: ResourcePathsEntry(paths=sorted(paths)) for addr, paths in sorted(merged.items())}
     errors.sort(key=lambda e: (e.path, e.message))
     return HclResourcePathsResult(resources=resources, errors=errors)
-
-
-def _iter_tf_paths(root: Path) -> Iterator[Path]:
-    if not root.is_dir():
-        return
-    yield from sorted(
-        p
-        for p in root.rglob("*.tf")
-        if p.is_file() and not any(part.startswith(".") for part in p.relative_to(root).parts)
-    )
 
 
 def _to_parse_error(path: Path, exc: BaseException) -> HclParseError:
