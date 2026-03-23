@@ -15,6 +15,10 @@ resource "aws_instance" "web" {
   ami           = "ami-123"
   instance_type = "t3.micro"
 
+  advanced_configuration = {
+    javascript_enabled = true
+  }
+
   lifecycle {
     ignore_changes = [tags]
   }
@@ -68,6 +72,16 @@ def test_empty_directory(tmp_path: Path) -> None:
     result = collect_resource_argument_paths(tmp_path)
     assert not result.rows
     assert not result.errors
+
+
+def test_inline_object_nested_dict_emits_parent_child_only(tmp_path: Path) -> None:
+    (tmp_path / "main.tf").write_text(
+        'resource "null_resource" "x" {\n  outer = {\n    inner = {\n      leaf = 1\n    }\n  }\n}\n',
+        encoding="utf-8",
+    )
+    result = collect_resource_argument_paths(tmp_path)
+    row = next(r for r in result.rows if r.address == "null_resource.x")
+    assert set(row.attribute_paths) == {"outer.inner"}
 
 
 def test_hidden_dir_tf_is_scanned_parse_error_recorded(tmp_path: Path) -> None:

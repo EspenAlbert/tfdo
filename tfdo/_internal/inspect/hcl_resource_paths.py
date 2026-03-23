@@ -111,12 +111,25 @@ def _paths_from_resource_body(body: dict[str, Any]) -> set[str]:
         if _is_nested_block_list(value):
             paths.update(_paths_from_nested_block(key, value))
             continue
+        if isinstance(value, dict) and value:
+            expanded = _paths_from_inline_object(key, value)
+            paths.update(expanded or {key})
+            continue
         paths.add(key)
     return paths
 
 
 def _is_nested_block_list(value: Any) -> bool:
     return isinstance(value, list) and bool(value) and all(isinstance(x, dict) for x in value)
+
+
+def _paths_from_inline_object(parent: str, obj: dict[str, Any]) -> set[str]:
+    out: set[str] = set()
+    for subkey, subval in obj.items():
+        if _is_nested_block_list(subval):
+            continue
+        out.add(f"{parent}.{subkey}")
+    return out
 
 
 def _paths_from_nested_block(block_type: str, blocks: list[Any]) -> set[str]:
@@ -154,7 +167,12 @@ def _paths_from_dynamic_block(block_type: str, dyn_body: Any) -> set[str]:
         if not isinstance(content_block, dict):
             continue
         for arg, val in content_block.items():
+            prefix = f"{block_type}.{arg}"
             if _is_nested_block_list(val):
                 continue
-            out.add(f"{block_type}.{arg}")
+            if isinstance(val, dict) and val:
+                expanded = _paths_from_inline_object(prefix, val)
+                out.update(expanded or {prefix})
+                continue
+            out.add(prefix)
     return out

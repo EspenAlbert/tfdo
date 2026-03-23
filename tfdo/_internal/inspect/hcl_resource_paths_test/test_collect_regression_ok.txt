@@ -11,6 +11,7 @@
     {
       "address": "aws_instance.web",
       "attribute_paths": [
+        "advanced_configuration.javascript_enabled",
         "ami",
         "ebs_block_device.device_name",
         "ebs_block_device.volume_size",
@@ -23,7 +24,7 @@
       "address": "aws_s3_bucket.logs",
       "attribute_paths": [
         "bucket",
-        "tags"
+        "tags.Env"
       ],
       "file": "main.tf"
     }
