@@ -124,32 +124,30 @@ def test_fetch_providers_schema_json_miss_writes_cache(monkeypatch: pytest.Monke
     run.parse_output.assert_called_once_with(dict, output_format="json")
 
 
-def test_fetch_providers_schema_json_unresolved_version_skips_cache_io(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    payload = {"provider_schemas": {}}
+def test_fetch_providers_schema_json_bad_lock_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         schema_inspect.executor, _executor_init.__name__, MagicMock(return_value=MagicMock(exit_code=0))
     )
     monkeypatch.setattr(
         schema_inspect.schema_cache,
         _read_resolved_version_from_lock.__name__,
-        lambda **_: None,
+        MagicMock(side_effect=ValueError("no provider in lock")),
     )
     try_read = MagicMock()
     monkeypatch.setattr(schema_inspect.schema_cache, _try_read_cached_schema.__name__, try_read)
     write_mock = MagicMock()
     monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
     run = MagicMock(exit_code=0)
-    run.parse_output = MagicMock(return_value=payload)
+    run.parse_output = MagicMock(return_value={"provider_schemas": {}})
     monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(return_value=run))
-    schema_inspect.fetch_providers_schema_json(
-        TfDoSettings(),
-        local_name="aws",
-        source="hashicorp/aws",
-        version=">= 1.0",
-        schema_cache_root=tmp_path,
-    )
+    with pytest.raises(ValueError, match="no provider in lock"):
+        schema_inspect.fetch_providers_schema_json(
+            TfDoSettings(),
+            local_name="aws",
+            source="hashicorp/aws",
+            version=">= 1.0",
+            schema_cache_root=tmp_path,
+        )
     try_read.assert_not_called()
     write_mock.assert_not_called()
 
@@ -215,7 +213,7 @@ def test_fetch_providers_schema_json_shell_error_wraps_stderr(monkeypatch: pytes
     monkeypatch.setattr(
         schema_inspect.schema_cache,
         _read_resolved_version_from_lock.__name__,
-        lambda **_: None,
+        lambda **_: "1.0.0",
     )
     monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(side_effect=err))
     with pytest.raises(RuntimeError, match="terraform providers schema failed"):
@@ -235,7 +233,7 @@ def test_fetch_providers_schema_json_nonzero_exit_raises(monkeypatch: pytest.Mon
     monkeypatch.setattr(
         schema_inspect.schema_cache,
         _read_resolved_version_from_lock.__name__,
-        lambda **_: None,
+        lambda **_: "1.0.0",
     )
     run = MagicMock()
     run.exit_code = 3
