@@ -11,7 +11,6 @@ from tfdo._internal.core.executor import (
     _build_init_command,
     _build_lifecycle_command,
     _clean_terraform_cache,
-    _init_should_retry,
     _is_checksum_error,
     _is_transient,
     _needs_init,
@@ -19,6 +18,7 @@ from tfdo._internal.core.executor import (
     destroy,
     init,
     plan,
+    terraform_init_should_retry,
 )
 from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, PlanInput
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
@@ -61,7 +61,7 @@ def test_transient_and_checksum_detection():
 
 def test_init_should_retry_transient():
     run = _mock_run(exit_code=1, stderr="connection reset by peer")
-    assert _init_should_retry(run)
+    assert terraform_init_should_retry(run)
 
 
 def test_init_should_retry_checksum_cleans_cache(tmp_path: Path):
@@ -71,7 +71,7 @@ def test_init_should_retry_checksum_cleans_cache(tmp_path: Path):
     modules.mkdir(parents=True)
 
     run = _mock_run(exit_code=1, stderr="checksum list has changed", cwd=tmp_path)
-    assert _init_should_retry(run)
+    assert terraform_init_should_retry(run)
     assert not providers.exists()
     assert not modules.exists()
 
@@ -79,7 +79,7 @@ def test_init_should_retry_checksum_cleans_cache(tmp_path: Path):
 def test_init_should_retry_permanent_error_aborts():
     run = _mock_run(exit_code=1, stderr="Error: Invalid HCL syntax")
     with pytest.raises(AbortRetryError, match="permanent error"):
-        _init_should_retry(run)
+        terraform_init_should_retry(run)
 
 
 def test_clean_terraform_cache(tmp_path: Path):
@@ -103,6 +103,16 @@ def test_init_success(tmp_path: Path):
         result = init(InitInput(settings=settings))
     assert result.exit_code == 0
     assert result.attempts_used == 1
+    assert result.stderr is None
+
+
+def test_init_failure_includes_stderr(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=1, stderr="Error: provider install failed\n", attempt=1)
+    with patch(_patch_run, return_value=run):
+        result = init(InitInput(settings=settings))
+    assert result.exit_code == 1
+    assert result.stderr == "Error: provider install failed"
 
 
 def test_init_extra_args_forwarded(tmp_path: Path):

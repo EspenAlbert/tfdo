@@ -1,0 +1,32 @@
+{
+  "errors": [],
+  "rows": [
+    {
+      "address": "aws_s3_bucket.logs",
+      "attribute_paths": [
+        "force_destroy"
+      ],
+      "file": "extra.tf"
+    },
+    {
+      "address": "aws_instance.web",
+      "attribute_paths": [
+        "advanced_configuration.javascript_enabled",
+        "ami",
+        "ebs_block_device.device_name",
+        "ebs_block_device.volume_size",
+        "ingress.from_port",
+        "instance_type"
+      ],
+      "file": "main.tf"
+    },
+    {
+      "address": "aws_s3_bucket.logs",
+      "attribute_paths": [
+        "bucket",
+        "tags.Env"
+      ],
+      "file": "main.tf"
+    }
+  ]
+}

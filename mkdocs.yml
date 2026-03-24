@@ -17,6 +17,8 @@ nav:
     - Overview: _root/index.md
     - TfDoSettings: _root/tfdosettings.md
   - core: core/index.md
+  - inspect: inspect/index.md
+  - schema: schema/index.md
 # === OK_EDIT: pkg-ext nav ===
 
 # === DO_NOT_EDIT: pkg-ext extensions ===

@@ -1,3 +1,4 @@
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import typer
@@ -27,8 +28,20 @@ def include_option() -> list[str]:
     return typer.Option([], "--include", help="Glob patterns: only matching directories are checked")
 
 
-def exclude_option() -> list[str]:
-    return typer.Option([], "--exclude", help="Glob patterns: matching directories are skipped")
+def exclude_option(
+    *,
+    default_patterns: Sequence[str] | None = None,
+    help_text: str = "Glob patterns: matching directories are skipped",
+) -> list[str]:
+    factory: Callable[[], list[str]] = list
+    if default_patterns:
+        factory = lambda: list(default_patterns)  # noqa: E731
+    return typer.Option(
+        ...,
+        "--exclude",
+        default_factory=factory,
+        help=help_text,
+    )
 
 
 def tflint_option() -> bool | None:

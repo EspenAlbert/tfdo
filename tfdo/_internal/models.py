@@ -23,6 +23,7 @@ class TfDoBaseInput(BaseModel):
 
 class InitInput(TfDoBaseInput):
     extra_args: list[str] = []
+    env: dict[str, str] | None = None
 
 
 class LifecycleInput(TfDoBaseInput):
@@ -74,6 +75,7 @@ class CheckInput(TfDoBaseInput):
 class InitResult(BaseModel):
     exit_code: int
     attempts_used: int
+    stderr: str | None = None
 
 
 class LifecycleResult(BaseModel):

@@ -22,9 +22,24 @@ groups:
   - _internal.core.cmd_plan
   - _internal.models
   owned_refs:
+  - _internal.check.cmd_check.check_cmd
   - _internal.core.cmd_apply.apply_cmd
-  - _internal.core.cmd_check.check_cmd
   - _internal.core.cmd_destroy.destroy_cmd
   - _internal.core.cmd_init.init_cmd
   - _internal.core.cmd_plan.plan_cmd
   - _internal.models.InitMode
+- name: inspect
+  owned_modules:
+  - _internal.inspect.cmd_inspect
+  owned_refs:
+  - _internal.inspect.cmd_inspect.inspect_hcl_paths_cmd
+  - _internal.inspect.cmd_inspect.inspect_resource_usage_cmd
+- name: schema
+  owned_modules:
+  - _internal.schema.cmd_schema
+  - _internal.schema.diff
+  owned_refs:
+  - _internal.schema.cmd_schema.schema_diff_cmd
+  - _internal.schema.cmd_schema.schema_show_cmd
+  - _internal.schema.diff.ResourceSchemaChange
+  - _internal.schema.diff.SchemaDiffResult

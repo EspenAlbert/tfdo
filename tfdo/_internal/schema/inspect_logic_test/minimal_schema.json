@@ -1,0 +1,33 @@
+{
+  "format_version": "1.0",
+  "provider_schemas": {
+    "registry.terraform.io/mongodb/mongodbatlas": {
+      "provider": {
+        "version": 0,
+        "block": {
+          "attributes": {}
+        }
+      },
+      "resource_schemas": {
+        "mongodbatlas_cluster": {
+          "version": 1,
+          "block": {
+            "attributes": {
+              "name": {
+                "type": "string",
+                "description": "name",
+                "required": true
+              }
+            }
+          }
+        },
+        "mongodbatlas_project": {
+          "version": 1,
+          "block": {
+            "attributes": {}
+          }
+        }
+      }
+    }
+  }
+}

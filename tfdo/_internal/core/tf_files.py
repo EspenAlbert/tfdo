@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -23,3 +24,12 @@ def find_tf_directories(
             continue
         dirs.append(parent)
     return sorted(dirs)
+
+
+def iter_tf_files(
+    root: Path,
+    include_patterns: list[str] | None = None,
+    exclude_patterns: list[str] | None = None,
+) -> Iterator[Path]:
+    for directory in find_tf_directories(root, include_patterns, exclude_patterns):
+        yield from sorted(directory.glob("*.tf"))
