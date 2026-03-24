@@ -22,7 +22,8 @@ def test_inspect_hcl_paths_cmd_json(tmp_path: Path) -> None:
 
 
 def test_inspect_resource_usage_cmd_json(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    def fake(_inp: resource_usage_logic.ResourceUsageInput) -> SchemaInputClassifyResult:
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> SchemaInputClassifyResult:
+        assert inp.exclude_patterns == [".github/*", "tests/*"]
         return SchemaInputClassifyResult()
 
     monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)

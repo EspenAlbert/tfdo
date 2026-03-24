@@ -52,7 +52,10 @@ def inspect_resource_usage_cmd(
     version: str = typer.Option(">= 1.0", "--version", help="required_providers version constraint"),
     no_cache: bool = typer.Option(False, "--no-cache", help="Skip schema cache read and write"),
     include: list[str] = cmd_options.include_option(),
-    exclude: list[str] = cmd_options.exclude_option(),
+    exclude: list[str] = cmd_options.exclude_option(
+        default_patterns=(".github/*", "tests/*"),
+        help_text="Glob patterns: matching directories are skipped (default .github/* and tests/*; any --exclude replaces defaults)",
+    ),
 ) -> None:
     try:
         mode_e = SchemaInputClassifyMode(mode.lower())
