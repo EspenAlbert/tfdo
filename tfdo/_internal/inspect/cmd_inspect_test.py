@@ -21,6 +21,23 @@ def test_inspect_hcl_paths_cmd_json(tmp_path: Path) -> None:
     assert "null_resource.x" in result.stdout
 
 
+def test_inspect_hcl_paths_cmd_json_output_file(tmp_path: Path) -> None:
+    (tmp_path / "main.tf").write_text('resource "null_resource" "x" {}\n', encoding="utf-8")
+    out = tmp_path / "nested" / "out.json"
+    result = runner.invoke(
+        app,
+        ["inspect", "hcl-paths", "--path", str(tmp_path), "--json", "-o", str(out)],
+    )
+    assert result.exit_code == 0
+    assert "null_resource.x" in out.read_text(encoding="utf-8")
+
+
+def test_inspect_hcl_paths_cmd_output_requires_json(tmp_path: Path) -> None:
+    out = tmp_path / "out.json"
+    result = runner.invoke(app, ["inspect", "hcl-paths", "--path", str(tmp_path), "-o", str(out)])
+    assert result.exit_code == 1
+
+
 def test_inspect_resource_usage_cmd_json(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
         assert inp.exclude_patterns == [".github/*", "tests/*"]
@@ -30,6 +47,13 @@ def test_inspect_resource_usage_cmd_json(monkeypatch: pytest.MonkeyPatch, tmp_pa
     result = runner.invoke(app, ["inspect", "resource-usage", "--path", str(tmp_path), "--provider", "mongodbatlas"])
     assert result.exit_code == 0
     assert '"errors": []' in result.stdout
+    out = tmp_path / "ru.json"
+    result_o = runner.invoke(
+        app,
+        ["inspect", "resource-usage", "--path", str(tmp_path), "--provider", "mongodbatlas", "-o", str(out)],
+    )
+    assert result_o.exit_code == 0
+    assert '"errors": []' in out.read_text(encoding="utf-8")
 
 
 def test_inspect_hcl_paths_cmd_logs_rows_and_errors(caplog: pytest.LogCaptureFixture, tmp_path: Path) -> None:

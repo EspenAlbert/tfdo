@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -29,6 +30,26 @@ def test_schema_show_cmd_json_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
     result = runner.invoke(app, ["schema", "show", "--provider", "mongodbatlas", "--json"])
     assert result.exit_code == 0
     assert "r1" in result.stdout
+
+
+def test_schema_show_cmd_json_output_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def fake(_inp: object) -> SchemaShowResult:
+        return SchemaShowResult(resource_names=["r1", "r2"])
+
+    monkeypatch.setattr(cmd_schema, _schema_show_cmd.__name__, fake)
+    out = tmp_path / "a" / "b.json"
+    result = runner.invoke(
+        app,
+        ["schema", "show", "--provider", "mongodbatlas", "--json", "-o", str(out)],
+    )
+    assert result.exit_code == 0
+    assert "r1" in out.read_text(encoding="utf-8")
+
+
+def test_schema_show_cmd_output_requires_json(tmp_path: Path) -> None:
+    out = tmp_path / "x.json"
+    result = runner.invoke(app, ["schema", "show", "--provider", "mongodbatlas", "-o", str(out)])
+    assert result.exit_code == 1
 
 
 def test_schema_show_cmd_logs_type_names(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:

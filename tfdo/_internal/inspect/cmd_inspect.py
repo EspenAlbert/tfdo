@@ -1,5 +1,4 @@
 import logging
-import sys
 from pathlib import Path
 
 import typer
@@ -8,6 +7,7 @@ from tfdo._internal import cmd_options
 from tfdo._internal.inspect.inspect_paths_logic import InspectHclPathsInput, inspect_hcl_paths
 from tfdo._internal.inspect.resource_usage_logic import ResourceUsageInput, inspect_resource_usage
 from tfdo._internal.inspect.schema_input_classify_logic import SchemaInputClassifyMode
+from tfdo._internal.json_output import exit_if_output_without_json, write_json_cli_output
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
@@ -20,10 +20,17 @@ app.add_typer(inspect_app, name="inspect")
 def inspect_hcl_paths_cmd(
     path: Path = typer.Option(Path.cwd(), "--path", "-p", help="Root directory to scan for Terraform files"),
     as_json: bool = typer.Option(False, "--json", help="Print JSON to stdout"),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write JSON here instead of stdout (requires --json)",
+    ),
 ) -> None:
+    exit_if_output_without_json(as_json=as_json, output=output, logger=logger)
     result = inspect_hcl_paths(InspectHclPathsInput(root=path))
     if as_json:
-        sys.stdout.write(f"{result.to_canonical_json()}\n")
+        write_json_cli_output(f"{result.to_canonical_json()}\n", output=output)
         return
     for row in result.rows:
         logger.info(f"{row.file} {row.address}:")
@@ -56,6 +63,12 @@ def inspect_resource_usage_cmd(
         default_patterns=(".github/*", "tests/*"),
         help_text="Glob patterns: matching directories are skipped (default .github/* and tests/*; any --exclude replaces defaults)",
     ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write JSON here instead of stdout",
+    ),
 ) -> None:
     try:
         mode_e = SchemaInputClassifyMode(mode.lower())
@@ -80,4 +93,4 @@ def inspect_resource_usage_cmd(
     except (ValueError, RuntimeError) as e:
         logger.error(f"{e}")
         raise typer.Exit(code=1) from e
-    sys.stdout.write(f"{result.to_canonical_json(error_paths_relative_to=path)}\n")
+    write_json_cli_output(f"{result.to_canonical_json(error_paths_relative_to=path)}\n", output=output)
