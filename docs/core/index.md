@@ -48,7 +48,7 @@ Run terraform apply.
 <a id="check_cmd_def"></a>
 
 ### cli_command: `check_cmd`
-- [source](../../tfdo/_internal/core/cmd_check.py#L58)
+- [source](../../tfdo/_internal/check/cmd_check.py#L58)
 > **Since:** 0.1.0
 
 ```python

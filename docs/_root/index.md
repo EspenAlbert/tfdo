@@ -68,7 +68,7 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., wo
 <a id="interactivemode_def"></a>
 
 ### class: `InteractiveMode`
-- [source](../../tfdo/_internal/settings.py#L20)
+- [source](../../tfdo/_internal/settings.py#L21)
 > **Since:** 0.2.0
 
 ```python
@@ -86,7 +86,7 @@ class InteractiveMode(StrEnum):
 <a id="checkconfig_def"></a>
 
 ### class: `CheckConfig`
-- [source](../../tfdo/_internal/settings.py#L73)
+- [source](../../tfdo/_internal/settings.py#L78)
 > **Since:** 0.3.0
 
 ```python
@@ -108,7 +108,7 @@ class CheckConfig(BaseModel):
 <a id="tfdouserconfig_def"></a>
 
 ### class: `TfDoUserConfig`
-- [source](../../tfdo/_internal/settings.py#L77)
+- [source](../../tfdo/_internal/settings.py#L82)
 > **Since:** 0.3.0
 
 ```python

@@ -1,0 +1,326 @@
+name: is_computed_only_attribute
+ts: 2026-03-24 09:40:41.815202+00:00
+type: keep_private
+full_path: _internal.schema.resource_input_paths.is_computed_only_attribute
+---
+name: is_whole_map_leaf_attribute
+ts: 2026-03-24 09:40:41.815319+00:00
+type: keep_private
+full_path: _internal.schema.resource_input_paths.is_whole_map_leaf_attribute
+---
+name: resource_schema_input_paths
+ts: 2026-03-24 09:40:41.815334+00:00
+type: keep_private
+full_path: _internal.schema.resource_input_paths.resource_schema_input_paths
+---
+name: normalize_registry_source_key
+ts: 2026-03-24 09:40:49.614667+00:00
+type: keep_private
+full_path: _internal.schema.terraform_cli_config.normalize_registry_source_key
+---
+name: parse_dev_overrides
+ts: 2026-03-24 09:40:49.614728+00:00
+type: keep_private
+full_path: _internal.schema.terraform_cli_config.parse_dev_overrides
+---
+name: lookup_plugin_dir
+ts: 2026-03-24 09:40:49.614736+00:00
+type: keep_private
+full_path: _internal.schema.terraform_cli_config.lookup_plugin_dir
+---
+name: subprocess_env_for_schema_temp_dir
+ts: 2026-03-24 09:40:49.614741+00:00
+type: keep_private
+full_path: _internal.schema.terraform_cli_config.subprocess_env_for_schema_temp_dir
+---
+name: write_minimal_dev_overrides_config
+ts: 2026-03-24 09:40:49.614745+00:00
+type: keep_private
+full_path: _internal.schema.terraform_cli_config.write_minimal_dev_overrides_config
+---
+name: schema
+ts: 2026-03-24 09:40:59.663037+00:00
+type: group_module
+module_path: _internal.schema.cmd_schema
+---
+name: schema_show_cmd
+ts: 2026-03-24 09:40:59.664423+00:00
+type: make_public
+details: CLI command in _internal/schema/cmd_schema.py
+full_path: _internal.schema.cmd_schema.schema_show_cmd
+group: schema
+---
+name: schema_diff_cmd
+ts: 2026-03-24 09:40:59.668322+00:00
+type: make_public
+details: CLI command in _internal/schema/cmd_schema.py
+full_path: _internal.schema.cmd_schema.schema_diff_cmd
+group: schema
+---
+name: resolve_schema_diff_sides
+ts: 2026-03-24 09:41:09.912522+00:00
+type: keep_private
+full_path: _internal.schema.diff.resolve_schema_diff_sides
+---
+name: ensure_dev_overrides_ready
+ts: 2026-03-24 09:41:09.912589+00:00
+type: keep_private
+full_path: _internal.schema.diff.ensure_dev_overrides_ready
+---
+name: join_path
+ts: 2026-03-24 09:41:09.912595+00:00
+type: keep_private
+full_path: _internal.schema.diff.join_path
+---
+name: diff_blocks
+ts: 2026-03-24 09:41:09.912602+00:00
+type: keep_private
+full_path: _internal.schema.diff.diff_blocks
+---
+name: compute_schema_diff
+ts: 2026-03-24 09:41:09.912606+00:00
+type: keep_private
+full_path: _internal.schema.diff.compute_schema_diff
+---
+name: schema_diff
+ts: 2026-03-24 09:41:09.912610+00:00
+type: keep_private
+full_path: _internal.schema.diff.schema_diff
+---
+name: render_schema_diff_rich
+ts: 2026-03-24 09:41:09.912614+00:00
+type: keep_private
+full_path: _internal.schema.diff.render_schema_diff_rich
+---
+name: resolve_registry_source
+ts: 2026-03-24 09:41:19.357241+00:00
+type: keep_private
+full_path: _internal.schema.inspect_logic.resolve_registry_source
+---
+name: pick_provider_key
+ts: 2026-03-24 09:41:19.357357+00:00
+type: keep_private
+full_path: _internal.schema.inspect_logic.pick_provider_key
+---
+name: schema_show
+ts: 2026-03-24 09:41:19.357365+00:00
+type: keep_private
+full_path: _internal.schema.inspect_logic.schema_show
+---
+name: load_provider_resource_schemas_with_meta
+ts: 2026-03-24 09:41:19.357371+00:00
+type: keep_private
+full_path: _internal.schema.inspect_logic.load_provider_resource_schemas_with_meta
+---
+name: load_provider_resource_schemas
+ts: 2026-03-24 09:41:19.357376+00:00
+type: keep_private
+full_path: _internal.schema.inspect_logic.load_provider_resource_schemas
+---
+name: lock_provider_address
+ts: 2026-03-24 09:41:29.113960+00:00
+type: keep_private
+full_path: _internal.schema.cache.lock_provider_address
+---
+name: read_resolved_version_from_lock
+ts: 2026-03-24 09:41:29.114031+00:00
+type: keep_private
+full_path: _internal.schema.cache.read_resolved_version_from_lock
+---
+name: cache_relative_path
+ts: 2026-03-24 09:41:29.114040+00:00
+type: keep_private
+full_path: _internal.schema.cache.cache_relative_path
+---
+name: try_read_cached_schema
+ts: 2026-03-24 09:41:29.114046+00:00
+type: keep_private
+full_path: _internal.schema.cache.try_read_cached_schema
+---
+name: write_cached_schema
+ts: 2026-03-24 09:41:29.114052+00:00
+type: keep_private
+full_path: _internal.schema.cache.write_cached_schema
+---
+name: render_providers_tf
+ts: 2026-03-24 09:41:47.763635+00:00
+type: keep_private
+full_path: _internal.schema.inspect.render_providers_tf
+---
+name: fetch_providers_schema_json
+ts: 2026-03-24 09:41:47.763702+00:00
+type: keep_private
+full_path: _internal.schema.inspect.fetch_providers_schema_json
+---
+name: inspect_resource_usage
+ts: 2026-03-24 09:42:40.512642+00:00
+type: keep_private
+full_path: _internal.inspect.resource_usage_logic.inspect_resource_usage
+---
+name: classify_schema_inputs
+ts: 2026-03-24 09:42:45.806598+00:00
+type: keep_private
+full_path: _internal.inspect.schema_input_classify_logic.classify_schema_inputs
+---
+name: inspect_hcl_paths
+ts: 2026-03-24 09:43:06.289787+00:00
+type: keep_private
+full_path: _internal.inspect.inspect_paths_logic.inspect_hcl_paths
+---
+name: collect_resource_body_paths_assisted
+ts: 2026-03-24 09:43:22.172280+00:00
+type: keep_private
+full_path: _internal.inspect.hcl_schema_paths.collect_resource_body_paths_assisted
+---
+name: collect_resource_argument_paths
+ts: 2026-03-24 09:43:25.074423+00:00
+type: keep_private
+full_path: _internal.inspect.hcl_resource_paths.collect_resource_argument_paths
+---
+name: inspect
+ts: 2026-03-24 09:43:36.918944+00:00
+type: group_module
+module_path: _internal.inspect.cmd_inspect
+---
+name: inspect_hcl_paths_cmd
+ts: 2026-03-24 09:43:36.920588+00:00
+type: make_public
+details: CLI command in _internal/inspect/cmd_inspect.py
+full_path: _internal.inspect.cmd_inspect.inspect_hcl_paths_cmd
+group: inspect
+---
+name: inspect_resource_usage_cmd
+ts: 2026-03-24 09:43:36.923574+00:00
+type: make_public
+details: CLI command in _internal/inspect/cmd_inspect.py
+full_path: _internal.inspect.cmd_inspect.inspect_resource_usage_cmd
+group: inspect
+---
+name: iter_tf_files
+ts: 2026-03-24 09:43:40.189032+00:00
+type: keep_private
+full_path: _internal.core.tf_files.iter_tf_files
+---
+name: terraform_init_should_retry
+ts: 2026-03-24 09:43:43.546134+00:00
+type: keep_private
+full_path: _internal.core.executor.terraform_init_should_retry
+---
+name: schema
+ts: 2026-03-24 09:45:04.934344+00:00
+type: group_module
+module_path: _internal.schema.diff
+---
+name: ResourceSchemaChange
+ts: 2026-03-24 09:45:04.936214+00:00
+type: make_public
+details: created in _internal/schema/diff.py
+full_path: _internal.schema.diff.ResourceSchemaChange
+group: schema
+---
+name: SchemaDiffResult
+ts: 2026-03-24 09:45:04.938239+00:00
+type: make_public
+details: created in _internal/schema/diff.py
+full_path: _internal.schema.diff.SchemaDiffResult
+group: schema
+---
+name: SchemaDiffSide
+ts: 2026-03-24 09:45:04.938285+00:00
+type: keep_private
+full_path: _internal.schema.diff.SchemaDiffSide
+---
+name: SchemaDiffInput
+ts: 2026-03-24 09:45:04.938337+00:00
+type: keep_private
+full_path: _internal.schema.diff.SchemaDiffInput
+---
+name: SchemaShowInput
+ts: 2026-03-24 09:45:12.256906+00:00
+type: keep_private
+full_path: _internal.schema.inspect_logic.SchemaShowInput
+---
+name: SchemaShowResult
+ts: 2026-03-24 09:45:12.256968+00:00
+type: keep_private
+full_path: _internal.schema.inspect_logic.SchemaShowResult
+---
+name: SchemaAttribute
+ts: 2026-03-24 09:45:18.348021+00:00
+type: keep_private
+full_path: _internal.schema.models.SchemaAttribute
+---
+name: SchemaBlockType
+ts: 2026-03-24 09:45:18.348088+00:00
+type: keep_private
+full_path: _internal.schema.models.SchemaBlockType
+---
+name: SchemaBlock
+ts: 2026-03-24 09:45:18.348096+00:00
+type: keep_private
+full_path: _internal.schema.models.SchemaBlock
+---
+name: ResourceSchema
+ts: 2026-03-24 09:45:18.348101+00:00
+type: keep_private
+full_path: _internal.schema.models.ResourceSchema
+---
+name: FetchProvidersSchemaResult
+ts: 2026-03-24 09:45:21.845089+00:00
+type: keep_private
+full_path: _internal.schema.inspect.FetchProvidersSchemaResult
+---
+name: ResourceUsageInput
+ts: 2026-03-24 09:45:29.198804+00:00
+type: keep_private
+full_path: _internal.inspect.resource_usage_logic.ResourceUsageInput
+---
+name: SchemaInputClassifyMode
+ts: 2026-03-24 09:45:38.880478+00:00
+type: keep_private
+full_path: _internal.inspect.schema_input_classify_logic.SchemaInputClassifyMode
+---
+name: SchemaInputClassifyRowInput
+ts: 2026-03-24 09:45:38.880563+00:00
+type: keep_private
+full_path: _internal.inspect.schema_input_classify_logic.SchemaInputClassifyRowInput
+---
+name: SchemaInputClassifyInput
+ts: 2026-03-24 09:45:38.880572+00:00
+type: keep_private
+full_path: _internal.inspect.schema_input_classify_logic.SchemaInputClassifyInput
+---
+name: SchemaInputClassifyRowResult
+ts: 2026-03-24 09:45:38.880578+00:00
+type: keep_private
+full_path: _internal.inspect.schema_input_classify_logic.SchemaInputClassifyRowResult
+---
+name: SchemaInputClassifyResult
+ts: 2026-03-24 09:45:38.880583+00:00
+type: keep_private
+full_path: _internal.inspect.schema_input_classify_logic.SchemaInputClassifyResult
+---
+name: InspectHclPathsInput
+ts: 2026-03-24 09:45:43.580369+00:00
+type: keep_private
+full_path: _internal.inspect.inspect_paths_logic.InspectHclPathsInput
+---
+name: AssistedResourcePathsResult
+ts: 2026-03-24 09:45:46.580565+00:00
+type: keep_private
+full_path: _internal.inspect.hcl_schema_paths.AssistedResourcePathsResult
+---
+name: HclParseError
+ts: 2026-03-24 09:46:14.512970+00:00
+type: keep_private
+full_path: _internal.inspect.hcl_resource_paths.HclParseError
+---
+name: ResourcePathsRow
+ts: 2026-03-24 09:46:14.513214+00:00
+type: keep_private
+full_path: _internal.inspect.hcl_resource_paths.ResourcePathsRow
+---
+name: HclResourcePathsResult
+ts: 2026-03-24 09:46:14.513224+00:00
+type: keep_private
+full_path: _internal.inspect.hcl_resource_paths.HclResourcePathsResult
