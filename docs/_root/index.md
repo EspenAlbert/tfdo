@@ -43,7 +43,7 @@ def get_settings() -> TfDoSettings:
 > **Since:** 0.1.0
 
 ```python
-def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., work_dir: Path | None = ..., interactive: InteractiveMode = <InteractiveMode.AUTO: 'auto'>, log_level: str = 'INFO', passthrough: bool = False) -> None:
+def main_callback(*, binary: str = 'terraform', tf_version: str | None = None, work_dir: Path | None = None, interactive: InteractiveMode = <InteractiveMode.AUTO: 'auto'>, log_level: str = 'INFO', passthrough: bool = False) -> None:
     ...
 ```
 
@@ -52,8 +52,8 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = ..., wo
 | Flag | Type | Default | Env Var | Description |
 |---|---|---|---|---|
 | `-b`, `--binary` | `str` | `'terraform'` | `TFDO_BINARY` | Terraform binary name or path |
-| `-V`, `--tf-version` | `str | None` | *required* | `TFDO_TF_VERSION` | Terraform version (uses mise for version selection) |
-| `-w`, `--work-dir` | `Path | None` | *required* | `TFDO_WORK_DIR` | Working directory for terraform commands |
+| `-V`, `--tf-version` | `str | None` | `None` | `TFDO_TF_VERSION` | Terraform version (uses mise for version selection) |
+| `-w`, `--work-dir` | `Path | None` | `None` | `TFDO_WORK_DIR` | Working directory for terraform commands |
 | `--interactive` | `InteractiveMode` | `<InteractiveMode.AUTO: 'auto'>` | `TFDO_INTERACTIVE` | Interactive mode: auto (detect TTY), always (force stdin), never (no stdin) [auto, always, never] |
 | `--log-level` | `str` | `'INFO'` | - | Log level for tfdo |
 | `--passthrough` | `bool` | `False` | - | Disable parsed output, pass raw ANSI from terraform |
