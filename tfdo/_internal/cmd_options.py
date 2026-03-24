@@ -35,7 +35,7 @@ def exclude_option(
 ) -> list[str]:
     factory: Callable[[], list[str]] = list
     if default_patterns:
-        factory = lambda: list(default_patterns)
+        factory = lambda: list(default_patterns) # noqa: E731
     return typer.Option(
         ...,
         "--exclude",
