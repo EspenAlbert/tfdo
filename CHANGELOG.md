@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 2026-03-24T10-26Z
+
+### Inspect
+- New function `inspect_hcl_paths_cmd`
+- New function `inspect_resource_usage_cmd`
+
+### Schema
+- New function `schema_show_cmd`
+- New function `schema_diff_cmd`
+- New class `ResourceSchemaChange`
+- New class `SchemaDiffResult`
+
+
 ## 0.3.0 2026-03-22T21-01Z
 
 ### __Root__

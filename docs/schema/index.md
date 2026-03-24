@@ -19,7 +19,7 @@
 
 ### class: `ResourceSchemaChange`
 - [source](../../tfdo/_internal/schema/diff.py#L38)
-> **Since:** unreleased
+> **Since:** 0.4.0
 
 ```python
 class ResourceSchemaChange(BaseModel):
@@ -31,23 +31,23 @@ class ResourceSchemaChange(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| resource_type | `str` | - | unreleased |
-| path | `str` | - | unreleased |
-| kind | `Literal[added, removed, changed]` | - | unreleased |
-| tags | `list[str]` | `...` | unreleased |
+| resource_type | `str` | - | 0.4.0 |
+| path | `str` | - | 0.4.0 |
+| kind | `Literal[added, removed, changed]` | - | 0.4.0 |
+| tags | `list[str]` | `...` | 0.4.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.4.0 | Made public |
 <!-- === OK_EDIT: pkg-ext resourceschemachange_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext schemadiffresult_def === -->
 <a id="schemadiffresult_def"></a>
 
 ### class: `SchemaDiffResult`
 - [source](../../tfdo/_internal/schema/diff.py#L45)
-> **Since:** unreleased
+> **Since:** 0.4.0
 
 ```python
 class SchemaDiffResult(BaseModel):
@@ -61,25 +61,25 @@ class SchemaDiffResult(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| format_version | `int` | `1` | unreleased |
-| from_label | `str` | - | unreleased |
-| to_label | `str` | - | unreleased |
-| resources_added | `list[str]` | `...` | unreleased |
-| resources_removed | `list[str]` | `...` | unreleased |
-| changes | `list[ResourceSchemaChange]` | `...` | unreleased |
+| format_version | `int` | `1` | 0.4.0 |
+| from_label | `str` | - | 0.4.0 |
+| to_label | `str` | - | 0.4.0 |
+| resources_added | `list[str]` | `...` | 0.4.0 |
+| resources_removed | `list[str]` | `...` | 0.4.0 |
+| changes | `list[ResourceSchemaChange]` | `...` | 0.4.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.4.0 | Made public |
 <!-- === OK_EDIT: pkg-ext schemadiffresult_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext schema_diff_cmd_def === -->
 <a id="schema_diff_cmd_def"></a>
 
 ### cli_command: `schema_diff_cmd`
 - [source](../../tfdo/_internal/schema/cmd_schema.py#L67)
-> **Since:** unreleased
+> **Since:** 0.4.0
 
 ```python
 def schema_diff_cmd(*, provider: str = ..., source: str | None = None, from_constraint: str | None = None, to_constraint: str | None = None, resource: str | None = None, path_parts: list[str] = [], no_cache: bool = False, as_json: bool = False) -> None:
@@ -113,14 +113,14 @@ Examples:
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.4.0 | Made public |
 <!-- === OK_EDIT: pkg-ext schema_diff_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext schema_show_cmd_def === -->
 <a id="schema_show_cmd_def"></a>
 
 ### cli_command: `schema_show_cmd`
 - [source](../../tfdo/_internal/schema/cmd_schema.py#L23)
-> **Since:** unreleased
+> **Since:** 0.4.0
 
 ```python
 def schema_show_cmd(*, provider: str = ..., source: str | None = None, version: str = '>= 1.0', resource: str | None = None, no_cache: bool = False, as_json: bool = False) -> None:
@@ -142,5 +142,5 @@ def schema_show_cmd(*, provider: str = ..., source: str | None = None, version: 
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.4.0 | Made public |
 <!-- === OK_EDIT: pkg-ext schema_show_cmd_def === -->
