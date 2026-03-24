@@ -10,8 +10,9 @@ logger = logging.getLogger(__name__)
 
 def write_json_cli_output(text: str, *, output: Path | None) -> None:
     if output is not None:
-        ensure_parents_write_text(output, text)
-        logger.info(f"Wrote JSON to '{output}'")
+        resolved = output.expanduser().resolve()
+        ensure_parents_write_text(resolved, text)
+        logger.info(f"Wrote JSON to {resolved}")
         return
     sys.stdout.write(text)
 

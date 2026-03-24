@@ -115,6 +115,24 @@ def test_merge_skips_non_object_resource_entries() -> None:
     assert acc == {}
 
 
+def test_lifecycle_precondition_dict_body_emits_no_lifecycle_paths() -> None:
+    body = {
+        "bucket": "b",
+        "lifecycle": {
+            "precondition": [
+                {
+                    "condition": "length(local.x) >= 3",
+                    "error_message": "too short",
+                }
+            ],
+        },
+    }
+    paths = hrp._filter_meta_paths(hrp._paths_from_resource_body(body))
+    assert "lifecycle" not in paths
+    assert not any(p.startswith("lifecycle.") for p in paths)
+    assert "bucket" in paths
+
+
 def test_paths_helpers_cover_dynamic_and_nested_branches() -> None:
     assert hrp._paths_from_dynamic("x") == set()
     assert hrp._paths_from_nested_block("blk", [{"k": [{"nested_arg": 1}]}]) == set()

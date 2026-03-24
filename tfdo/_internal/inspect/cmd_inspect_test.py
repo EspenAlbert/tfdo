@@ -21,14 +21,22 @@ def test_inspect_hcl_paths_cmd_json(tmp_path: Path) -> None:
     assert "null_resource.x" in result.stdout
 
 
-def test_inspect_hcl_paths_cmd_json_output_file(tmp_path: Path) -> None:
+def test_inspect_hcl_paths_cmd_json_output_file(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+) -> None:
     (tmp_path / "main.tf").write_text('resource "null_resource" "x" {}\n', encoding="utf-8")
-    out = tmp_path / "nested" / "out.json"
+    monkeypatch.chdir(tmp_path)
+    caplog.set_level(logging.INFO)
     result = runner.invoke(
         app,
-        ["inspect", "hcl-paths", "--path", str(tmp_path), "--json", "-o", str(out)],
+        ["inspect", "hcl-paths", "--path", ".", "--json", "-o", "nested/out.json"],
     )
     assert result.exit_code == 0
+    out = (tmp_path / "nested" / "out.json").resolve()
+    assert str(out) in caplog.text
+    assert "Wrote JSON to" in caplog.text
     assert "null_resource.x" in out.read_text(encoding="utf-8")
 
 
