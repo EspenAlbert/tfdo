@@ -6,8 +6,8 @@ from ask_shell.shell import ShellRun
 from typer.testing import CliRunner
 
 from tfdo._internal import settings as settings_mod
-from tfdo._internal.core import check_logic
-from tfdo._internal.core.check_logic import (
+from tfdo._internal.check import check_logic
+from tfdo._internal.check.check_logic import (
     _build_fmt_command,
     _build_validate_command,
     _parse_fmt_files,
@@ -300,7 +300,7 @@ def test_validate_output_ignores_warnings():
 
 
 def test_check_cmd_via_cli(tmp_path: Path):
-    from tfdo._internal.core import cmd_check  # noqa: F401
+    from tfdo._internal.check import cmd_check  # noqa: F401
     from tfdo._internal.typer_app import app
 
     (tmp_path / "main.tf").touch()
@@ -312,7 +312,7 @@ def test_check_cmd_via_cli(tmp_path: Path):
 
 
 def test_check_cmd_with_exclude_via_cli(tmp_path: Path):
-    from tfdo._internal.core import cmd_check  # noqa: F401
+    from tfdo._internal.check import cmd_check  # noqa: F401
     from tfdo._internal.typer_app import app
 
     _create_tf_tree_with_examples(tmp_path)

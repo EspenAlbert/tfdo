@@ -3,7 +3,7 @@ import logging
 import typer
 
 from tfdo._internal import cmd_options
-from tfdo._internal.core import check_logic
+from tfdo._internal.check import check_logic
 from tfdo._internal.models import CheckInput, CheckResult, DirCheckResult, InitMode
 from tfdo._internal.settings import resolve_tflint_flag
 from tfdo._internal.typer_app import app, get_settings
