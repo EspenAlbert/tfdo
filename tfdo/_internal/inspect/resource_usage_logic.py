@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
+import os
+from datetime import UTC, datetime
 from pathlib import Path
 
 from hcl2.api import load as hcl2_load
@@ -16,15 +19,59 @@ from tfdo._internal.inspect.schema_input_classify_logic import (
     SchemaInputClassifyResult,
     SchemaInputClassifyRowInput,
     classify_schema_inputs,
+    schema_input_classify_payload,
 )
-from tfdo._internal.schema.inspect_logic import load_provider_resource_schemas
+from tfdo._internal.schema.inspect_logic import (
+    load_provider_resource_schemas_with_meta,
+    resolve_registry_source,
+)
 from tfdo._internal.schema.models import ResourceSchema
 from tfdo._internal.schema.resource_input_paths import resource_schema_input_paths
+from tfdo._internal.schema.terraform_cli_config import (
+    TF_CLI_CONFIG_FILE_ENV,
+    lookup_plugin_dir,
+    parse_dev_overrides,
+)
 from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
 
 _V1_OUTPUT_PATHS_MSG = "Output path comparison is not implemented; use input-only (default). Omit --no-input-only."
+
+
+class ProviderMeta(BaseModel):
+    source: str
+    version: str
+
+
+class ResourceUsageResult(BaseModel):
+    providers: dict[str, ProviderMeta]
+    classify: SchemaInputClassifyResult
+
+    def to_canonical_json(self, *, error_paths_relative_to: Path | None = None) -> str:
+        payload = schema_input_classify_payload(self.classify, error_paths_relative_to=error_paths_relative_to)
+        payload["providers"] = {k: v.model_dump(mode="json") for k, v in sorted(self.providers.items())}
+        return json.dumps(payload, indent=2, sort_keys=True)
+
+
+def _dev_override_applies_to_source(registry_source: str) -> bool:
+    raw = os.environ.get(TF_CLI_CONFIG_FILE_ENV, "").strip()
+    if not raw:
+        return False
+    cfg = Path(raw).expanduser()
+    if not cfg.is_file():
+        return False
+    try:
+        overrides = parse_dev_overrides(cfg)
+    except ValueError:
+        return False
+    return lookup_plugin_dir(overrides, registry_source=registry_source) is not None
+
+
+def _version_label_for_fetch(*, registry_source: str, resolved_version: str | None) -> str:
+    if _dev_override_applies_to_source(registry_source):
+        return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    return resolved_version or "unknown"
 
 
 def _resource_type_cli_namespace(resource_type: str) -> str:
@@ -82,16 +129,19 @@ class ResourceUsageInput(BaseModel):
     exclude_patterns: list[str] = Field(default_factory=list)
 
 
-def inspect_resource_usage(input_model: ResourceUsageInput) -> SchemaInputClassifyResult:
+def inspect_resource_usage(input_model: ResourceUsageInput) -> ResourceUsageResult:
     if not input_model.input_only:
         raise ValueError(_V1_OUTPUT_PATHS_MSG)
-    resource_schemas = load_provider_resource_schemas(
+    resolved_source = resolve_registry_source(provider=input_model.provider, source=input_model.source)
+    resource_schemas, resolved_version = load_provider_resource_schemas_with_meta(
         settings=input_model.settings,
         provider=input_model.provider,
         source=input_model.source,
         version=input_model.version,
         no_cache=input_model.no_cache,
     )
+    version_label = _version_label_for_fetch(registry_source=resolved_source, resolved_version=resolved_version)
+    provider_meta = ProviderMeta(source=resolved_source, version=version_label)
     rows_in: list[SchemaInputClassifyRowInput] = []
     errors: list[HclParseError] = []
     root_resolved = input_model.root.resolve()
@@ -108,4 +158,5 @@ def inspect_resource_usage(input_model: ResourceUsageInput) -> SchemaInputClassi
             errors.append(hrp._to_parse_error(path, exc))
             continue
         _extend_rows_from_parsed(parsed, rel_file, resource_schemas, input_model.provider, rows_in)
-    return classify_schema_inputs(SchemaInputClassifyInput(mode=input_model.mode, errors=errors, rows=rows_in))
+    classified = classify_schema_inputs(SchemaInputClassifyInput(mode=input_model.mode, errors=errors, rows=rows_in))
+    return ResourceUsageResult(providers={input_model.provider: provider_meta}, classify=classified)

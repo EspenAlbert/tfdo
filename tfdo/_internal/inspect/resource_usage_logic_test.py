@@ -1,12 +1,15 @@
 import json
 import logging
+import re
 from pathlib import Path
 
 import pytest
+from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal.inspect.resource_usage_logic import ResourceUsageInput, inspect_resource_usage
 from tfdo._internal.inspect.schema_input_classify_logic import SchemaInputClassifyMode
 from tfdo._internal.schema import inspect as schema_inspect
+from tfdo._internal.schema.terraform_cli_config import TF_CLI_CONFIG_FILE_ENV
 from tfdo._internal.settings import TfDoSettings
 
 _fetch = schema_inspect.fetch_providers_schema_json
@@ -41,9 +44,14 @@ def test_inspect_resource_usage_included_and_skips_unknown_type(
             mode=SchemaInputClassifyMode.INCLUDED,
         )
     )
-    assert len(result.rows) == 1
-    assert result.rows[0].included == ["name"]
-    assert result.errors
+    assert len(result.classify.rows) == 1
+    assert result.classify.rows[0].included == ["name"]
+    assert result.classify.errors
+    meta = result.providers["mongodbatlas"]
+    assert meta.source == "mongodb/mongodbatlas"
+    assert meta.version == "1.0.0"
+    payload = json.loads(result.to_canonical_json())
+    assert payload["providers"]["mongodbatlas"] == {"source": "mongodb/mongodbatlas", "version": "1.0.0"}
     skipping = [r for r in caplog.records if "Skipping" in r.message]
     assert len(skipping) == 1
     assert "mongodbatlas_not_in_fixture" in skipping[0].message
@@ -70,8 +78,47 @@ def test_inspect_resource_usage_include_patterns(monkeypatch: pytest.MonkeyPatch
             mode=SchemaInputClassifyMode.INCLUDED,
         )
     )
-    assert len(result.rows) == 1
-    assert result.rows[0].address == "mongodbatlas_cluster.c"
+    assert len(result.classify.rows) == 1
+    assert result.classify.rows[0].address == "mongodbatlas_cluster.c"
+    assert result.providers["mongodbatlas"].version == "1.0.0"
+
+
+def test_inspect_resource_usage_dev_overrides_version_is_timestamp_only(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    bin_dir = tmp_path / "plugin" / "bin"
+    bin_dir.mkdir(parents=True)
+    tfrc = tmp_path / "cli.tfrc"
+    ensure_parents_write_text(
+        tfrc,
+        f"""provider_installation {{
+  dev_overrides {{
+    "mongodb/mongodbatlas" = "{bin_dir.as_posix()}"
+  }}
+  direct {{}}
+}}
+""",
+    )
+    monkeypatch.setenv(TF_CLI_CONFIG_FILE_ENV, str(tfrc))
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(_fixture(), "1.21.4"),
+    )
+    (tmp_path / "main.tf").write_text(
+        'resource "mongodbatlas_cluster" "c" { name = "n" }\n',
+        encoding="utf-8",
+    )
+    result = inspect_resource_usage(
+        ResourceUsageInput(
+            settings=TfDoSettings(),
+            root=tmp_path,
+            provider="mongodbatlas",
+            mode=SchemaInputClassifyMode.INCLUDED,
+        )
+    )
+    ver = result.providers["mongodbatlas"].version
+    assert re.match(r"^\d{8}T\d{6}Z$", ver)
 
 
 def test_inspect_resource_usage_rejects_no_input_only(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

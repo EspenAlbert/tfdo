@@ -20,7 +20,7 @@
 > **Since:** 0.4.0
 
 ```python
-def inspect_hcl_paths_cmd(*, path: Path = PosixPath('/home/runner/work/tfdo/tfdo'), as_json: bool = False) -> None:
+def inspect_hcl_paths_cmd(*, path: Path = Path('<outside package>'), as_json: bool = False) -> None:
     ...
 ```
 
@@ -28,7 +28,7 @@ def inspect_hcl_paths_cmd(*, path: Path = PosixPath('/home/runner/work/tfdo/tfdo
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--path`, `-p` | `Path` | `PosixPath('/home/runner/work/tfdo/tfdo')` | Root directory to scan for Terraform files |
+| `--path`, `-p` | `Path` | `Path('<outside package>')` | Root directory to scan for Terraform files |
 | `--json` | `bool` | `False` | Print JSON to stdout |
 
 ### Changes
@@ -45,7 +45,7 @@ def inspect_hcl_paths_cmd(*, path: Path = PosixPath('/home/runner/work/tfdo/tfdo
 > **Since:** 0.4.0
 
 ```python
-def inspect_resource_usage_cmd(*, path: Path = PosixPath('/home/runner/work/tfdo/tfdo'), mode: str = 'all', input_only: bool = True, provider: str = ..., source: str | None = None, version: str = '>= 1.0', no_cache: bool = False, include: list[str] = [], exclude: list[str] = ['.github/*', 'tests/*']) -> None:
+def inspect_resource_usage_cmd(*, path: Path = Path('<outside package>'), mode: str = 'all', input_only: bool = True, provider: str = ..., source: str | None = None, version: str = '>= 1.0', no_cache: bool = False, include: list[str] = [], exclude: list[str] = ['.github/*', 'tests/*']) -> None:
     ...
 ```
 
@@ -53,7 +53,7 @@ def inspect_resource_usage_cmd(*, path: Path = PosixPath('/home/runner/work/tfdo
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--path`, `-p` | `Path` | `PosixPath('/home/runner/work/tfdo/tfdo')` | Root directory to scan for Terraform files |
+| `--path`, `-p` | `Path` | `Path('<outside package>')` | Root directory to scan for Terraform files |
 | `--mode` | `str` | `'all'` | included \| excluded \| all |
 | `--input-only/--no-input-only` | `bool` | `True` | Input paths only in v1 (default: on) |
 | `--provider` | `str` | *required* | required_providers local name (e.g. mongodbatlas) |

@@ -51,22 +51,30 @@ class SchemaInputClassifyResult(BaseModel):
     rows: list[SchemaInputClassifyRowResult] = Field(default_factory=list)
 
     def to_canonical_json(self, *, error_paths_relative_to: Path | None = None) -> str:
-        root = error_paths_relative_to
-        root_resolved = root.resolve() if root is not None else None
-        errors_out: list[dict[str, Any]] = []
-        for e in self.errors:
-            out_path = e.path
-            if root_resolved is not None:
-                try:
-                    out_path = e.path.resolve().relative_to(root_resolved)
-                except ValueError:
-                    out_path = e.path
-            errors_out.append(e.model_copy(update={"path": out_path}).model_dump(mode="json", exclude_none=True))
-        payload = {
-            "errors": errors_out,
-            "rows": [r.model_dump(mode="json", exclude_none=True) for r in self.rows],
-        }
+        payload = schema_input_classify_payload(self, error_paths_relative_to=error_paths_relative_to)
         return json.dumps(payload, indent=2, sort_keys=True)
+
+
+def schema_input_classify_payload(
+    result: SchemaInputClassifyResult,
+    *,
+    error_paths_relative_to: Path | None = None,
+) -> dict[str, Any]:
+    root = error_paths_relative_to
+    root_resolved = root.resolve() if root is not None else None
+    errors_out: list[dict[str, Any]] = []
+    for e in result.errors:
+        out_path = e.path
+        if root_resolved is not None:
+            try:
+                out_path = e.path.resolve().relative_to(root_resolved)
+            except ValueError:
+                out_path = e.path
+        errors_out.append(e.model_copy(update={"path": out_path}).model_dump(mode="json", exclude_none=True))
+    return {
+        "errors": errors_out,
+        "rows": [r.model_dump(mode="json", exclude_none=True) for r in result.rows],
+    }
 
 
 def classify_schema_inputs(input_model: SchemaInputClassifyInput) -> SchemaInputClassifyResult:
