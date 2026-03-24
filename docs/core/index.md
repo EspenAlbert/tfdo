@@ -24,7 +24,7 @@
 > **Since:** 0.1.0
 
 ```python
-def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = ..., init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
     ...
 ```
 
@@ -35,7 +35,7 @@ Run terraform apply.
 | Flag | Type | Default | Env Var | Description |
 |---|---|---|---|---|
 | `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
-| `--var-file`, `-f` | `Path | None` | *required* | - | Path to a terraform .tfvars file |
+| `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
 
 ### Changes
@@ -52,7 +52,7 @@ Run terraform apply.
 > **Since:** 0.1.0
 
 ```python
-def check_cmd(*, fix: bool = False, diff: bool = False, init_mode: InitMode = <InitMode.AUTO: 'auto'>, include: list[str] = [], exclude: list[str] = [], tflint: bool | None = ...) -> None:
+def check_cmd(*, fix: bool = False, diff: bool = False, init_mode: InitMode = <InitMode.AUTO: 'auto'>, include: list[str] = [], exclude: list[str] = [], tflint: bool | None = None) -> None:
     ...
 ```
 
@@ -67,7 +67,7 @@ Run terraform fmt check + validate (ruff-style).
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
 | `--include` | `list[str]` | `[]` | - | Glob patterns: only matching directories are checked |
 | `--exclude` | `list[str]` | `[]` | - | Glob patterns: matching directories are skipped |
-| `--tflint/--no-tflint` | `bool | None` | *required* | `TFDO_TFLINT` | Run tflint linter alongside fmt+validate |
+| `--tflint/--no-tflint` | `bool | None` | `None` | `TFDO_TFLINT` | Run tflint linter alongside fmt+validate |
 
 ### Changes
 
@@ -83,7 +83,7 @@ Run terraform fmt check + validate (ruff-style).
 > **Since:** 0.1.0
 
 ```python
-def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = ..., init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
     ...
 ```
 
@@ -94,7 +94,7 @@ Run terraform destroy.
 | Flag | Type | Default | Env Var | Description |
 |---|---|---|---|---|
 | `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
-| `--var-file`, `-f` | `Path | None` | *required* | - | Path to a terraform .tfvars file |
+| `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
 
 ### Changes
@@ -111,7 +111,7 @@ Run terraform destroy.
 > **Since:** 0.1.0
 
 ```python
-def init_cmd(*, extra_args: list[str] | None = ...) -> None:
+def init_cmd(*, extra_args: list[str] | None = None) -> None:
     ...
 ```
 
@@ -121,7 +121,7 @@ Run terraform init with retry on transient errors.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `extra_args` (arg) | `list[str] | None` | *required* | Extra arguments forwarded to terraform init |
+| `extra_args` (arg) | `list[str] | None` | `None` | Extra arguments forwarded to terraform init |
 
 ### Changes
 
@@ -137,7 +137,7 @@ Run terraform init with retry on transient errors.
 > **Since:** 0.1.0
 
 ```python
-def plan_cmd(*, out: Path | None = ..., json_output: bool = False, var_file: Path | None = ..., init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def plan_cmd(*, out: Path | None = None, json_output: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
     ...
 ```
 
@@ -147,9 +147,9 @@ Run terraform plan.
 
 | Flag | Type | Default | Env Var | Description |
 |---|---|---|---|---|
-| `-o`, `--out` | `Path | None` | *required* | - | Write the plan to a file |
+| `-o`, `--out` | `Path | None` | `None` | - | Write the plan to a file |
 | `--json` | `bool` | `False` | - | Output plan in JSON format |
-| `--var-file`, `-f` | `Path | None` | *required* | - | Path to a terraform .tfvars file |
+| `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
 
 ### Changes

@@ -45,7 +45,7 @@ def inspect_hcl_paths_cmd(*, path: Path = PosixPath('/Users/espen.albert/agentws
 > **Since:** unreleased
 
 ```python
-def inspect_resource_usage_cmd(*, path: Path = PosixPath('/Users/espen.albert/agentws/py-src/code/tfdo'), mode: str = 'all', input_only: bool = True, provider: str = ..., source: str | None = ..., version: str = '>= 1.0', no_cache: bool = False, include: list[str] = [], exclude: list[str] = []) -> None:
+def inspect_resource_usage_cmd(*, path: Path = PosixPath('/Users/espen.albert/agentws/py-src/code/tfdo'), mode: str = 'all', input_only: bool = True, provider: str = ..., source: str | None = None, version: str = '>= 1.0', no_cache: bool = False, include: list[str] = [], exclude: list[str] = ['.github/*', 'tests/*']) -> None:
     ...
 ```
 
@@ -57,11 +57,11 @@ def inspect_resource_usage_cmd(*, path: Path = PosixPath('/Users/espen.albert/ag
 | `--mode` | `str` | `'all'` | included \| excluded \| all |
 | `--input-only/--no-input-only` | `bool` | `True` | Input paths only in v1 (default: on) |
 | `--provider` | `str` | *required* | required_providers local name (e.g. mongodbatlas) |
-| `--source` | `str | None` | *required* | Registry source namespace/type (optional when tfdo has a built-in default for --provider) |
+| `--source` | `str | None` | `None` | Registry source namespace/type (optional when tfdo has a built-in default for --provider) |
 | `--version` | `str` | `'>= 1.0'` | required_providers version constraint |
 | `--no-cache` | `bool` | `False` | Skip schema cache read and write |
 | `--include` | `list[str]` | `[]` | Glob patterns: only matching directories are checked |
-| `--exclude` | `list[str]` | `[]` | Glob patterns: matching directories are skipped |
+| `--exclude` | `list[str]` | `['.github/*', 'tests/*']` | Glob patterns: matching directories are skipped (default .github/* and tests/*; any --exclude replaces defaults) |
 
 ### Changes
 
