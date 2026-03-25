@@ -179,13 +179,14 @@ def inspect_api_coverage(input_model: ApiCoverageInput) -> ApiCoverageResult:
 
     reports: list[ResourceGapReport] = []
     for entry in api_file.resources:
-        if include_set and entry.resource_type not in include_set:
-            continue
-        if entry.resource_type in exclude_set:
-            continue
-
         tf_type = config.resource_type_mapping.get(entry.resource_type, entry.resource_type)
-        if filter_set and tf_type not in filter_set and entry.resource_type not in filter_set:
+        explicitly_requested = filter_set and (tf_type in filter_set or entry.resource_type in filter_set)
+        if not explicitly_requested:
+            if include_set and entry.resource_type not in include_set:
+                continue
+            if entry.resource_type in exclude_set:
+                continue
+        if filter_set and not explicitly_requested:
             continue
 
         schema = resource_schemas.get(tf_type)

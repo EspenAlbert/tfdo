@@ -109,3 +109,30 @@ def test_include_exclude_filtering(tmp_path: Path) -> None:
     assert "res_a" in types
     assert "res_b" not in types
     assert "res_c" not in types
+
+
+def test_resource_filter_overrides_include_resources(tmp_path: Path) -> None:
+    resources = [
+        {"resource_type": "res_a", "all_paths": ["fieldX"]},
+        {"resource_type": "res_c", "all_paths": ["fieldZ"]},
+    ]
+    api_file = _write_api_attrs(tmp_path, resources)
+    config = CoverageConfig(include_resources=["res_a"])
+
+    module_name = api_coverage_logic.__name__
+    mock_schemas = {"res_c": _SIMPLE_SCHEMA}
+    with patch(
+        f"{module_name}.{load_provider_resource_schemas_with_meta.__name__}", return_value=(mock_schemas, "1.0")
+    ):
+        result = inspect_api_coverage(
+            ApiCoverageInput(
+                settings=TfDoSettings(work_dir=tmp_path),
+                api_attributes_file=api_file,
+                provider="test",
+                coverage_config=config,
+                resource_filter=["res_c"],
+            )
+        )
+    types = [r.api_resource_type for r in result.resources]
+    assert "res_c" in types
+    assert "res_a" not in types
