@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import total_ordering
 
 from pydantic import BaseModel
 
@@ -11,11 +12,16 @@ class MatchingAttributeDescription(BaseModel):
     description: str
 
 
+@total_ordering
 class MatchingSchemaResource(BaseModel):
     name: str
     found_in_rows: bool
     matching_attribute_descriptions: list[MatchingAttributeDescription]
 
+    def __lt__(self, other) -> bool:
+        if not isinstance(other, MatchingSchemaResource):
+            raise TypeError
+        return (self.found_in_rows, self.name) < (other.found_in_rows, other.name)
 
 def _walk_block_descriptions(
     block: SchemaBlock,
@@ -54,4 +60,4 @@ def search_resource_descriptions(
                     matching_attribute_descriptions=matches,
                 )
             )
-    return results
+    return sorted(results)
