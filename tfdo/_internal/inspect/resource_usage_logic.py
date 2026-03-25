@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from enum import StrEnum
 from pathlib import Path
 
 from hcl2.api import load as hcl2_load
@@ -42,14 +43,34 @@ class ProviderMeta(BaseModel):
     version: str
 
 
+class SchemaSearchRowsBehavior(StrEnum):
+    DEFAULT = "default"
+    ONLY_FOUND = "only_found"
+    ONLY_NOT_FOUND = "only_not_found"
+
+
 class SchemaSearch(BaseModel):
     description_keywords: list[str] = Field(default_factory=list)
     resource_ignore: list[str] = Field(default_factory=list)
     include_data_sources: bool = False
+    rows_behavior: SchemaSearchRowsBehavior = SchemaSearchRowsBehavior.DEFAULT
 
     @property
     def has_search_criteria(self) -> bool:
         return bool(self.description_keywords)
+
+
+def matching_resources_after_rows_behavior(
+    items: list[MatchingSchemaResource],
+    behavior: SchemaSearchRowsBehavior,
+) -> list[MatchingSchemaResource]:
+    if behavior == SchemaSearchRowsBehavior.DEFAULT:
+        return items
+    if behavior == SchemaSearchRowsBehavior.ONLY_FOUND:
+        return [r for r in items if r.found_in_rows]
+    if behavior == SchemaSearchRowsBehavior.ONLY_NOT_FOUND:
+        return [r for r in items if not r.found_in_rows]
+    raise ValueError(f"unknown rows_behavior: {behavior!r}")
 
 
 class ResourceUsageResult(BaseModel):
@@ -140,6 +161,7 @@ def schema_search_from_cli_and_optional_file(
         description_keywords=keywords,
         resource_ignore=resource_ignore,
         include_data_sources=file_model.include_data_sources,
+        rows_behavior=file_model.rows_behavior,
     )
     return merged if merged.has_search_criteria else None
 
@@ -182,6 +204,7 @@ def inspect_resource_usage(input_model: ResourceUsageInput) -> ResourceUsageResu
             row_resource_names=row_resource_names,
             resource_ignore=frozenset(input_model.schema_search.resource_ignore),
         )
+        matching = matching_resources_after_rows_behavior(matching, input_model.schema_search.rows_behavior)
     return ResourceUsageResult(
         providers={input_model.provider: provider_meta},
         classify=classified,

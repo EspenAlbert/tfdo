@@ -4,10 +4,13 @@ from pathlib import Path
 
 import pytest
 
+from tfdo._internal.inspect.description_search_logic import MatchingAttributeDescription, MatchingSchemaResource
 from tfdo._internal.inspect.resource_usage_logic import (
     ResourceUsageInput,
     SchemaSearch,
+    SchemaSearchRowsBehavior,
     inspect_resource_usage,
+    matching_resources_after_rows_behavior,
     schema_search_from_cli_and_optional_file,
 )
 from tfdo._internal.inspect.schema_input_classify_logic import SchemaInputClassifyMode
@@ -163,6 +166,118 @@ def test_inspect_resource_usage_no_schema_search_omits_key(monkeypatch: pytest.M
     assert "matching_schema_resources" not in payload
 
 
+def test_matching_resources_after_rows_behavior() -> None:
+    items = [
+        MatchingSchemaResource(
+            name="a",
+            found_in_rows=True,
+            matching_attribute_descriptions=[
+                MatchingAttributeDescription(name="x", keywords=["k"], description="d"),
+            ],
+        ),
+        MatchingSchemaResource(
+            name="b",
+            found_in_rows=False,
+            matching_attribute_descriptions=[
+                MatchingAttributeDescription(name="y", keywords=["k"], description="e"),
+            ],
+        ),
+    ]
+    assert len(matching_resources_after_rows_behavior(items, SchemaSearchRowsBehavior.DEFAULT)) == 2
+    only_f = matching_resources_after_rows_behavior(items, SchemaSearchRowsBehavior.ONLY_FOUND)
+    assert [r.name for r in only_f] == ["a"]
+    only_nf = matching_resources_after_rows_behavior(items, SchemaSearchRowsBehavior.ONLY_NOT_FOUND)
+    assert [r.name for r in only_nf] == ["b"]
+
+
+def test_inspect_resource_usage_rows_behavior_only_found(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    data = _fixture()
+    rs = data["provider_schemas"]["registry.terraform.io/mongodb/mongodbatlas"]["resource_schemas"]
+    rs["mongodbatlas_team"] = json.loads(json.dumps(rs["mongodbatlas_cluster"]))
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(data, "1.0.0"),
+    )
+    (tmp_path / "main.tf").write_text(
+        'resource "mongodbatlas_cluster" "c" { name = "n" }\n',
+        encoding="utf-8",
+    )
+    result = inspect_resource_usage(
+        ResourceUsageInput(
+            settings=TfDoSettings(),
+            root=tmp_path,
+            provider="mongodbatlas",
+            schema_search=SchemaSearch(
+                description_keywords=["name"],
+                rows_behavior=SchemaSearchRowsBehavior.ONLY_FOUND,
+            ),
+        )
+    )
+    assert result.matching_schema_resources is not None
+    assert len(result.matching_schema_resources) == 1
+    assert result.matching_schema_resources[0].name == "mongodbatlas_cluster"
+    assert result.matching_schema_resources[0].found_in_rows
+
+
+def test_inspect_resource_usage_rows_behavior_only_not_found(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    data = _fixture()
+    rs = data["provider_schemas"]["registry.terraform.io/mongodb/mongodbatlas"]["resource_schemas"]
+    rs["mongodbatlas_team"] = json.loads(json.dumps(rs["mongodbatlas_cluster"]))
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(data, "1.0.0"),
+    )
+    (tmp_path / "main.tf").write_text(
+        'resource "mongodbatlas_cluster" "c" { name = "n" }\n',
+        encoding="utf-8",
+    )
+    result = inspect_resource_usage(
+        ResourceUsageInput(
+            settings=TfDoSettings(),
+            root=tmp_path,
+            provider="mongodbatlas",
+            schema_search=SchemaSearch(
+                description_keywords=["name"],
+                rows_behavior=SchemaSearchRowsBehavior.ONLY_NOT_FOUND,
+            ),
+        )
+    )
+    assert result.matching_schema_resources is not None
+    assert len(result.matching_schema_resources) == 1
+    assert result.matching_schema_resources[0].name == "mongodbatlas_team"
+    assert not result.matching_schema_resources[0].found_in_rows
+
+
+def test_inspect_resource_usage_rows_behavior_default_lists_both(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    data = _fixture()
+    rs = data["provider_schemas"]["registry.terraform.io/mongodb/mongodbatlas"]["resource_schemas"]
+    rs["mongodbatlas_team"] = json.loads(json.dumps(rs["mongodbatlas_cluster"]))
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(data, "1.0.0"),
+    )
+    (tmp_path / "main.tf").write_text(
+        'resource "mongodbatlas_cluster" "c" { name = "n" }\n',
+        encoding="utf-8",
+    )
+    result = inspect_resource_usage(
+        ResourceUsageInput(
+            settings=TfDoSettings(),
+            root=tmp_path,
+            provider="mongodbatlas",
+            schema_search=SchemaSearch(description_keywords=["name"]),
+        )
+    )
+    assert result.matching_schema_resources is not None
+    names = {r.name for r in result.matching_schema_resources}
+    assert names == {"mongodbatlas_cluster", "mongodbatlas_team"}
+
+
 def test_schema_search_from_file_only(tmp_path: Path) -> None:
     cfg = tmp_path / "search.json"
     cfg.write_text(
@@ -226,7 +341,7 @@ def test_schema_search_cli_keywords_merge_keeps_file_ignores(tmp_path: Path) -> 
 def test_schema_search_preserves_include_data_sources_from_file(tmp_path: Path) -> None:
     cfg = tmp_path / "search.json"
     cfg.write_text(
-        '{"description_keywords": ["x"], "include_data_sources": true}\n',
+        '{"description_keywords": ["x"], "include_data_sources": true, "rows_behavior": "only_found"}\n',
         encoding="utf-8",
     )
     got = schema_search_from_cli_and_optional_file(
@@ -236,6 +351,7 @@ def test_schema_search_preserves_include_data_sources_from_file(tmp_path: Path) 
     )
     assert got is not None
     assert got.include_data_sources
+    assert got.rows_behavior == SchemaSearchRowsBehavior.ONLY_FOUND
 
 
 def test_schema_search_no_file_no_keywords() -> None:
