@@ -157,6 +157,33 @@ def test_found_in_rows() -> None:
     assert not by_name["res_b"].found_in_rows
 
 
+def test_resource_ignore_skips_resource() -> None:
+    schemas = {
+        "res_a": _schema(
+            SchemaBlock(
+                attributes={
+                    "endpoint": SchemaAttribute(description="The GCP endpoint", type="string"),
+                }
+            )
+        ),
+        "res_b": _schema(
+            SchemaBlock(
+                attributes={
+                    "region": SchemaAttribute(description="GCP region", type="string"),
+                }
+            )
+        ),
+    }
+    result = search_resource_descriptions(
+        schemas,
+        keywords=["gcp"],
+        row_resource_names=set(),
+        resource_ignore=frozenset({"res_b"}),
+    )
+    assert len(result) == 1
+    assert result[0].name == "res_a"
+
+
 def test_sorted_by_name() -> None:
     schemas = {
         "z_resource": _schema(SchemaBlock(attributes={"a": SchemaAttribute(description="GCP thing", type="string")})),

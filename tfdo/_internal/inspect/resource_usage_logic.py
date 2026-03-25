@@ -156,6 +156,7 @@ def inspect_resource_usage(input_model: ResourceUsageInput) -> ResourceUsageResu
             resource_schemas,
             keywords=input_model.schema_search.description_keywords,
             row_resource_names=row_resource_names,
+            resource_ignore=frozenset(input_model.schema_search.resource_ignore),
         )
     return ResourceUsageResult(
         providers={input_model.provider: provider_meta},

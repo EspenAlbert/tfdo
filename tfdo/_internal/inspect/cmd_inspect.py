@@ -69,6 +69,11 @@ def inspect_resource_usage_cmd(
         "--keyword",
         help="Search provider schema descriptions for this keyword (repeatable; case-insensitive substring match)",
     ),
+    resource_ignore: list[str] = typer.Option(
+        [],
+        "--resource-ignore",
+        help="Omit this resource type from description search results (repeatable; only applies with --description-keyword)",
+    ),
     output: Path | None = typer.Option(
         None,
         "--output",
@@ -81,7 +86,11 @@ def inspect_resource_usage_cmd(
     except ValueError:
         logger.error("Invalid --mode; use included, excluded, or all")
         raise typer.Exit(code=1)
-    schema_search = SchemaSearch(description_keywords=description_keywords) if description_keywords else None
+    schema_search = (
+        SchemaSearch(description_keywords=description_keywords, resource_ignore=resource_ignore)
+        if description_keywords
+        else None
+    )
     try:
         result = inspect_resource_usage(
             ResourceUsageInput(

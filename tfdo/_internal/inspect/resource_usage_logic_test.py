@@ -109,6 +109,33 @@ def test_inspect_resource_usage_with_description_keywords(monkeypatch: pytest.Mo
     assert payload["matching_schema_resources"][0]["name"] == "mongodbatlas_cluster"
 
 
+def test_inspect_resource_usage_description_search_respects_resource_ignore(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(_fixture(), "1.0.0"),
+    )
+    (tmp_path / "main.tf").write_text(
+        'resource "mongodbatlas_cluster" "c" { name = "n" }\n',
+        encoding="utf-8",
+    )
+    result = inspect_resource_usage(
+        ResourceUsageInput(
+            settings=TfDoSettings(),
+            root=tmp_path,
+            provider="mongodbatlas",
+            schema_search=SchemaSearch(
+                description_keywords=["name"],
+                resource_ignore=["mongodbatlas_cluster"],
+            ),
+        )
+    )
+    assert result.matching_schema_resources is not None
+    assert result.matching_schema_resources == []
+
+
 def test_inspect_resource_usage_no_schema_search_omits_key(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         schema_inspect,

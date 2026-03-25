@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from functools import total_ordering
 
 from pydantic import BaseModel
@@ -22,6 +23,7 @@ class MatchingSchemaResource(BaseModel):
         if not isinstance(other, MatchingSchemaResource):
             raise TypeError
         return (self.found_in_rows, self.name) < (other.found_in_rows, other.name)
+
 
 def _walk_block_descriptions(
     block: SchemaBlock,
@@ -48,10 +50,13 @@ def search_resource_descriptions(
     *,
     keywords: list[str],
     row_resource_names: set[str],
+    resource_ignore: frozenset[str] = frozenset(),
 ) -> list[MatchingSchemaResource]:
     keywords_lower = [k.lower() for k in keywords]
     results: list[MatchingSchemaResource] = []
     for rname in sorted(resource_schemas):
+        if rname in resource_ignore:
+            continue
         if matches := _walk_block_descriptions(resource_schemas[rname].block, "", keywords_lower):
             results.append(
                 MatchingSchemaResource(

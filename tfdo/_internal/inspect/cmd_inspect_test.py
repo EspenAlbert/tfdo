@@ -92,6 +92,37 @@ def test_inspect_resource_usage_cmd_description_keyword(monkeypatch: pytest.Monk
     assert captured_search["schema_search"].description_keywords == ["gcp", "google"]
 
 
+def test_inspect_resource_usage_cmd_resource_ignore(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured_search: dict = {}
+
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
+        captured_search["schema_search"] = inp.schema_search
+        return resource_usage_logic.ResourceUsageResult(providers={}, classify=SchemaInputClassifyResult())
+
+    monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)
+    result = runner.invoke(
+        app,
+        [
+            "inspect",
+            "resource-usage",
+            "--path",
+            str(tmp_path),
+            "--provider",
+            "mongodbatlas",
+            "--description-keyword",
+            "gcp",
+            "--resource-ignore",
+            "mongodbatlas_project",
+            "--resource-ignore",
+            "other_type",
+        ],
+    )
+    assert result.exit_code == 0
+    schema_search = captured_search["schema_search"]
+    assert schema_search is not None
+    assert schema_search.resource_ignore == ["mongodbatlas_project", "other_type"]
+
+
 def test_inspect_resource_usage_cmd_no_description_keyword(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     captured_search = {}
 
