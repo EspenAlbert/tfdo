@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tfdo._internal.inspect.resource_usage_logic import ResourceUsageInput, inspect_resource_usage
+from tfdo._internal.inspect.resource_usage_logic import ResourceUsageInput, SchemaSearch, inspect_resource_usage
 from tfdo._internal.inspect.schema_input_classify_logic import SchemaInputClassifyMode
 from tfdo._internal.schema import inspect as schema_inspect
 from tfdo._internal.settings import TfDoSettings
@@ -78,6 +78,57 @@ def test_inspect_resource_usage_include_patterns(monkeypatch: pytest.MonkeyPatch
     assert len(result.classify.rows) == 1
     assert result.classify.rows[0].address == "mongodbatlas_cluster.c"
     assert result.providers["mongodbatlas"].version == "1.0.0"
+
+
+def test_inspect_resource_usage_with_description_keywords(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(_fixture(), "1.0.0"),
+    )
+    (tmp_path / "main.tf").write_text(
+        'resource "mongodbatlas_cluster" "c" { name = "n" }\n',
+        encoding="utf-8",
+    )
+    result = inspect_resource_usage(
+        ResourceUsageInput(
+            settings=TfDoSettings(),
+            root=tmp_path,
+            provider="mongodbatlas",
+            schema_search=SchemaSearch(description_keywords=["name"]),
+        )
+    )
+    assert result.matching_schema_resources is not None
+    assert len(result.matching_schema_resources) == 1
+    match = result.matching_schema_resources[0]
+    assert match.name == "mongodbatlas_cluster"
+    assert match.found_in_rows
+    assert match.matching_attribute_descriptions[0].keywords == ["name"]
+    payload = json.loads(result.to_canonical_json())
+    assert "matching_schema_resources" in payload
+    assert payload["matching_schema_resources"][0]["name"] == "mongodbatlas_cluster"
+
+
+def test_inspect_resource_usage_no_schema_search_omits_key(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        schema_inspect,
+        _fetch.__name__,
+        lambda *_a, **_k: schema_inspect.FetchProvidersSchemaResult(_fixture(), "1.0.0"),
+    )
+    (tmp_path / "main.tf").write_text(
+        'resource "mongodbatlas_cluster" "c" { name = "n" }\n',
+        encoding="utf-8",
+    )
+    result = inspect_resource_usage(
+        ResourceUsageInput(
+            settings=TfDoSettings(),
+            root=tmp_path,
+            provider="mongodbatlas",
+        )
+    )
+    assert result.matching_schema_resources is None
+    payload = json.loads(result.to_canonical_json())
+    assert "matching_schema_resources" not in payload
 
 
 def test_inspect_resource_usage_rejects_no_input_only(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

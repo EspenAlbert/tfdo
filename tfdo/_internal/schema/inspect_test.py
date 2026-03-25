@@ -65,11 +65,11 @@ def test_fetch_tf_cli_config_file_skips_cache_and_sets_env(monkeypatch: pytest.M
     )
     try_read.assert_not_called()
     write_mock.assert_not_called()
-    init_in = init_mock.call_args[0][0]
-    assert init_in.env is not None
-    assert tf_cli.TF_CLI_CONFIG_FILE_ENV in init_in.env
-    assert init_in.env[tf_cli.TF_CLI_CONFIG_FILE_ENV].endswith("tfdo.dev.tfrc")
-    assert run_mock.call_args.kwargs.get("env") == init_in.env
+    init_mock.assert_not_called()
+    run_env = run_mock.call_args.kwargs.get("env")
+    assert run_env is not None
+    assert tf_cli.TF_CLI_CONFIG_FILE_ENV in run_env
+    assert run_env[tf_cli.TF_CLI_CONFIG_FILE_ENV].endswith("tfdo.dev.tfrc")
 
 
 def test_fetch_providers_schema_json_cache_hit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

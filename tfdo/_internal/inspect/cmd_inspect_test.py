@@ -64,6 +64,50 @@ def test_inspect_resource_usage_cmd_json(monkeypatch: pytest.MonkeyPatch, tmp_pa
     assert '"errors": []' in out.read_text(encoding="utf-8")
 
 
+def test_inspect_resource_usage_cmd_description_keyword(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured_search = {}
+
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
+        captured_search["schema_search"] = inp.schema_search
+        return resource_usage_logic.ResourceUsageResult(providers={}, classify=SchemaInputClassifyResult())
+
+    monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)
+    result = runner.invoke(
+        app,
+        [
+            "inspect",
+            "resource-usage",
+            "--path",
+            str(tmp_path),
+            "--provider",
+            "mongodbatlas",
+            "--description-keyword",
+            "gcp",
+            "--description-keyword",
+            "google",
+        ],
+    )
+    assert result.exit_code == 0
+    assert captured_search["schema_search"] is not None
+    assert captured_search["schema_search"].description_keywords == ["gcp", "google"]
+
+
+def test_inspect_resource_usage_cmd_no_description_keyword(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured_search = {}
+
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
+        captured_search["schema_search"] = inp.schema_search
+        return resource_usage_logic.ResourceUsageResult(providers={}, classify=SchemaInputClassifyResult())
+
+    monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)
+    result = runner.invoke(
+        app,
+        ["inspect", "resource-usage", "--path", str(tmp_path), "--provider", "mongodbatlas"],
+    )
+    assert result.exit_code == 0
+    assert captured_search["schema_search"] is None
+
+
 def test_inspect_hcl_paths_cmd_logs_rows_and_errors(caplog: pytest.LogCaptureFixture, tmp_path: Path) -> None:
     (tmp_path / "main.tf").write_text('resource "null_resource" "x" { a = 1 }\n', encoding="utf-8")
     (tmp_path / "bad.tf").write_text("not hcl {{\n", encoding="utf-8")

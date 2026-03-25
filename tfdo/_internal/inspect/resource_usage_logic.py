@@ -9,6 +9,10 @@ from pydantic import BaseModel, Field
 
 from tfdo._internal.core.tf_files import iter_tf_files
 from tfdo._internal.inspect import hcl_resource_paths as hrp
+from tfdo._internal.inspect.description_search_logic import (
+    MatchingSchemaResource,
+    search_resource_descriptions,
+)
 from tfdo._internal.inspect.hcl_resource_paths import HclParseError
 from tfdo._internal.inspect.hcl_schema_paths import collect_resource_body_paths_assisted
 from tfdo._internal.inspect.schema_input_classify_logic import (
@@ -37,13 +41,26 @@ class ProviderMeta(BaseModel):
     version: str
 
 
+class SchemaSearch(BaseModel):
+    description_keywords: list[str] = Field(default_factory=list)
+    resource_ignore: list[str] = Field(default_factory=list)
+    include_data_sources: bool = False
+
+    @property
+    def has_search_criteria(self) -> bool:
+        return bool(self.description_keywords)
+
+
 class ResourceUsageResult(BaseModel):
     providers: dict[str, ProviderMeta]
     classify: SchemaInputClassifyResult
+    matching_schema_resources: list[MatchingSchemaResource] | None = None
 
     def to_canonical_json(self, *, error_paths_relative_to: Path | None = None) -> str:
         payload = schema_input_classify_payload(self.classify, error_paths_relative_to=error_paths_relative_to)
         payload["providers"] = {k: v.model_dump(mode="json") for k, v in sorted(self.providers.items())}
+        if self.matching_schema_resources is not None:
+            payload["matching_schema_resources"] = [r.model_dump(mode="json") for r in self.matching_schema_resources]
         return json.dumps(payload, indent=2, sort_keys=True)
 
 
@@ -100,6 +117,7 @@ class ResourceUsageInput(BaseModel):
     no_cache: bool = False
     include_patterns: list[str] = Field(default_factory=list)
     exclude_patterns: list[str] = Field(default_factory=list)
+    schema_search: SchemaSearch | None = None
 
 
 def inspect_resource_usage(input_model: ResourceUsageInput) -> ResourceUsageResult:
@@ -131,4 +149,16 @@ def inspect_resource_usage(input_model: ResourceUsageInput) -> ResourceUsageResu
             continue
         _extend_rows_from_parsed(parsed, rel_file, resource_schemas, input_model.provider, rows_in)
     classified = classify_schema_inputs(SchemaInputClassifyInput(mode=input_model.mode, errors=errors, rows=rows_in))
-    return ResourceUsageResult(providers={input_model.provider: provider_meta}, classify=classified)
+    matching: list[MatchingSchemaResource] | None = None
+    if input_model.schema_search is not None and input_model.schema_search.has_search_criteria:
+        row_resource_names = {row.address.partition(".")[0] for row in rows_in}
+        matching = search_resource_descriptions(
+            resource_schemas,
+            keywords=input_model.schema_search.description_keywords,
+            row_resource_names=row_resource_names,
+        )
+    return ResourceUsageResult(
+        providers={input_model.provider: provider_meta},
+        classify=classified,
+        matching_schema_resources=matching,
+    )

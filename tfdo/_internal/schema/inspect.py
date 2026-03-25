@@ -176,9 +176,9 @@ def fetch_providers_schema_json(
             logger.warning(
                 "TF_CLI_CONFIG_FILE applies to this schema fetch; resolution may follow CLI config or dev_overrides"
             )
-            resolved_version = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ") # dev override label
+            resolved_version = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")  # dev override label
         else:
-            _terraform_init_or_raise(ws, env_for_tf) # not needed for reading schema when dev overrides apply
+            _terraform_init_or_raise(ws, env_for_tf)  # not needed for reading schema when dev overrides apply
             resolved_version = schema_cache.read_resolved_version_from_lock(workspace_root=root, source=source)
         cache_root = schema_cache_root if schema_cache_root is not None else settings.schema_cache_dir
 

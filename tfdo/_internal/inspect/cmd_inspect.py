@@ -5,7 +5,7 @@ import typer
 
 from tfdo._internal import cmd_options
 from tfdo._internal.inspect.inspect_paths_logic import InspectHclPathsInput, inspect_hcl_paths
-from tfdo._internal.inspect.resource_usage_logic import ResourceUsageInput, inspect_resource_usage
+from tfdo._internal.inspect.resource_usage_logic import ResourceUsageInput, SchemaSearch, inspect_resource_usage
 from tfdo._internal.inspect.schema_input_classify_logic import SchemaInputClassifyMode
 from tfdo._internal.json_output import exit_if_output_without_json, write_json_cli_output
 from tfdo._internal.typer_app import app, get_settings
@@ -63,6 +63,12 @@ def inspect_resource_usage_cmd(
         default_patterns=(".github/*", "tests/*"),
         help_text="Glob patterns: matching directories are skipped (default .github/* and tests/*; any --exclude replaces defaults)",
     ),
+    description_keywords: list[str] = typer.Option(
+        [],
+        "--description-keyword",
+        "--keyword",
+        help="Search provider schema descriptions for this keyword (repeatable; case-insensitive substring match)",
+    ),
     output: Path | None = typer.Option(
         None,
         "--output",
@@ -75,6 +81,7 @@ def inspect_resource_usage_cmd(
     except ValueError:
         logger.error("Invalid --mode; use included, excluded, or all")
         raise typer.Exit(code=1)
+    schema_search = SchemaSearch(description_keywords=description_keywords) if description_keywords else None
     try:
         result = inspect_resource_usage(
             ResourceUsageInput(
@@ -88,6 +95,7 @@ def inspect_resource_usage_cmd(
                 no_cache=no_cache,
                 include_patterns=include,
                 exclude_patterns=exclude,
+                schema_search=schema_search,
             )
         )
     except (ValueError, RuntimeError) as e:
