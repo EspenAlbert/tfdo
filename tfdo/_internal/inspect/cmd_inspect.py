@@ -2,10 +2,16 @@ import logging
 from pathlib import Path
 
 import typer
+from model_lib.errors import PayloadError
+from pydantic import ValidationError
 
 from tfdo._internal import cmd_options
 from tfdo._internal.inspect.inspect_paths_logic import InspectHclPathsInput, inspect_hcl_paths
-from tfdo._internal.inspect.resource_usage_logic import ResourceUsageInput, SchemaSearch, inspect_resource_usage
+from tfdo._internal.inspect.resource_usage_logic import (
+    ResourceUsageInput,
+    inspect_resource_usage,
+    schema_search_from_cli_and_optional_file,
+)
 from tfdo._internal.inspect.schema_input_classify_logic import SchemaInputClassifyMode
 from tfdo._internal.json_output import exit_if_output_without_json, write_json_cli_output
 from tfdo._internal.typer_app import app, get_settings
@@ -72,7 +78,12 @@ def inspect_resource_usage_cmd(
     resource_ignore: list[str] = typer.Option(
         [],
         "--resource-ignore",
-        help="Omit this resource type from description search results (repeatable; only applies with --description-keyword)",
+        help="Omit this resource type from description search results (repeatable; only applies with description search)",
+    ),
+    schema_search_path: Path | None = typer.Option(
+        None,
+        "--schema-search",
+        help="JSON/YAML file with SchemaSearch fields; --keyword/--resource-ignore override file when those lists are non-empty",
     ),
     output: Path | None = typer.Option(
         None,
@@ -86,11 +97,15 @@ def inspect_resource_usage_cmd(
     except ValueError:
         logger.error("Invalid --mode; use included, excluded, or all")
         raise typer.Exit(code=1)
-    schema_search = (
-        SchemaSearch(description_keywords=description_keywords, resource_ignore=resource_ignore)
-        if description_keywords
-        else None
-    )
+    try:
+        schema_search = schema_search_from_cli_and_optional_file(
+            schema_search_path=schema_search_path,
+            cli_keywords=description_keywords,
+            cli_resource_ignore=resource_ignore,
+        )
+    except (PayloadError, ValidationError) as e:
+        logger.error(f"{e}")
+        raise typer.Exit(code=1) from e
     try:
         result = inspect_resource_usage(
             ResourceUsageInput(

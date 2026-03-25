@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 from hcl2.api import load as hcl2_load
+from model_lib import parse
 from pydantic import BaseModel, Field
 
 from tfdo._internal.core.tf_files import iter_tf_files
@@ -118,6 +119,29 @@ class ResourceUsageInput(BaseModel):
     include_patterns: list[str] = Field(default_factory=list)
     exclude_patterns: list[str] = Field(default_factory=list)
     schema_search: SchemaSearch | None = None
+
+
+def schema_search_from_cli_and_optional_file(
+    *,
+    schema_search_path: Path | None,
+    cli_keywords: list[str],
+    cli_resource_ignore: list[str],
+) -> SchemaSearch | None:
+    file_model: SchemaSearch | None = None
+    if schema_search_path is not None:
+        file_model = parse.parse_model(schema_search_path.expanduser().resolve(), t=SchemaSearch)
+    if file_model is None:
+        merged = SchemaSearch(description_keywords=cli_keywords, resource_ignore=cli_resource_ignore)
+        return merged if merged.has_search_criteria else None
+
+    keywords = list(cli_keywords) if cli_keywords else list(file_model.description_keywords)
+    resource_ignore = list(cli_resource_ignore) if cli_resource_ignore else list(file_model.resource_ignore)
+    merged = SchemaSearch(
+        description_keywords=keywords,
+        resource_ignore=resource_ignore,
+        include_data_sources=file_model.include_data_sources,
+    )
+    return merged if merged.has_search_criteria else None
 
 
 def inspect_resource_usage(input_model: ResourceUsageInput) -> ResourceUsageResult:

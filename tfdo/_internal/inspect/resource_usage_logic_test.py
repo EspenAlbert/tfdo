@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from tfdo._internal.inspect.resource_usage_logic import ResourceUsageInput, SchemaSearch, inspect_resource_usage
+from tfdo._internal.inspect.resource_usage_logic import (
+    ResourceUsageInput,
+    SchemaSearch,
+    inspect_resource_usage,
+    schema_search_from_cli_and_optional_file,
+)
 from tfdo._internal.inspect.schema_input_classify_logic import SchemaInputClassifyMode
 from tfdo._internal.schema import inspect as schema_inspect
 from tfdo._internal.settings import TfDoSettings
@@ -156,6 +161,105 @@ def test_inspect_resource_usage_no_schema_search_omits_key(monkeypatch: pytest.M
     assert result.matching_schema_resources is None
     payload = json.loads(result.to_canonical_json())
     assert "matching_schema_resources" not in payload
+
+
+def test_schema_search_from_file_only(tmp_path: Path) -> None:
+    cfg = tmp_path / "search.json"
+    cfg.write_text(
+        '{"description_keywords": ["name"], "resource_ignore": ["mongodbatlas_cluster"]}\n',
+        encoding="utf-8",
+    )
+    got = schema_search_from_cli_and_optional_file(
+        schema_search_path=cfg,
+        cli_keywords=[],
+        cli_resource_ignore=[],
+    )
+    assert got is not None
+    assert got.description_keywords == ["name"]
+    assert got.resource_ignore == ["mongodbatlas_cluster"]
+
+
+def test_schema_search_cli_keywords_override_file(tmp_path: Path) -> None:
+    cfg = tmp_path / "search.json"
+    cfg.write_text('{"description_keywords": ["from_file"]}\n', encoding="utf-8")
+    got = schema_search_from_cli_and_optional_file(
+        schema_search_path=cfg,
+        cli_keywords=["from_cli"],
+        cli_resource_ignore=[],
+    )
+    assert got is not None
+    assert got.description_keywords == ["from_cli"]
+
+
+def test_schema_search_cli_ignores_override_file(tmp_path: Path) -> None:
+    cfg = tmp_path / "search.json"
+    cfg.write_text(
+        '{"description_keywords": ["k"], "resource_ignore": ["a", "b"]}\n',
+        encoding="utf-8",
+    )
+    got = schema_search_from_cli_and_optional_file(
+        schema_search_path=cfg,
+        cli_keywords=[],
+        cli_resource_ignore=["c"],
+    )
+    assert got is not None
+    assert got.description_keywords == ["k"]
+    assert got.resource_ignore == ["c"]
+
+
+def test_schema_search_cli_keywords_merge_keeps_file_ignores(tmp_path: Path) -> None:
+    cfg = tmp_path / "search.json"
+    cfg.write_text(
+        '{"description_keywords": ["old"], "resource_ignore": ["mongodbatlas_cluster"]}\n',
+        encoding="utf-8",
+    )
+    got = schema_search_from_cli_and_optional_file(
+        schema_search_path=cfg,
+        cli_keywords=["new_kw"],
+        cli_resource_ignore=[],
+    )
+    assert got is not None
+    assert got.description_keywords == ["new_kw"]
+    assert got.resource_ignore == ["mongodbatlas_cluster"]
+
+
+def test_schema_search_preserves_include_data_sources_from_file(tmp_path: Path) -> None:
+    cfg = tmp_path / "search.json"
+    cfg.write_text(
+        '{"description_keywords": ["x"], "include_data_sources": true}\n',
+        encoding="utf-8",
+    )
+    got = schema_search_from_cli_and_optional_file(
+        schema_search_path=cfg,
+        cli_keywords=["y"],
+        cli_resource_ignore=[],
+    )
+    assert got is not None
+    assert got.include_data_sources
+
+
+def test_schema_search_no_file_no_keywords() -> None:
+    assert (
+        schema_search_from_cli_and_optional_file(
+            schema_search_path=None,
+            cli_keywords=[],
+            cli_resource_ignore=[],
+        )
+        is None
+    )
+
+
+def test_schema_search_file_without_keywords_returns_none(tmp_path: Path) -> None:
+    cfg = tmp_path / "search.json"
+    cfg.write_text('{"resource_ignore": ["mongodbatlas_cluster"]}\n', encoding="utf-8")
+    assert (
+        schema_search_from_cli_and_optional_file(
+            schema_search_path=cfg,
+            cli_keywords=[],
+            cli_resource_ignore=[],
+        )
+        is None
+    )
 
 
 def test_inspect_resource_usage_rejects_no_input_only(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
