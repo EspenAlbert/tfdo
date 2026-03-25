@@ -2,10 +2,16 @@ import logging
 from pathlib import Path
 
 import typer
+from model_lib import parse
 from model_lib.errors import PayloadError
 from pydantic import ValidationError
 
 from tfdo._internal import cmd_options
+from tfdo._internal.inspect.api_coverage_logic import (
+    ApiCoverageInput,
+    CoverageConfig,
+    inspect_api_coverage,
+)
 from tfdo._internal.inspect.inspect_paths_logic import InspectHclPathsInput, inspect_hcl_paths
 from tfdo._internal.inspect.resource_usage_logic import (
     ResourceUsageInput,
@@ -126,3 +132,47 @@ def inspect_resource_usage_cmd(
         logger.error(f"{e}")
         raise typer.Exit(code=1) from e
     write_json_cli_output(f"{result.to_canonical_json(error_paths_relative_to=path)}\n", output=output)
+
+
+@inspect_app.command("api-coverage")
+def inspect_api_coverage_cmd(
+    ctx: typer.Context,
+    api_attributes_file: Path = typer.Option(..., "--api-attributes-file", "-a", help="Path to api-attributes.json"),
+    provider: str = typer.Option("mongodbatlas", "--provider", help="Provider local name"),
+    source: str | None = typer.Option(None, "--source", help="Registry source namespace/type"),
+    version: str = typer.Option(">= 1.0", "--version", help="required_providers version constraint"),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Skip schema cache"),
+    resource: list[str] = typer.Option([], "--resource", help="Filter to specific resource types (repeatable)"),
+    include_computed: bool = typer.Option(
+        True, "--include-computed/--no-include-computed", help="Include computed attrs"
+    ),
+    coverage_config_path: Path | None = typer.Option(
+        None, "--coverage-config", "-c", help="YAML config with resource mapping and known gaps"
+    ),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Write JSON here instead of stdout"),
+) -> None:
+    config: CoverageConfig | None = None
+    if coverage_config_path is not None:
+        try:
+            config = parse.parse_model(coverage_config_path.expanduser().resolve(), t=CoverageConfig)
+        except (PayloadError, ValidationError) as e:
+            logger.error(f"{e}")
+            raise typer.Exit(code=1) from e
+    try:
+        result = inspect_api_coverage(
+            ApiCoverageInput(
+                settings=get_settings(ctx),
+                api_attributes_file=api_attributes_file.expanduser().resolve(),
+                provider=provider,
+                source=source,
+                version=version,
+                no_cache=no_cache,
+                resource_filter=resource,
+                include_computed=include_computed,
+                coverage_config=config,
+            )
+        )
+    except (ValueError, RuntimeError) as e:
+        logger.error(f"{e}")
+        raise typer.Exit(code=1) from e
+    write_json_cli_output(f"{result.to_json()}\n", output=output)
