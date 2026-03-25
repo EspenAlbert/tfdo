@@ -41,13 +41,34 @@ class ResolvedKnown(BaseModel):
 
 
 class CoverageConfig(BaseModel):
-    resource_type_mapping: dict[str, str] = Field(default_factory=dict)
-    include_resources: list[str] = Field(default_factory=list)
-    exclude_resources: list[str] = Field(default_factory=list)
-    name_overrides: dict[str, str] = Field(default_factory=dict)
-    known_schema_only: list[str] = Field(default_factory=list)
-    known_spec_only: list[str] = Field(default_factory=list)
-    resources: dict[str, ResourceKnown] = Field(default_factory=dict)
+    resource_type_mapping: dict[str, str] = Field(
+        default_factory=dict,
+        description="Map api-attributes resource_type to TF resource name, e.g. mongodbatlas_cluster_api: mongodbatlas_advanced_cluster",
+    )
+    include_resources: list[str] = Field(
+        default_factory=list,
+        description="Allowlist of api-attributes resource types to compare, e.g. [mongodbatlas_cluster_api, mongodbatlas_project_api]",
+    )
+    exclude_resources: list[str] = Field(
+        default_factory=list,
+        description="Blocklist applied after include_resources, e.g. [mongodbatlas_event_trigger_api]",
+    )
+    name_overrides: dict[str, str] = Field(
+        default_factory=dict,
+        description="Global snake_case rename: normalized_api_segment -> tf_name, e.g. bi_connector: bi_connector_config",
+    )
+    known_schema_only: list[str] = Field(
+        default_factory=list,
+        description="TF paths with no API equivalent, suppressed from schema_only output, e.g. [project_id, state_name]",
+    )
+    known_spec_only: list[str] = Field(
+        default_factory=list,
+        description="API paths with no TF equivalent, suppressed from api_only output, e.g. [links.href, links.rel]",
+    )
+    resources: dict[str, ResourceKnown] = Field(
+        default_factory=dict,
+        description="Per-resource overrides merged with globals, keyed by api-attributes resource_type",
+    )
 
     def resolve(self, api_resource_type: str) -> ResolvedKnown:
         per_resource = self.resources.get(api_resource_type, ResourceKnown())
