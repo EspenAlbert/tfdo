@@ -4,6 +4,7 @@ import json
 import logging
 from pathlib import Path
 
+from model_lib import parse
 from pydantic import BaseModel, Field
 
 from tfdo._internal.inspect import name_normalize
@@ -15,6 +16,16 @@ from tfdo._internal.settings import TfDoSettings
 logger = logging.getLogger(__name__)
 
 DEFAULT_SPEC_IGNORE_PATHS = frozenset({"links", "envelope", "totalCount", "results"})
+
+
+class ApiResourceEntry(BaseModel):
+    resource_type: str
+    all_paths: list[str] = Field(default_factory=list)
+
+
+class ApiAttributesFile(BaseModel):
+    provider: str = ""
+    resources: list[ApiResourceEntry] = Field(default_factory=list)
 
 
 class ResourceKnown(BaseModel):
@@ -88,9 +99,8 @@ class ApiCoverageResult(BaseModel):
         return json.dumps(self.model_dump(mode="json"), indent=2, sort_keys=True)
 
 
-def _load_api_attributes(path: Path) -> list[dict]:
-    raw = json.loads(path.read_text())
-    return raw.get("resources", [])
+def _load_api_attributes(path: Path) -> ApiAttributesFile:
+    return parse.parse_model(path, t=ApiAttributesFile)
 
 
 def _build_gap_report(
@@ -132,7 +142,7 @@ def _build_gap_report(
 
 def inspect_api_coverage(input_model: ApiCoverageInput) -> ApiCoverageResult:
     config = input_model.coverage_config or CoverageConfig()
-    api_resources = _load_api_attributes(input_model.api_attributes_file)
+    api_file = _load_api_attributes(input_model.api_attributes_file)
 
     resource_schemas, resolved_version = load_provider_resource_schemas_with_meta(
         settings=input_model.settings,
@@ -147,26 +157,24 @@ def inspect_api_coverage(input_model: ApiCoverageInput) -> ApiCoverageResult:
     filter_set = set(input_model.resource_filter) if input_model.resource_filter else None
 
     reports: list[ResourceGapReport] = []
-    for entry in api_resources:
-        api_type: str = entry.get("resource_type", "")
-        if include_set and api_type not in include_set:
+    for entry in api_file.resources:
+        if include_set and entry.resource_type not in include_set:
             continue
-        if api_type in exclude_set:
+        if entry.resource_type in exclude_set:
             continue
 
-        tf_type: str = config.resource_type_mapping.get(api_type, api_type)
-        if filter_set and tf_type not in filter_set and api_type not in filter_set:
+        tf_type = config.resource_type_mapping.get(entry.resource_type, entry.resource_type)
+        if filter_set and tf_type not in filter_set and entry.resource_type not in filter_set:
             continue
 
         schema = resource_schemas.get(tf_type)
         if schema is None:
-            all_paths: list[str] = entry.get("all_paths", [])
-            logger.warning(f"No TF schema for {tf_type!r} (api: {api_type!r}), reporting zero coverage")
+            logger.warning(f"No TF schema for {tf_type!r} (api: {entry.resource_type!r}), reporting zero coverage")
             reports.append(
                 ResourceGapReport(
                     resource_type=tf_type,
-                    api_resource_type=api_type,
-                    api_paths_count=len(all_paths),
+                    api_resource_type=entry.resource_type,
+                    api_paths_count=len(entry.all_paths),
                     schema_paths_count=0,
                     matched=0,
                 )
@@ -174,9 +182,9 @@ def inspect_api_coverage(input_model: ApiCoverageInput) -> ApiCoverageResult:
             continue
 
         tf_paths = resource_schema_input_paths(schema, max_depth=10, include_computed=input_model.include_computed)
-        api_paths = set(entry.get("all_paths", []))
-        resolved = config.resolve(api_type)
-        reports.append(_build_gap_report(api_type, tf_type, api_paths, tf_paths, resolved))
+        api_paths = set(entry.all_paths)
+        resolved = config.resolve(entry.resource_type)
+        reports.append(_build_gap_report(entry.resource_type, tf_type, api_paths, tf_paths, resolved))
 
     total = len(reports)
     avg_pct = sum(r.coverage_pct for r in reports) / total if total else 0.0
