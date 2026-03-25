@@ -78,11 +78,11 @@ class SchemaDiffResult(BaseModel):
 <a id="schema_diff_cmd_def"></a>
 
 ### cli_command: `schema_diff_cmd`
-- [source](../../tfdo/_internal/schema/cmd_schema.py#L67)
+- [source](../../tfdo/_internal/schema/cmd_schema.py#L76)
 > **Since:** 0.4.0
 
 ```python
-def schema_diff_cmd(*, provider: str = ..., source: str | None = None, from_constraint: str | None = None, to_constraint: str | None = None, resource: str | None = None, path_parts: list[str] = [], no_cache: bool = False, as_json: bool = False) -> None:
+def schema_diff_cmd(*, provider: str = ..., source: str | None = None, from_constraint: str | None = None, to_constraint: str | None = None, resource: str | None = None, path_parts: list[str] = [], no_cache: bool = False, as_json: bool = False, output: Path | None = None) -> None:
     ...
 ```
 
@@ -108,6 +108,7 @@ Examples:
 | `--path` | `list[str]` | `[]` | Limit attribute/block detail rows to this path or descendants (repeatable); does not filter resource add/remove lists |
 | `--no-cache` | `bool` | `False` | Skip schema cache read and write |
 | `--json` | `bool` | `False` | Print JSON to stdout |
+| `--output`, `-o` | `Path | None` | `None` | Write JSON here instead of stdout (requires --json) |
 
 ### Changes
 
@@ -119,11 +120,11 @@ Examples:
 <a id="schema_show_cmd_def"></a>
 
 ### cli_command: `schema_show_cmd`
-- [source](../../tfdo/_internal/schema/cmd_schema.py#L23)
+- [source](../../tfdo/_internal/schema/cmd_schema.py#L25)
 > **Since:** 0.4.0
 
 ```python
-def schema_show_cmd(*, provider: str = ..., source: str | None = None, version: str = '>= 1.0', resource: str | None = None, no_cache: bool = False, as_json: bool = False) -> None:
+def schema_show_cmd(*, provider: str = ..., source: str | None = None, version: str = '>= 1.0', resource: str | None = None, no_cache: bool = False, as_json: bool = False, output: Path | None = None) -> None:
     ...
 ```
 
@@ -137,6 +138,7 @@ def schema_show_cmd(*, provider: str = ..., source: str | None = None, version: 
 | `--resource` | `str | None` | `None` | Resource type; omit to list types for the provider |
 | `--no-cache` | `bool` | `False` | Skip schema cache read and write |
 | `--json` | `bool` | `False` | Print JSON to stdout |
+| `--output`, `-o` | `Path | None` | `None` | Write JSON here instead of stdout (requires --json) |
 
 ### Changes
 

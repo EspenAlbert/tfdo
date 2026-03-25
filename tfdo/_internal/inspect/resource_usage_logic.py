@@ -191,7 +191,7 @@ def inspect_resource_usage(input_model: ResourceUsageInput) -> ResourceUsageResu
             with path.open(encoding="utf-8") as f:
                 parsed = hcl2_load(f)
         except Exception as exc:
-            errors.append(hrp._to_parse_error(path, exc))
+            errors.append(hrp.to_parse_error(path, exc))
             continue
         _extend_rows_from_parsed(parsed, rel_file, resource_schemas, input_model.provider, rows_in)
     classified = classify_schema_inputs(SchemaInputClassifyInput(mode=input_model.mode, errors=errors, rows=rows_in))

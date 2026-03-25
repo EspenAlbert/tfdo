@@ -3,11 +3,11 @@
 from tfdo import core
 from tfdo._internal.core.cmd_info import info_cmd
 from tfdo import inspect
+from tfdo import schema
 from tfdo._internal.settings import CheckConfig
 from tfdo._internal.settings import InteractiveMode
 from tfdo._internal.settings import TfDoSettings
 from tfdo._internal.settings import TfDoUserConfig
-from tfdo import schema
 from tfdo._internal.typer_app import get_settings
 from tfdo._internal.typer_app import main_callback
 
@@ -16,11 +16,11 @@ __all__ = [
     "core",
     "info_cmd",
     "inspect",
+    "schema",
     "CheckConfig",
     "InteractiveMode",
     "TfDoSettings",
     "TfDoUserConfig",
-    "schema",
     "get_settings",
     "main_callback",
 ]

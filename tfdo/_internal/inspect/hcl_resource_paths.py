@@ -60,7 +60,7 @@ def collect_resource_argument_paths(root: Path) -> HclResourcePathsResult:
             with path.open(encoding="utf-8") as f:
                 parsed = hcl2_load(f)
         except Exception as exc:
-            errors.append(_to_parse_error(path, exc))
+            errors.append(to_parse_error(path, exc))
             continue
         _merge_parsed_into_file(parsed, rel_file, acc)
     rows = [ResourcePathsRow(file=f, address=a, attribute_paths=sorted(paths)) for (f, a), paths in sorted(acc.items())]
@@ -78,7 +78,8 @@ def _filter_meta_paths(paths: set[str]) -> set[str]:
     return {p for p in paths if not _is_terraform_meta_path(p)}
 
 
-def _to_parse_error(path: Path, exc: BaseException) -> HclParseError:
+def to_parse_error(path: Path, exc: BaseException) -> HclParseError:
+    # getattr needed: hcl2 parser exceptions may carry .line/.column but the concrete type is not guaranteed
     line = getattr(exc, "line", None)
     column = getattr(exc, "column", None)
     if isinstance(line, int) and line < 1:

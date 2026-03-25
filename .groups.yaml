@@ -31,9 +31,16 @@ groups:
 - name: inspect
   owned_modules:
   - _internal.inspect.cmd_inspect
+  - _internal.inspect.description_search_logic
+  - _internal.inspect.resource_usage_logic
   owned_refs:
+  - _internal.inspect.cmd_inspect.inspect_api_coverage_cmd
   - _internal.inspect.cmd_inspect.inspect_hcl_paths_cmd
   - _internal.inspect.cmd_inspect.inspect_resource_usage_cmd
+  - _internal.inspect.description_search_logic.MatchingAttributeDescription
+  - _internal.inspect.description_search_logic.MatchingSchemaResource
+  - _internal.inspect.resource_usage_logic.SchemaSearch
+  - _internal.inspect.resource_usage_logic.SchemaSearchRowsBehavior
 - name: schema
   owned_modules:
   - _internal.schema.cmd_schema

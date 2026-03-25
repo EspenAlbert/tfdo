@@ -1,0 +1,169 @@
+name: schema_input_classify_payload
+ts: 2026-03-24 20:25:12.669100+00:00
+type: keep_private
+full_path: _internal.inspect.schema_input_classify_logic.schema_input_classify_payload
+---
+name: ProviderMeta
+ts: 2026-03-24 20:25:15.827490+00:00
+type: keep_private
+full_path: _internal.inspect.resource_usage_logic.ProviderMeta
+---
+name: ResourceUsageResult
+ts: 2026-03-24 20:25:15.827539+00:00
+type: keep_private
+full_path: _internal.inspect.resource_usage_logic.ResourceUsageResult
+---
+name: write_json_cli_output
+ts: 2026-03-25 21:44:53.491628+00:00
+type: keep_private
+full_path: _internal.json_output.write_json_cli_output
+---
+name: exit_if_output_without_json
+ts: 2026-03-25 21:44:53.491686+00:00
+type: keep_private
+full_path: _internal.json_output.exit_if_output_without_json
+---
+name: matching_resources_after_rows_behavior
+ts: 2026-03-25 21:44:58.666954+00:00
+type: keep_private
+full_path: _internal.inspect.resource_usage_logic.matching_resources_after_rows_behavior
+---
+name: schema_search_from_cli_and_optional_file
+ts: 2026-03-25 21:44:58.667035+00:00
+type: keep_private
+full_path: _internal.inspect.resource_usage_logic.schema_search_from_cli_and_optional_file
+---
+name: normalize_api_path
+ts: 2026-03-25 21:45:01.833579+00:00
+type: keep_private
+full_path: _internal.inspect.name_normalize.normalize_api_path
+---
+name: build_name_mapping
+ts: 2026-03-25 21:45:01.833642+00:00
+type: keep_private
+full_path: _internal.inspect.name_normalize.build_name_mapping
+---
+name: to_parse_error
+ts: 2026-03-25 21:45:03.950875+00:00
+type: keep_private
+full_path: _internal.inspect.hcl_resource_paths.to_parse_error
+---
+name: search_resource_descriptions
+ts: 2026-03-25 21:45:07.117299+00:00
+type: keep_private
+full_path: _internal.inspect.description_search_logic.search_resource_descriptions
+---
+name: inspect_api_coverage_cmd
+ts: 2026-03-25 21:45:07.120285+00:00
+type: make_public
+details: CLI command in _internal/inspect/cmd_inspect.py
+full_path: _internal.inspect.cmd_inspect.inspect_api_coverage_cmd
+group: inspect
+---
+name: inspect_api_coverage
+ts: 2026-03-25 21:45:11.266197+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.inspect_api_coverage
+---
+name: inspect
+ts: 2026-03-25 21:45:39.610176+00:00
+type: group_module
+module_path: _internal.inspect.resource_usage_logic
+---
+name: SchemaSearchRowsBehavior
+ts: 2026-03-25 21:45:39.611668+00:00
+type: make_public
+details: created in _internal/inspect/resource_usage_logic.py
+full_path: _internal.inspect.resource_usage_logic.SchemaSearchRowsBehavior
+group: inspect
+---
+name: SchemaSearch
+ts: 2026-03-25 21:45:39.613335+00:00
+type: make_public
+details: created in _internal/inspect/resource_usage_logic.py
+full_path: _internal.inspect.resource_usage_logic.SchemaSearch
+group: inspect
+---
+name: NameMapping
+ts: 2026-03-25 21:46:04.121552+00:00
+type: keep_private
+full_path: _internal.inspect.name_normalize.NameMapping
+---
+name: inspect
+ts: 2026-03-25 21:46:20.763787+00:00
+type: group_module
+module_path: _internal.inspect.description_search_logic
+---
+name: MatchingAttributeDescription
+ts: 2026-03-25 21:46:20.766777+00:00
+type: make_public
+details: created in _internal/inspect/description_search_logic.py
+full_path: _internal.inspect.description_search_logic.MatchingAttributeDescription
+group: inspect
+---
+name: MatchingSchemaResource
+ts: 2026-03-25 21:46:20.769324+00:00
+type: make_public
+details: created in _internal/inspect/description_search_logic.py
+full_path: _internal.inspect.description_search_logic.MatchingSchemaResource
+group: inspect
+---
+name: ApiResourceEntry
+ts: 2026-03-25 21:46:37.894572+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.ApiResourceEntry
+---
+name: ApiAttributesFile
+ts: 2026-03-25 21:46:37.894685+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.ApiAttributesFile
+---
+name: ResourceKnown
+ts: 2026-03-25 21:46:37.894693+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.ResourceKnown
+---
+name: ResolvedKnown
+ts: 2026-03-25 21:46:37.894699+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.ResolvedKnown
+---
+name: CoverageConfig
+ts: 2026-03-25 21:46:37.894705+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.CoverageConfig
+---
+name: ApiCoverageInput
+ts: 2026-03-25 21:46:37.894710+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.ApiCoverageInput
+---
+name: ResourceGapReport
+ts: 2026-03-25 21:46:37.894717+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.ResourceGapReport
+---
+name: CoverageSummary
+ts: 2026-03-25 21:46:37.894723+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.CoverageSummary
+---
+name: ApiCoverageResult
+ts: 2026-03-25 21:46:37.894728+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.ApiCoverageResult
+---
+name: ''
+ts: 2026-03-25 21:46:53.509594+00:00
+type: fix
+author: Espen Albert
+ignored: true
+message: 'fix(json_output): Resolve output path before writing JSON and update log message format
+
+
+  - Updated `write_json_cli_output` to resolve the output path using `expanduser().resolve()` before writing the JSON file.
+
+  - Modified the log message to display the resolved output path without quotes for consistency.
+
+  - Enhanced tests to verify the correct logging of the output path when writing JSON files.'
+short_sha: e49244

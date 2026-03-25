@@ -102,7 +102,7 @@ def test_hcl_resource_paths_canonical_json_relativize_falls_back_outside_root(tm
 
 
 def test_to_parse_error_clamps_non_positive_line_column() -> None:
-    e = hrp._to_parse_error(Path("a.tf"), _ExcWithNonPositiveLineCol())
+    e = hrp.to_parse_error(Path("a.tf"), _ExcWithNonPositiveLineCol())
     assert e.line is None
     assert e.column is None
 

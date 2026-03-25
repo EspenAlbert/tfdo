@@ -105,16 +105,16 @@ class ResourceGapReport(BaseModel):
 
 
 class CoverageSummary(BaseModel):
-    total_resources: int
-    avg_coverage_pct: float
-    resources_with_gaps: int
+    total_resources: int = 0
+    avg_coverage_pct: float = 0.0
+    resources_with_gaps: int = 0
 
 
 class ApiCoverageResult(BaseModel):
     provider: str
     version: str
     resources: list[ResourceGapReport] = Field(default_factory=list)
-    summary: CoverageSummary = CoverageSummary(total_resources=0, avg_coverage_pct=0.0, resources_with_gaps=0)
+    summary: CoverageSummary = Field(default_factory=lambda: CoverageSummary())
 
     def to_json(self) -> str:
         return json.dumps(self.model_dump(mode="json"), indent=2, sort_keys=True)
@@ -180,14 +180,14 @@ def inspect_api_coverage(input_model: ApiCoverageInput) -> ApiCoverageResult:
     reports: list[ResourceGapReport] = []
     for entry in api_file.resources:
         tf_type = config.resource_type_mapping.get(entry.resource_type, entry.resource_type)
-        explicitly_requested = filter_set and (tf_type in filter_set or entry.resource_type in filter_set)
-        if not explicitly_requested:
+        if filter_set:
+            if tf_type not in filter_set and entry.resource_type not in filter_set:
+                continue
+        else:
             if include_set and entry.resource_type not in include_set:
                 continue
             if entry.resource_type in exclude_set:
                 continue
-        if filter_set and not explicitly_requested:
-            continue
 
         schema = resource_schemas.get(tf_type)
         if schema is None:
