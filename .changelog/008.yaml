@@ -152,18 +152,3 @@ name: ApiCoverageResult
 ts: 2026-03-25 21:46:37.894728+00:00
 type: keep_private
 full_path: _internal.inspect.api_coverage_logic.ApiCoverageResult
----
-name: ''
-ts: 2026-03-25 21:46:53.509594+00:00
-type: fix
-author: Espen Albert
-ignored: true
-message: 'fix(json_output): Resolve output path before writing JSON and update log message format
-
-
-  - Updated `write_json_cli_output` to resolve the output path using `expanduser().resolve()` before writing the JSON file.
-
-  - Modified the log message to display the resolved output path without quotes for consistency.
-
-  - Enhanced tests to verify the correct logging of the output path when writing JSON files.'
-short_sha: e49244
