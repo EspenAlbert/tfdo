@@ -152,3 +152,8 @@ name: ApiCoverageResult
 ts: 2026-03-25 21:46:37.894728+00:00
 type: keep_private
 full_path: _internal.inspect.api_coverage_logic.ApiCoverageResult
+---
+name: 0.5.0
+ts: 2026-03-25 22:01:01.789232+00:00
+type: release
+old_version: 0.4.0

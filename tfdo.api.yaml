@@ -1,5 +1,5 @@
 pkg_import_name: tfdo
-version: 0.4.0
+version: 0.5.0
 groups:
 - name: __ROOT__
   symbols:
@@ -741,10 +741,174 @@ groups:
       return_type_imports: []
 - name: inspect
   symbols:
+  - name: inspect_api_coverage_cmd
+    module_path: _internal.inspect.cmd_inspect
+    docstring: ''
+    line_number: 137
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: api_attributes_file
+        kind: positional_or_keyword
+        type_annotation: Path
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: provider
+        kind: positional_or_keyword
+        type_annotation: str
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: source
+        kind: positional_or_keyword
+        type_annotation: str | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: version
+        kind: positional_or_keyword
+        type_annotation: str
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: no_cache
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: resource
+        kind: positional_or_keyword
+        type_annotation: list[str]
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: include_computed
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: coverage_config_path
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: output
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: api_attributes_file
+      type_annotation: Path
+      flags:
+      - --api-attributes-file
+      - -a
+      help: Path to api-attributes.json
+      required: true
+      is_argument: false
+      hidden: false
+    - param_name: provider
+      type_annotation: str
+      flags:
+      - --provider
+      help: Provider local name
+      default_repr: '''mongodbatlas'''
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: source
+      type_annotation: str | None
+      flags:
+      - --source
+      help: Registry source namespace/type
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: version
+      type_annotation: str
+      flags:
+      - --version
+      help: required_providers version constraint
+      default_repr: '''>= 1.0'''
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: no_cache
+      type_annotation: bool
+      flags:
+      - --no-cache
+      help: Skip schema cache
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: resource
+      type_annotation: list[str]
+      flags:
+      - --resource
+      help: Filter to specific resource types (repeatable)
+      default_repr: '[]'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: include_computed
+      type_annotation: bool
+      flags:
+      - --include-computed/--no-include-computed
+      help: Include computed attrs
+      default_repr: 'True'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: coverage_config_path
+      type_annotation: Path | None
+      flags:
+      - --coverage-config
+      - -c
+      help: YAML config with resource mapping and known gaps
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: output
+      type_annotation: Path | None
+      flags:
+      - --output
+      - -o
+      help: Write JSON here instead of stdout
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
   - name: inspect_hcl_paths_cmd
     module_path: _internal.inspect.cmd_inspect
     docstring: ''
-    line_number: 19
+    line_number: 31
     type: cli_command
     signature:
       parameters:
@@ -763,6 +927,14 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
+      - name: output
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
       return_annotation: None
       return_type_imports: []
     cli_params:
@@ -772,7 +944,7 @@ groups:
       - --path
       - -p
       help: Root directory to scan for Terraform files
-      default_repr: PosixPath('/home/runner/work/tfdo/tfdo')
+      default_repr: Path('.')
       required: false
       is_argument: false
       hidden: false
@@ -785,10 +957,20 @@ groups:
       required: false
       is_argument: false
       hidden: false
+    - param_name: output
+      type_annotation: Path | None
+      flags:
+      - --output
+      - -o
+      help: Write JSON here instead of stdout (requires --json)
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
   - name: inspect_resource_usage_cmd
     module_path: _internal.inspect.cmd_inspect
     docstring: ''
-    line_number: 36
+    line_number: 55
     type: cli_command
     signature:
       parameters:
@@ -861,6 +1043,36 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
+      - name: description_keywords
+        kind: positional_or_keyword
+        type_annotation: list[str]
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: resource_ignore
+        kind: positional_or_keyword
+        type_annotation: list[str]
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: schema_search_path
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: output
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
       return_annotation: None
       return_type_imports: []
     cli_params:
@@ -870,7 +1082,7 @@ groups:
       - --path
       - -p
       help: Root directory to scan for Terraform files
-      default_repr: PosixPath('/home/runner/work/tfdo/tfdo')
+      default_repr: Path('.')
       required: false
       is_argument: false
       hidden: false
@@ -945,12 +1157,164 @@ groups:
       required: false
       is_argument: false
       hidden: false
+    - param_name: description_keywords
+      type_annotation: list[str]
+      flags:
+      - --description-keyword
+      - --keyword
+      help: Search provider schema descriptions for this keyword (repeatable; case-insensitive substring match)
+      default_repr: '[]'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: resource_ignore
+      type_annotation: list[str]
+      flags:
+      - --resource-ignore
+      help: Omit this resource type from description search results (repeatable; only applies with description search)
+      default_repr: '[]'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: schema_search_path
+      type_annotation: Path | None
+      flags:
+      - --schema-search
+      help: JSON/YAML file with SchemaSearch fields; --keyword/--resource-ignore override file when those lists are non-empty
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: output
+      type_annotation: Path | None
+      flags:
+      - --output
+      - -o
+      help: Write JSON here instead of stdout
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+  - name: MatchingAttributeDescription
+    module_path: _internal.inspect.description_search_logic
+    docstring: ''
+    line_number: 10
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: name
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: keywords
+      type_annotation: list[str]
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: description
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+  - name: MatchingSchemaResource
+    module_path: _internal.inspect.description_search_logic
+    docstring: ''
+    line_number: 16
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: name
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: found_in_rows
+      type_annotation: bool
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: matching_attribute_descriptions
+      type_annotation: list[MatchingAttributeDescription]
+      type_imports:
+      - tfdo._internal.inspect.description_search_logic.MatchingAttributeDescription
+      is_class_var: false
+      is_computed: false
+  - name: SchemaSearch
+    module_path: _internal.inspect.resource_usage_logic
+    docstring: ''
+    line_number: 52
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: description_keywords
+      type_annotation: list[str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: resource_ignore
+      type_annotation: list[str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: include_data_sources
+      type_annotation: bool
+      type_imports: []
+      default:
+        value_repr: 'False'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: rows_behavior
+      type_annotation: SchemaSearchRowsBehavior
+      type_imports:
+      - tfdo._internal.inspect.resource_usage_logic.SchemaSearchRowsBehavior
+      default:
+        value_repr: '<SchemaSearchRowsBehavior.DEFAULT: ''default''>'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+  - name: SchemaSearchRowsBehavior
+    module_path: _internal.inspect.resource_usage_logic
+    docstring: ''
+    line_number: 46
+    type: class
+    mro_bases:
+    - StrEnum
+    - str
+    - ReprEnum
+    - Enum
+    num_direct_bases: 1
+    init_signature:
+      parameters:
+      - name: self
+        kind: positional_or_keyword
+        type_imports: []
+      - name: args
+        kind: var_positional
+        type_imports: []
+      - name: kwds
+        kind: var_keyword
+        type_imports: []
+      return_type_imports: []
 - name: schema
   symbols:
   - name: schema_diff_cmd
     module_path: _internal.schema.cmd_schema
     docstring: "Compare resource schemas for two version constraints or for registry vs local dev plugin.\n\nExamples:\n    tfdo schema diff --provider mongodbatlas --from 1.18.0 --to 1.19.0\n    tfdo schema diff --provider aws --source hashicorp/aws --from 5.0.0 --to 5.1.0 --json\n    tfdo schema diff --provider mongodbatlas --from 1.18.0\n    tfdo schema diff --provider mongodbatlas --from 1.18.0 --to dev\n    tfdo schema diff --provider mongodbatlas --to 1.19.0\n    tfdo schema diff --provider mongodbatlas --from 1.18.0 --to 1.19.0 --resource mongodbatlas_cluster --path region\n"
-    line_number: 67
+    line_number: 76
     type: cli_command
     signature:
       parameters:
@@ -1012,6 +1376,14 @@ groups:
         kind: positional_or_keyword
         type_annotation: bool
         type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: output
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -1089,10 +1461,20 @@ groups:
       required: false
       is_argument: false
       hidden: false
+    - param_name: output
+      type_annotation: Path | None
+      flags:
+      - --output
+      - -o
+      help: Write JSON here instead of stdout (requires --json)
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
   - name: schema_show_cmd
     module_path: _internal.schema.cmd_schema
     docstring: ''
-    line_number: 23
+    line_number: 25
     type: cli_command
     signature:
       parameters:
@@ -1140,6 +1522,14 @@ groups:
         kind: positional_or_keyword
         type_annotation: bool
         type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: output
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -1196,6 +1586,16 @@ groups:
       - --json
       help: Print JSON to stdout
       default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: output
+      type_annotation: Path | None
+      flags:
+      - --output
+      - -o
+      help: Write JSON here instead of stdout (requires --json)
+      default_repr: None
       required: false
       is_argument: false
       hidden: false
@@ -1283,4 +1683,4 @@ groups:
         is_factory: true
       is_class_var: false
       is_computed: false
-dumped_at: 2026-03-24 10:26:38.483521+00:00
+dumped_at: 2026-03-25 22:01:01.716434+00:00

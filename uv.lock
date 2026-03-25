@@ -1064,6 +1064,7 @@ version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "ask-shell" },
+    { name = "model-lib" },
     { name = "python-hcl2" },
 ]
 
@@ -1100,6 +1101,7 @@ release = [
 [package.metadata]
 requires-dist = [
     { name = "ask-shell" },
+    { name = "model-lib" },
     { name = "python-hcl2", specifier = ">=7.1" },
 ]
 

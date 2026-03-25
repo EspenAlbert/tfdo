@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 2026-03-25T22-01Z
+
+### Inspect
+- New function `inspect_api_coverage_cmd`
+- New class `SchemaSearchRowsBehavior`
+- New class `SchemaSearch`
+- New class `MatchingAttributeDescription`
+- New class `MatchingSchemaResource`
+
+
 ## 0.4.0 2026-03-24T10-26Z
 
 ### Inspect

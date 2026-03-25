@@ -84,7 +84,7 @@ def inspect_resource_usage_cmd(*, path: Path = Path('.'), mode: str = 'all', inp
 
 ### class: `MatchingAttributeDescription`
 - [source](../../tfdo/_internal/inspect/description_search_logic.py#L10)
-> **Since:** unreleased
+> **Since:** 0.5.0
 
 ```python
 class MatchingAttributeDescription(BaseModel):
@@ -95,22 +95,22 @@ class MatchingAttributeDescription(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| name | `str` | - | unreleased |
-| keywords | `list[str]` | - | unreleased |
-| description | `str` | - | unreleased |
+| name | `str` | - | 0.5.0 |
+| keywords | `list[str]` | - | 0.5.0 |
+| description | `str` | - | 0.5.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.5.0 | Made public |
 <!-- === OK_EDIT: pkg-ext matchingattributedescription_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext matchingschemaresource_def === -->
 <a id="matchingschemaresource_def"></a>
 
 ### class: `MatchingSchemaResource`
 - [source](../../tfdo/_internal/inspect/description_search_logic.py#L16)
-> **Since:** unreleased
+> **Since:** 0.5.0
 
 ```python
 class MatchingSchemaResource(BaseModel):
@@ -121,22 +121,22 @@ class MatchingSchemaResource(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| name | `str` | - | unreleased |
-| found_in_rows | `bool` | - | unreleased |
-| matching_attribute_descriptions | `list[MatchingAttributeDescription]` | - | unreleased |
+| name | `str` | - | 0.5.0 |
+| found_in_rows | `bool` | - | 0.5.0 |
+| matching_attribute_descriptions | `list[MatchingAttributeDescription]` | - | 0.5.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.5.0 | Made public |
 <!-- === OK_EDIT: pkg-ext matchingschemaresource_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext schemasearch_def === -->
 <a id="schemasearch_def"></a>
 
 ### class: `SchemaSearch`
 - [source](../../tfdo/_internal/inspect/resource_usage_logic.py#L52)
-> **Since:** unreleased
+> **Since:** 0.5.0
 
 ```python
 class SchemaSearch(BaseModel):
@@ -148,23 +148,23 @@ class SchemaSearch(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| description_keywords | `list[str]` | `...` | unreleased |
-| resource_ignore | `list[str]` | `...` | unreleased |
-| include_data_sources | `bool` | `False` | unreleased |
-| rows_behavior | `SchemaSearchRowsBehavior` | `<SchemaSearchRowsBehavior.DEFAULT: 'default'>` | unreleased |
+| description_keywords | `list[str]` | `...` | 0.5.0 |
+| resource_ignore | `list[str]` | `...` | 0.5.0 |
+| include_data_sources | `bool` | `False` | 0.5.0 |
+| rows_behavior | `SchemaSearchRowsBehavior` | `<SchemaSearchRowsBehavior.DEFAULT: 'default'>` | 0.5.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.5.0 | Made public |
 <!-- === OK_EDIT: pkg-ext schemasearch_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext schemasearchrowsbehavior_def === -->
 <a id="schemasearchrowsbehavior_def"></a>
 
 ### class: `SchemaSearchRowsBehavior`
 - [source](../../tfdo/_internal/inspect/resource_usage_logic.py#L46)
-> **Since:** unreleased
+> **Since:** 0.5.0
 
 ```python
 class SchemaSearchRowsBehavior(StrEnum):
@@ -175,14 +175,14 @@ class SchemaSearchRowsBehavior(StrEnum):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.5.0 | Made public |
 <!-- === OK_EDIT: pkg-ext schemasearchrowsbehavior_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext inspect_api_coverage_cmd_def === -->
 <a id="inspect_api_coverage_cmd_def"></a>
 
 ### cli_command: `inspect_api_coverage_cmd`
 - [source](../../tfdo/_internal/inspect/cmd_inspect.py#L137)
-> **Since:** unreleased
+> **Since:** 0.5.0
 
 ```python
 def inspect_api_coverage_cmd(*, api_attributes_file: Path = ..., provider: str = 'mongodbatlas', source: str | None = None, version: str = '>= 1.0', no_cache: bool = False, resource: list[str] = [], include_computed: bool = True, coverage_config_path: Path | None = None, output: Path | None = None) -> None:
@@ -207,5 +207,5 @@ def inspect_api_coverage_cmd(*, api_attributes_file: Path = ..., provider: str =
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.5.0 | Made public |
 <!-- === OK_EDIT: pkg-ext inspect_api_coverage_cmd_def === -->
