@@ -102,7 +102,7 @@ def test_hcl_resource_paths_canonical_json_relativize_falls_back_outside_root(tm
 
 
 def test_to_parse_error_clamps_non_positive_line_column() -> None:
-    e = hrp._to_parse_error(Path("a.tf"), _ExcWithNonPositiveLineCol())
+    e = hrp.to_parse_error(Path("a.tf"), _ExcWithNonPositiveLineCol())
     assert e.line is None
     assert e.column is None
 
@@ -113,6 +113,24 @@ def test_merge_skips_non_object_resource_entries() -> None:
         {"resource": [1, {"aws_instance": "bad"}, {"aws_instance": {"lbl": "notdict"}}]}, Path("f.tf"), acc
     )
     assert acc == {}
+
+
+def test_lifecycle_precondition_dict_body_emits_no_lifecycle_paths() -> None:
+    body = {
+        "bucket": "b",
+        "lifecycle": {
+            "precondition": [
+                {
+                    "condition": "length(local.x) >= 3",
+                    "error_message": "too short",
+                }
+            ],
+        },
+    }
+    paths = hrp._filter_meta_paths(hrp._paths_from_resource_body(body))
+    assert "lifecycle" not in paths
+    assert not any(p.startswith("lifecycle.") for p in paths)
+    assert "bucket" in paths
 
 
 def test_paths_helpers_cover_dynamic_and_nested_branches() -> None:

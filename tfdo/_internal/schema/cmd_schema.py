@@ -1,9 +1,11 @@
 import json
 import logging
 import sys
+from pathlib import Path
 
 import typer
 
+from tfdo._internal.json_output import exit_if_output_without_json, write_json_cli_output
 from tfdo._internal.schema.diff import (
     DEV_SIDE_TOKEN,
     SchemaDiffInput,
@@ -33,7 +35,14 @@ def schema_show_cmd(
     resource: str | None = typer.Option(None, "--resource", help="Resource type; omit to list types for the provider"),
     no_cache: bool = typer.Option(False, "--no-cache", help="Skip schema cache read and write"),
     as_json: bool = typer.Option(False, "--json", help="Print JSON to stdout"),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write JSON here instead of stdout (requires --json)",
+    ),
 ) -> None:
+    exit_if_output_without_json(as_json=as_json, output=output, logger=logger)
     try:
         result = schema_show(
             SchemaShowInput(
@@ -49,7 +58,7 @@ def schema_show_cmd(
         logger.error(f"{e}")
         raise typer.Exit(code=1) from e
     if as_json:
-        sys.stdout.write(f"{result.to_canonical_json()}\n")
+        write_json_cli_output(f"{result.to_canonical_json()}\n", output=output)
         return
     if result.resource is None:
         logger.info(f"{len(result.resource_names)} resource type(s)")
@@ -95,6 +104,12 @@ def schema_diff_cmd(
     ),
     no_cache: bool = typer.Option(False, "--no-cache", help="Skip schema cache read and write"),
     as_json: bool = typer.Option(False, "--json", help="Print JSON to stdout"),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write JSON here instead of stdout (requires --json)",
+    ),
 ) -> None:
     """Compare resource schemas for two version constraints or for registry vs local dev plugin.
 
@@ -106,6 +121,7 @@ def schema_diff_cmd(
         tfdo schema diff --provider mongodbatlas --to 1.19.0
         tfdo schema diff --provider mongodbatlas --from 1.18.0 --to 1.19.0 --resource mongodbatlas_cluster --path region
     """
+    exit_if_output_without_json(as_json=as_json, output=output, logger=logger)
     try:
         left, right = resolve_schema_diff_sides(from_constraint, to_constraint)
         paths = [p.strip() for p in path_parts if p.strip()] or None
@@ -125,6 +141,6 @@ def schema_diff_cmd(
         logger.error(f"{e}")
         raise typer.Exit(code=1) from e
     if as_json:
-        sys.stdout.write(result.to_json())
+        write_json_cli_output(result.to_json(), output=output)
         return
     render_schema_diff_rich(result)

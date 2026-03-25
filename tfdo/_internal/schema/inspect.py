@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import NamedTuple
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class FetchProvidersSchemaResult(NamedTuple):
     payload: dict
-    resolved_version: str | None
+    resolved_version: str
 
 
 def render_providers_tf(*, local_name: str, source: str, version: str) -> str:
@@ -72,12 +73,6 @@ def _env_for_schema_fetch(
     return _env_registry_only()
 
 
-def _warn_if_tf_cli_config_applies(env_for_tf: dict[str, str] | None) -> None:
-    if not _subprocess_sees_tf_cli_config_file(env_for_tf):
-        return
-    logger.warning("TF_CLI_CONFIG_FILE applies to this schema fetch; resolution may follow CLI config or dev_overrides")
-
-
 def _terraform_init_or_raise(settings: TfDoSettings, env_for_tf: dict[str, str] | None) -> None:
     init_result = executor.init(InitInput(settings=settings, extra_args=["-input=false", "-no-color"], env=env_for_tf))
     if init_result.exit_code != 0:
@@ -87,24 +82,15 @@ def _terraform_init_or_raise(settings: TfDoSettings, env_for_tf: dict[str, str] 
         raise RuntimeError(msg)
 
 
-def _read_resolved_version_or_warn(workspace_root: Path, source: str) -> str | None:
-    resolved = schema_cache.read_resolved_version_from_lock(workspace_root=workspace_root, source=source)
-    if resolved is None:
-        logger.warning(
-            "could not determine resolved provider version from lock file; schema cache disabled for this run"
-        )
-    return resolved
-
-
 def _try_disk_cache_read(
     *,
     skip_disk_cache: bool,
-    resolved: str | None,
+    resolved: str,
     cache_root: Path,
     local_name: str,
     source: str,
 ) -> FetchProvidersSchemaResult | None:
-    if skip_disk_cache or resolved is None:
+    if skip_disk_cache:
         return None
     rel = schema_cache.cache_relative_path(
         local_name=local_name,
@@ -143,13 +129,13 @@ def _providers_schema_json_or_raise(
 def _disk_cache_write_if_enabled(
     *,
     skip_disk_cache: bool,
-    resolved: str | None,
+    resolved: str,
     cache_root: Path,
     local_name: str,
     source: str,
     payload: dict,
 ) -> None:
-    if skip_disk_cache or resolved is None:
+    if skip_disk_cache:
         return
     rel = schema_cache.cache_relative_path(
         local_name=local_name,
@@ -181,20 +167,24 @@ def fetch_providers_schema_json(
             workspace_root=root,
             registry_source=source,
         )
-        _warn_if_tf_cli_config_applies(env_for_tf)
         skip_disk_cache = _skip_schema_disk_cache(
             no_cache=no_cache,
             use_dev_overrides=use_dev_overrides,
             env_for_tf=env_for_tf,
         )
-
-        _terraform_init_or_raise(ws, env_for_tf)
-        resolved = _read_resolved_version_or_warn(root, source)
+        if _subprocess_sees_tf_cli_config_file(env_for_tf):
+            logger.warning(
+                "TF_CLI_CONFIG_FILE applies to this schema fetch; resolution may follow CLI config or dev_overrides"
+            )
+            resolved_version = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")  # dev override label
+        else:
+            _terraform_init_or_raise(ws, env_for_tf)  # not needed for reading schema when dev overrides apply
+            resolved_version = schema_cache.read_resolved_version_from_lock(workspace_root=root, source=source)
         cache_root = schema_cache_root if schema_cache_root is not None else settings.schema_cache_dir
 
         if hit := _try_disk_cache_read(
             skip_disk_cache=skip_disk_cache,
-            resolved=resolved,
+            resolved=resolved_version,
             cache_root=cache_root,
             local_name=local_name,
             source=source,
@@ -204,10 +194,10 @@ def fetch_providers_schema_json(
         payload = _providers_schema_json_or_raise(settings, root, env_for_tf)
         _disk_cache_write_if_enabled(
             skip_disk_cache=skip_disk_cache,
-            resolved=resolved,
+            resolved=resolved_version,
             cache_root=cache_root,
             local_name=local_name,
             source=source,
             payload=payload,
         )
-        return FetchProvidersSchemaResult(payload, resolved)
+        return FetchProvidersSchemaResult(payload, resolved_version)

@@ -21,15 +21,184 @@ def test_inspect_hcl_paths_cmd_json(tmp_path: Path) -> None:
     assert "null_resource.x" in result.stdout
 
 
+def test_inspect_hcl_paths_cmd_json_output_file(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "main.tf").write_text('resource "null_resource" "x" {}\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    caplog.set_level(logging.INFO)
+    result = runner.invoke(
+        app,
+        ["inspect", "hcl-paths", "--path", ".", "--json", "-o", "nested/out.json"],
+    )
+    assert result.exit_code == 0
+    out = (tmp_path / "nested" / "out.json").resolve()
+    assert str(out) in caplog.text
+    assert "Wrote JSON to" in caplog.text
+    assert "null_resource.x" in out.read_text(encoding="utf-8")
+
+
+def test_inspect_hcl_paths_cmd_output_requires_json(tmp_path: Path) -> None:
+    out = tmp_path / "out.json"
+    result = runner.invoke(app, ["inspect", "hcl-paths", "--path", str(tmp_path), "-o", str(out)])
+    assert result.exit_code == 1
+
+
 def test_inspect_resource_usage_cmd_json(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    def fake(inp: resource_usage_logic.ResourceUsageInput) -> SchemaInputClassifyResult:
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
         assert inp.exclude_patterns == [".github/*", "tests/*"]
-        return SchemaInputClassifyResult()
+        return resource_usage_logic.ResourceUsageResult(providers={}, classify=SchemaInputClassifyResult())
 
     monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)
     result = runner.invoke(app, ["inspect", "resource-usage", "--path", str(tmp_path), "--provider", "mongodbatlas"])
     assert result.exit_code == 0
     assert '"errors": []' in result.stdout
+    out = tmp_path / "ru.json"
+    result_o = runner.invoke(
+        app,
+        ["inspect", "resource-usage", "--path", str(tmp_path), "--provider", "mongodbatlas", "-o", str(out)],
+    )
+    assert result_o.exit_code == 0
+    assert '"errors": []' in out.read_text(encoding="utf-8")
+
+
+def test_inspect_resource_usage_cmd_description_keyword(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured_search = {}
+
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
+        captured_search["schema_search"] = inp.schema_search
+        return resource_usage_logic.ResourceUsageResult(providers={}, classify=SchemaInputClassifyResult())
+
+    monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)
+    result = runner.invoke(
+        app,
+        [
+            "inspect",
+            "resource-usage",
+            "--path",
+            str(tmp_path),
+            "--provider",
+            "mongodbatlas",
+            "--description-keyword",
+            "gcp",
+            "--description-keyword",
+            "google",
+        ],
+    )
+    assert result.exit_code == 0
+    assert captured_search["schema_search"] is not None
+    assert captured_search["schema_search"].description_keywords == ["gcp", "google"]
+
+
+def test_inspect_resource_usage_cmd_resource_ignore(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured_search: dict = {}
+
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
+        captured_search["schema_search"] = inp.schema_search
+        return resource_usage_logic.ResourceUsageResult(providers={}, classify=SchemaInputClassifyResult())
+
+    monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)
+    result = runner.invoke(
+        app,
+        [
+            "inspect",
+            "resource-usage",
+            "--path",
+            str(tmp_path),
+            "--provider",
+            "mongodbatlas",
+            "--description-keyword",
+            "gcp",
+            "--resource-ignore",
+            "mongodbatlas_project",
+            "--resource-ignore",
+            "other_type",
+        ],
+    )
+    assert result.exit_code == 0
+    schema_search = captured_search["schema_search"]
+    assert schema_search is not None
+    assert schema_search.resource_ignore == ["mongodbatlas_project", "other_type"]
+
+
+def test_inspect_resource_usage_cmd_schema_search_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured: dict = {}
+
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
+        captured["schema_search"] = inp.schema_search
+        return resource_usage_logic.ResourceUsageResult(providers={}, classify=SchemaInputClassifyResult())
+
+    monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)
+    cfg = tmp_path / "ss.json"
+    cfg.write_text('{"description_keywords": ["gcp"]}\n', encoding="utf-8")
+    result = runner.invoke(
+        app,
+        [
+            "inspect",
+            "resource-usage",
+            "--path",
+            str(tmp_path),
+            "--provider",
+            "mongodbatlas",
+            "--schema-search",
+            str(cfg),
+        ],
+    )
+    assert result.exit_code == 0
+    assert captured["schema_search"] is not None
+    assert captured["schema_search"].description_keywords == ["gcp"]
+
+
+def test_inspect_resource_usage_cmd_schema_search_keyword_overrides_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict = {}
+
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
+        captured["schema_search"] = inp.schema_search
+        return resource_usage_logic.ResourceUsageResult(providers={}, classify=SchemaInputClassifyResult())
+
+    monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)
+    cfg = tmp_path / "ss.json"
+    cfg.write_text('{"description_keywords": ["from_file"], "resource_ignore": ["t1"]}\n', encoding="utf-8")
+    result = runner.invoke(
+        app,
+        [
+            "inspect",
+            "resource-usage",
+            "--path",
+            str(tmp_path),
+            "--provider",
+            "mongodbatlas",
+            "--schema-search",
+            str(cfg),
+            "--description-keyword",
+            "from_cli",
+        ],
+    )
+    assert result.exit_code == 0
+    s = captured["schema_search"]
+    assert s is not None
+    assert s.description_keywords == ["from_cli"]
+    assert s.resource_ignore == ["t1"]
+
+
+def test_inspect_resource_usage_cmd_no_description_keyword(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured_search = {}
+
+    def fake(inp: resource_usage_logic.ResourceUsageInput) -> resource_usage_logic.ResourceUsageResult:
+        captured_search["schema_search"] = inp.schema_search
+        return resource_usage_logic.ResourceUsageResult(providers={}, classify=SchemaInputClassifyResult())
+
+    monkeypatch.setattr(cmd_inspect, cmd_inspect.inspect_resource_usage.__name__, fake)
+    result = runner.invoke(
+        app,
+        ["inspect", "resource-usage", "--path", str(tmp_path), "--provider", "mongodbatlas"],
+    )
+    assert result.exit_code == 0
+    assert captured_search["schema_search"] is None
 
 
 def test_inspect_hcl_paths_cmd_logs_rows_and_errors(caplog: pytest.LogCaptureFixture, tmp_path: Path) -> None:

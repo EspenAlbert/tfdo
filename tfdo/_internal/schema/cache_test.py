@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tfdo._internal.schema import cache as schema_cache
 
 
@@ -43,20 +45,23 @@ provider "registry.terraform.io/mongodb/mongodbatlas" {
 
 
 def test_read_resolved_version_missing_lock_file(tmp_path: Path) -> None:
-    assert schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas") is None
+    with pytest.raises(ValueError, match=r"\.terraform\.lock\.hcl missing"):
+        schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
 
 
-def test_read_resolved_version_unparseable_lock_logs_warning(tmp_path: Path) -> None:
+def test_read_resolved_version_unparseable_lock_raises(tmp_path: Path) -> None:
     (tmp_path / ".terraform.lock.hcl").write_text("not valid hcl {{{\n", encoding="utf-8")
-    assert schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas") is None
+    with pytest.raises(ValueError, match="failed to parse"):
+        schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
 
 
 def test_read_resolved_version_provider_blocks_not_list(tmp_path: Path) -> None:
     (tmp_path / ".terraform.lock.hcl").write_text('x = "y"\n', encoding="utf-8")
-    assert schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas") is None
+    with pytest.raises(ValueError, match="no provider block list"):
+        schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
 
 
-def test_read_resolved_version_empty_version_returns_none(tmp_path: Path) -> None:
+def test_read_resolved_version_empty_version_raises(tmp_path: Path) -> None:
     addr = schema_cache.lock_provider_address("mongodb/mongodbatlas")
     (tmp_path / ".terraform.lock.hcl").write_text(
         f"""
@@ -66,10 +71,11 @@ provider "{addr}" {{
 """,
         encoding="utf-8",
     )
-    assert schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas") is None
+    with pytest.raises(ValueError, match="missing or invalid version"):
+        schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
 
 
-def test_read_resolved_version_multi_element_version_list_returns_none(tmp_path: Path) -> None:
+def test_read_resolved_version_multi_element_version_list_raises(tmp_path: Path) -> None:
     addr = schema_cache.lock_provider_address("mongodb/mongodbatlas")
     (tmp_path / ".terraform.lock.hcl").write_text(
         f"""
@@ -79,7 +85,21 @@ provider "{addr}" {{
 """,
         encoding="utf-8",
     )
-    assert schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas") is None
+    with pytest.raises(ValueError, match="missing or invalid version"):
+        schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
+
+
+def test_read_resolved_version_provider_not_in_lock_raises(tmp_path: Path) -> None:
+    (tmp_path / ".terraform.lock.hcl").write_text(
+        """
+provider "registry.terraform.io/hashicorp/random" {
+  version = "3.0.0"
+}
+""",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="not found"):
+        schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
 
 
 def test_read_resolved_version_coerces_list_version(tmp_path: Path) -> None:

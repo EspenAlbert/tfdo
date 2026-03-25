@@ -1,13 +1,25 @@
 import logging
-import sys
 from pathlib import Path
 
 import typer
+from model_lib import parse
+from model_lib.errors import PayloadError
+from pydantic import ValidationError
 
 from tfdo._internal import cmd_options
+from tfdo._internal.inspect.api_coverage_logic import (
+    ApiCoverageInput,
+    CoverageConfig,
+    inspect_api_coverage,
+)
 from tfdo._internal.inspect.inspect_paths_logic import InspectHclPathsInput, inspect_hcl_paths
-from tfdo._internal.inspect.resource_usage_logic import ResourceUsageInput, inspect_resource_usage
+from tfdo._internal.inspect.resource_usage_logic import (
+    ResourceUsageInput,
+    inspect_resource_usage,
+    schema_search_from_cli_and_optional_file,
+)
 from tfdo._internal.inspect.schema_input_classify_logic import SchemaInputClassifyMode
+from tfdo._internal.json_output import exit_if_output_without_json, write_json_cli_output
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
@@ -20,10 +32,17 @@ app.add_typer(inspect_app, name="inspect")
 def inspect_hcl_paths_cmd(
     path: Path = typer.Option(Path.cwd(), "--path", "-p", help="Root directory to scan for Terraform files"),
     as_json: bool = typer.Option(False, "--json", help="Print JSON to stdout"),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write JSON here instead of stdout (requires --json)",
+    ),
 ) -> None:
+    exit_if_output_without_json(as_json=as_json, output=output, logger=logger)
     result = inspect_hcl_paths(InspectHclPathsInput(root=path))
     if as_json:
-        sys.stdout.write(f"{result.to_canonical_json()}\n")
+        write_json_cli_output(f"{result.to_canonical_json()}\n", output=output)
         return
     for row in result.rows:
         logger.info(f"{row.file} {row.address}:")
@@ -56,12 +75,43 @@ def inspect_resource_usage_cmd(
         default_patterns=(".github/*", "tests/*"),
         help_text="Glob patterns: matching directories are skipped (default .github/* and tests/*; any --exclude replaces defaults)",
     ),
+    description_keywords: list[str] = typer.Option(
+        [],
+        "--description-keyword",
+        "--keyword",
+        help="Search provider schema descriptions for this keyword (repeatable; case-insensitive substring match)",
+    ),
+    resource_ignore: list[str] = typer.Option(
+        [],
+        "--resource-ignore",
+        help="Omit this resource type from description search results (repeatable; only applies with description search)",
+    ),
+    schema_search_path: Path | None = typer.Option(
+        None,
+        "--schema-search",
+        help="JSON/YAML file with SchemaSearch fields; --keyword/--resource-ignore override file when those lists are non-empty",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write JSON here instead of stdout",
+    ),
 ) -> None:
     try:
         mode_e = SchemaInputClassifyMode(mode.lower())
     except ValueError:
         logger.error("Invalid --mode; use included, excluded, or all")
         raise typer.Exit(code=1)
+    try:
+        schema_search = schema_search_from_cli_and_optional_file(
+            schema_search_path=schema_search_path,
+            cli_keywords=description_keywords,
+            cli_resource_ignore=resource_ignore,
+        )
+    except (PayloadError, ValidationError) as e:
+        logger.error(f"{e}")
+        raise typer.Exit(code=1) from e
     try:
         result = inspect_resource_usage(
             ResourceUsageInput(
@@ -75,9 +125,54 @@ def inspect_resource_usage_cmd(
                 no_cache=no_cache,
                 include_patterns=include,
                 exclude_patterns=exclude,
+                schema_search=schema_search,
             )
         )
     except (ValueError, RuntimeError) as e:
         logger.error(f"{e}")
         raise typer.Exit(code=1) from e
-    sys.stdout.write(f"{result.to_canonical_json(error_paths_relative_to=path)}\n")
+    write_json_cli_output(f"{result.to_canonical_json(error_paths_relative_to=path)}\n", output=output)
+
+
+@inspect_app.command("api-coverage")
+def inspect_api_coverage_cmd(
+    ctx: typer.Context,
+    api_attributes_file: Path = typer.Option(..., "--api-attributes-file", "-a", help="Path to api-attributes.json"),
+    provider: str = typer.Option("mongodbatlas", "--provider", help="Provider local name"),
+    source: str | None = typer.Option(None, "--source", help="Registry source namespace/type"),
+    version: str = typer.Option(">= 1.0", "--version", help="required_providers version constraint"),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Skip schema cache"),
+    resource: list[str] = typer.Option([], "--resource", help="Filter to specific resource types (repeatable)"),
+    include_computed: bool = typer.Option(
+        True, "--include-computed/--no-include-computed", help="Include computed attrs"
+    ),
+    coverage_config_path: Path | None = typer.Option(
+        None, "--coverage-config", "-c", help="YAML config with resource mapping and known gaps"
+    ),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Write JSON here instead of stdout"),
+) -> None:
+    config: CoverageConfig | None = None
+    if coverage_config_path is not None:
+        try:
+            config = parse.parse_model(coverage_config_path.expanduser().resolve(), t=CoverageConfig)
+        except (PayloadError, ValidationError) as e:
+            logger.error(f"{e}")
+            raise typer.Exit(code=1) from e
+    try:
+        result = inspect_api_coverage(
+            ApiCoverageInput(
+                settings=get_settings(ctx),
+                api_attributes_file=api_attributes_file.expanduser().resolve(),
+                provider=provider,
+                source=source,
+                version=version,
+                no_cache=no_cache,
+                resource_filter=resource,
+                include_computed=include_computed,
+                coverage_config=config,
+            )
+        )
+    except (ValueError, RuntimeError) as e:
+        logger.error(f"{e}")
+        raise typer.Exit(code=1) from e
+    write_json_cli_output(f"{result.to_json()}\n", output=output)

@@ -15,20 +15,19 @@ def lock_provider_address(source: str) -> str:
     return f"{REGISTRY_HOST_PREFIX}{source}"
 
 
-def read_resolved_version_from_lock(*, workspace_root: Path, source: str) -> str | None:
+def read_resolved_version_from_lock(*, workspace_root: Path, source: str) -> str:
     lock_path = workspace_root / ".terraform.lock.hcl"
     if not lock_path.is_file():
-        return None
+        raise ValueError(f".terraform.lock.hcl missing under {workspace_root}")
     addr = lock_provider_address(source)
     try:
         with lock_path.open(encoding="utf-8") as f:
             data = hcl2_load(f)
-    except Exception:
-        logger.warning("failed to parse .terraform.lock.hcl at %s", lock_path)
-        return None
+    except Exception as e:
+        raise ValueError(f"failed to parse .terraform.lock.hcl at {lock_path}") from e
     blocks = data.get("provider")
     if not isinstance(blocks, list):
-        return None
+        raise ValueError(f".terraform.lock.hcl at {lock_path} has no provider block list")
     for block in blocks:
         if not isinstance(block, dict):
             continue
@@ -36,13 +35,13 @@ def read_resolved_version_from_lock(*, workspace_root: Path, source: str) -> str
             continue
         inner = block[addr]
         if not isinstance(inner, dict):
-            return None
+            raise ValueError(f"provider {addr!r} in {lock_path} is not an object")
         raw_ver = inner.get("version")
         ver = _coerce_version_string(raw_ver)
         if ver:
             return ver
-        return None
-    return None
+        raise ValueError(f"provider {addr!r} in {lock_path} has missing or invalid version: {raw_ver!r}")
+    raise ValueError(f"provider {addr!r} not found in {lock_path}")
 
 
 def _coerce_version_string(raw_ver: object) -> str | None:

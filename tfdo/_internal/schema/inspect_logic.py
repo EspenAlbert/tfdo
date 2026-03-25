@@ -66,7 +66,7 @@ def _raw_resource_schemas_for_provider(
     version: str,
     no_cache: bool,
     use_dev_overrides: bool = True,
-) -> tuple[dict[str, Any], str | None]:
+) -> tuple[dict[str, Any], str]:
     source_resolved = resolve_registry_source(provider=provider, source=source)
     fetched = schema_inspect.fetch_providers_schema_json(
         settings,
@@ -117,7 +117,7 @@ def load_provider_resource_schemas_with_meta(
     version: str = ">= 1.0",
     no_cache: bool = False,
     use_dev_overrides: bool = True,
-) -> tuple[dict[str, ResourceSchema], str | None]:
+) -> tuple[dict[str, ResourceSchema], str]:
     rschemas, ver = _raw_resource_schemas_for_provider(
         settings=settings,
         provider=provider,

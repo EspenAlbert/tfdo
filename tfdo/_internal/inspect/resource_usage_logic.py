@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import json
 import logging
+from enum import StrEnum
 from pathlib import Path
 
 from hcl2.api import load as hcl2_load
+from model_lib import parse
 from pydantic import BaseModel, Field
 
 from tfdo._internal.core.tf_files import iter_tf_files
 from tfdo._internal.inspect import hcl_resource_paths as hrp
+from tfdo._internal.inspect.description_search_logic import (
+    MatchingSchemaResource,
+    search_resource_descriptions,
+)
 from tfdo._internal.inspect.hcl_resource_paths import HclParseError
 from tfdo._internal.inspect.hcl_schema_paths import collect_resource_body_paths_assisted
 from tfdo._internal.inspect.schema_input_classify_logic import (
@@ -16,8 +23,12 @@ from tfdo._internal.inspect.schema_input_classify_logic import (
     SchemaInputClassifyResult,
     SchemaInputClassifyRowInput,
     classify_schema_inputs,
+    schema_input_classify_payload,
 )
-from tfdo._internal.schema.inspect_logic import load_provider_resource_schemas
+from tfdo._internal.schema.inspect_logic import (
+    load_provider_resource_schemas_with_meta,
+    resolve_registry_source,
+)
 from tfdo._internal.schema.models import ResourceSchema
 from tfdo._internal.schema.resource_input_paths import resource_schema_input_paths
 from tfdo._internal.settings import TfDoSettings
@@ -25,6 +36,54 @@ from tfdo._internal.settings import TfDoSettings
 logger = logging.getLogger(__name__)
 
 _V1_OUTPUT_PATHS_MSG = "Output path comparison is not implemented; use input-only (default). Omit --no-input-only."
+
+
+class ProviderMeta(BaseModel):
+    source: str
+    version: str
+
+
+class SchemaSearchRowsBehavior(StrEnum):
+    DEFAULT = "default"
+    ONLY_FOUND = "only_found"
+    ONLY_NOT_FOUND = "only_not_found"
+
+
+class SchemaSearch(BaseModel):
+    description_keywords: list[str] = Field(default_factory=list)
+    resource_ignore: list[str] = Field(default_factory=list)
+    include_data_sources: bool = False
+    rows_behavior: SchemaSearchRowsBehavior = SchemaSearchRowsBehavior.DEFAULT
+
+    @property
+    def has_search_criteria(self) -> bool:
+        return bool(self.description_keywords)
+
+
+def matching_resources_after_rows_behavior(
+    items: list[MatchingSchemaResource],
+    behavior: SchemaSearchRowsBehavior,
+) -> list[MatchingSchemaResource]:
+    if behavior == SchemaSearchRowsBehavior.DEFAULT:
+        return items
+    if behavior == SchemaSearchRowsBehavior.ONLY_FOUND:
+        return [r for r in items if r.found_in_rows]
+    if behavior == SchemaSearchRowsBehavior.ONLY_NOT_FOUND:
+        return [r for r in items if not r.found_in_rows]
+    raise ValueError(f"unknown rows_behavior: {behavior!r}")
+
+
+class ResourceUsageResult(BaseModel):
+    providers: dict[str, ProviderMeta]
+    classify: SchemaInputClassifyResult
+    matching_schema_resources: list[MatchingSchemaResource] | None = None
+
+    def to_canonical_json(self, *, error_paths_relative_to: Path | None = None) -> str:
+        payload = schema_input_classify_payload(self.classify, error_paths_relative_to=error_paths_relative_to)
+        payload["providers"] = {k: v.model_dump(mode="json") for k, v in sorted(self.providers.items())}
+        if self.matching_schema_resources is not None:
+            payload["matching_schema_resources"] = [r.model_dump(mode="json") for r in self.matching_schema_resources]
+        return json.dumps(payload, indent=2, sort_keys=True)
 
 
 def _resource_type_cli_namespace(resource_type: str) -> str:
@@ -80,18 +139,45 @@ class ResourceUsageInput(BaseModel):
     no_cache: bool = False
     include_patterns: list[str] = Field(default_factory=list)
     exclude_patterns: list[str] = Field(default_factory=list)
+    schema_search: SchemaSearch | None = None
 
 
-def inspect_resource_usage(input_model: ResourceUsageInput) -> SchemaInputClassifyResult:
+def schema_search_from_cli_and_optional_file(
+    *,
+    schema_search_path: Path | None,
+    cli_keywords: list[str],
+    cli_resource_ignore: list[str],
+) -> SchemaSearch | None:
+    file_model: SchemaSearch | None = None
+    if schema_search_path is not None:
+        file_model = parse.parse_model(schema_search_path.expanduser().resolve(), t=SchemaSearch)
+    if file_model is None:
+        merged = SchemaSearch(description_keywords=cli_keywords, resource_ignore=cli_resource_ignore)
+        return merged if merged.has_search_criteria else None
+
+    keywords = list(cli_keywords) if cli_keywords else list(file_model.description_keywords)
+    resource_ignore = list(cli_resource_ignore) if cli_resource_ignore else list(file_model.resource_ignore)
+    merged = SchemaSearch(
+        description_keywords=keywords,
+        resource_ignore=resource_ignore,
+        include_data_sources=file_model.include_data_sources,
+        rows_behavior=file_model.rows_behavior,
+    )
+    return merged if merged.has_search_criteria else None
+
+
+def inspect_resource_usage(input_model: ResourceUsageInput) -> ResourceUsageResult:
     if not input_model.input_only:
         raise ValueError(_V1_OUTPUT_PATHS_MSG)
-    resource_schemas = load_provider_resource_schemas(
+    resolved_source = resolve_registry_source(provider=input_model.provider, source=input_model.source)
+    resource_schemas, resolved_version = load_provider_resource_schemas_with_meta(
         settings=input_model.settings,
         provider=input_model.provider,
         source=input_model.source,
         version=input_model.version,
         no_cache=input_model.no_cache,
     )
+    provider_meta = ProviderMeta(source=resolved_source, version=resolved_version)
     rows_in: list[SchemaInputClassifyRowInput] = []
     errors: list[HclParseError] = []
     root_resolved = input_model.root.resolve()
@@ -105,7 +191,22 @@ def inspect_resource_usage(input_model: ResourceUsageInput) -> SchemaInputClassi
             with path.open(encoding="utf-8") as f:
                 parsed = hcl2_load(f)
         except Exception as exc:
-            errors.append(hrp._to_parse_error(path, exc))
+            errors.append(hrp.to_parse_error(path, exc))
             continue
         _extend_rows_from_parsed(parsed, rel_file, resource_schemas, input_model.provider, rows_in)
-    return classify_schema_inputs(SchemaInputClassifyInput(mode=input_model.mode, errors=errors, rows=rows_in))
+    classified = classify_schema_inputs(SchemaInputClassifyInput(mode=input_model.mode, errors=errors, rows=rows_in))
+    matching: list[MatchingSchemaResource] | None = None
+    if input_model.schema_search is not None and input_model.schema_search.has_search_criteria:
+        row_resource_names = {row.address.partition(".")[0] for row in rows_in}
+        matching = search_resource_descriptions(
+            resource_schemas,
+            keywords=input_model.schema_search.description_keywords,
+            row_resource_names=row_resource_names,
+            resource_ignore=frozenset(input_model.schema_search.resource_ignore),
+        )
+        matching = matching_resources_after_rows_behavior(matching, input_model.schema_search.rows_behavior)
+    return ResourceUsageResult(
+        providers={input_model.provider: provider_meta},
+        classify=classified,
+        matching_schema_resources=matching,
+    )
