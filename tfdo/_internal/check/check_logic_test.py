@@ -447,8 +447,8 @@ def test_dir_check_result_tflint_has_issues():
 
 def test_resolve_tflint_cli_overrides(tmp_path: Path):
     settings = _make_settings(tmp_path)
-    assert resolve_tflint(True, settings)
-    assert not resolve_tflint(False, settings)
+    assert resolve_tflint(True, settings, layers=[])
+    assert not resolve_tflint(False, settings, layers=[])
 
 
 def test_resolve_tflint_user_config(tmp_path: Path):
@@ -457,13 +457,13 @@ def test_resolve_tflint_user_config(tmp_path: Path):
         config_path = settings.user_config_path
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text("check:\n  tflint: true\n")
-        assert resolve_tflint(None, settings)
+        assert resolve_tflint(None, settings, layers=[])
 
 
 def test_resolve_tflint_default(tmp_path: Path):
     settings = _make_settings(tmp_path)
     with patch(_patch_user_config_dir, return_value=str(tmp_path / "config")):
-        assert not resolve_tflint(None, settings)
+        assert not resolve_tflint(None, settings, layers=[])
 
 
 def test_load_user_config_missing_file(tmp_path: Path):
