@@ -93,12 +93,3 @@ def load_user_config(settings: TfDoSettings) -> TfDoUserConfig:
     except Exception:
         logger.warning(f"failed to parse user config at {path}")
         return TfDoUserConfig()
-
-
-def resolve_tflint_flag(cli_value: bool | None, settings: TfDoSettings) -> bool:
-    if cli_value is not None:
-        return cli_value
-    user_config = load_user_config(settings)
-    if user_config.check and user_config.check.tflint:
-        return True
-    return False
