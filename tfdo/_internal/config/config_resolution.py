@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TypeVar
+
 from pydantic import BaseModel
 
 from tfdo._internal.config.config_file import ConfigLayer
@@ -11,8 +13,9 @@ from tfdo._internal.config.config_model import (
 )
 from tfdo._internal.settings import CheckConfig, TfDoSettings, TfDoUserConfig, load_user_config
 
-DEFAULT_BINARY = "terraform"
 DEFAULT_TAGS_INJECT = False
+
+_T = TypeVar("_T")
 
 
 class ResolvedConfig(BaseModel):
@@ -27,7 +30,7 @@ class ResolvedConfig(BaseModel):
     check: CheckConfig
 
 
-def _first_non_none(*values):
+def _first_non_none(*values: _T | None) -> _T | None:
     for v in values:
         if v is not None:
             return v
@@ -62,11 +65,12 @@ def resolve_config(
     extra = extra_tags or {}
     local = configs[0]
 
-    scalar_values = [c.binary for c in configs]
-    binary = _first_non_none(*scalar_values, settings.binary) or DEFAULT_BINARY
+    binary = _first_non_none(*(c.binary for c in configs), settings.binary)
+    assert binary is not None, "binary is required (should be there in settings)"
     tf_version = _first_non_none(*(c.tf_version for c in configs), settings.tf_version)
     backend = _first_non_none(*(c.backend for c in configs))
-    tags_inject = _first_non_none(*(c.tags_inject for c in configs)) or DEFAULT_TAGS_INJECT
+    tags_inject_raw = _first_non_none(*(c.tags_inject for c in configs))
+    tags_inject = tags_inject_raw if tags_inject_raw is not None else DEFAULT_TAGS_INJECT
     check_config = _first_non_none(*(c.check for c in configs), user_config.check) or CheckConfig()
 
     return ResolvedConfig(
@@ -85,11 +89,11 @@ def resolve_config(
 def resolve_tflint(
     cli_value: bool | None,
     settings: TfDoSettings,
-    layers: list[ConfigLayer] | None = None,
+    layers: list[ConfigLayer],
 ) -> bool:
     if cli_value is not None:
         return cli_value
-    for layer in layers or []:
+    for layer in layers:
         if layer.config.check and layer.config.check.tflint:
             return True
     user_config = load_user_config(settings)

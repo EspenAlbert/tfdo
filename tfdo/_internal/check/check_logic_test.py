@@ -442,7 +442,7 @@ def test_dir_check_result_tflint_has_issues():
     assert dr.has_issues
 
 
-# --- user config / resolve_tflint_flag tests ---
+# --- user config / resolve_tflint tests ---
 
 
 def test_resolve_tflint_cli_overrides(tmp_path: Path):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from tfdo._internal.config.enums import BackendType, LifecycleEvent
 from tfdo._internal.settings import CheckConfig
@@ -55,10 +55,10 @@ class TfDoConfig(BaseModel):
     check: CheckConfig | None = None
     tags_inject: bool | None = None
 
-    tags: dict[str, str] = {}
-    hook_configs: list[HookConfig] = []
+    tags: dict[str, str] = Field(default_factory=dict)
+    hook_configs: list[HookConfig] = Field(default_factory=list)
 
-    dependencies: list[DependencyRef] = []
-    var_files: list[str] = []
+    dependencies: list[DependencyRef] = Field(default_factory=list)
+    var_files: list[str] = Field(default_factory=list)
 
     run_dir_discovery: str | None = None
