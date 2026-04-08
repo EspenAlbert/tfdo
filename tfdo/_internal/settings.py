@@ -74,6 +74,9 @@ class TfDoSettings(StaticSettings):
     def schema_cache_dir(self) -> Path:
         return Path(platformdirs.user_cache_dir(self.app_name())) / SCHEMA_CACHE_SUBDIR
 
+    def with_work_dir(self, path: Path) -> TfDoSettings:
+        return self.model_copy(update={"work_dir": path})
+
 
 class CheckConfig(BaseModel):
     tflint: bool = False

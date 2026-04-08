@@ -37,10 +37,13 @@ def _make_settings(
     return TfDoSettings.for_testing(tmp_path, work_dir=tmp_path, interactive=interactive, tf_version=tf_version)
 
 
-def _mock_run(exit_code: int = 0, stderr: str = "", attempt: int = 1, cwd: Path | None = None) -> MagicMock:
+def _mock_run(
+    exit_code: int = 0, stderr: str = "", stdout: str = "", attempt: int = 1, cwd: Path | None = None
+) -> MagicMock:
     run = MagicMock(spec=ShellRun)
     run.exit_code = exit_code
     run.stderr = stderr
+    run.stdout = stdout
     run.current_attempt = attempt
     run.config = MagicMock()
     run.config.cwd = cwd or Path("/tmp")
@@ -164,6 +167,23 @@ def test_plan_success(tmp_path: Path):
         result = plan(PlanInput(settings=settings))
     assert result.exit_code == 0
     assert "terraform plan" in mock_raw.call_args[0][0]
+
+
+def test_lifecycle_result_captures_stdout_stderr(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0, stdout="Plan: 2 to add", stderr="Warning: deprecated")
+    with patch(_patch_run, return_value=run):
+        result = plan(PlanInput(settings=settings))
+    assert result.stdout == "Plan: 2 to add"
+    assert result.stderr == "Warning: deprecated"
+
+
+def test_init_result_captures_stdout(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0, stdout="Initializing provider plugins...", attempt=1)
+    with patch(_patch_run, return_value=run):
+        result = init(InitInput(settings=settings))
+    assert result.stdout == "Initializing provider plugins..."
 
 
 def test_plan_exit_code_2_changes_detected(tmp_path: Path):
