@@ -2,12 +2,13 @@ import pytest
 from pydantic import ValidationError
 
 from tfdo._internal.config.config_model import (
-    BackendDefaults,
     DependencyRef,
     HookConfig,
+    LocalBackend,
+    S3Backend,
     TfDoConfig,
 )
-from tfdo._internal.config.enums import BackendType, LifecycleEvent
+from tfdo._internal.config.enums import LifecycleEvent
 
 
 def test_full_config_from_dict():
@@ -27,8 +28,7 @@ def test_full_config_from_dict():
     cfg = TfDoConfig(**data)
     assert cfg.binary == "tofu"
     assert cfg.tags == {"env": "staging", "team": "infra"}
-    assert cfg.backend is not None
-    assert cfg.backend.type == BackendType.S3
+    assert isinstance(cfg.backend, S3Backend)
     assert cfg.hook_configs[0].lifecycle_events == [LifecycleEvent.PLAN_BEFORE]
     assert cfg.dependencies[0].outputs
 
@@ -41,19 +41,29 @@ def test_minimal_config():
     assert cfg.dependencies == []
 
 
-def test_backend_s3_requires_bucket_and_key():
-    with pytest.raises(ValidationError, match="bucket"):
-        BackendDefaults(type=BackendType.S3)
-
-
-def test_backend_local_requires_path():
-    with pytest.raises(ValidationError, match="path"):
-        BackendDefaults(type=BackendType.LOCAL, bucket="x", key="y")
-
-
-def test_backend_local_valid():
-    b = BackendDefaults(type=BackendType.LOCAL, path="/tmp/state")
+def test_local_backend_valid():
+    b = LocalBackend(path="/tmp/state")
     assert b.path == "/tmp/state"
+
+
+def test_s3_config_flags():
+    b = S3Backend(bucket="b", key="k", region="us-east-1", dynamodb_table="locks", encrypt=True)
+    flags = b.config_flags
+    assert "-backend-config=bucket=b" in flags
+    assert "-backend-config=key=k" in flags
+    assert "-backend-config=region=us-east-1" in flags
+    assert "-backend-config=dynamodb_table=locks" in flags
+    assert "-backend-config=encrypt=true" in flags
+
+
+def test_s3_config_flags_encrypt_omitted_by_default():
+    b = S3Backend(bucket="b", key="k")
+    assert not any("encrypt" in f for f in b.config_flags)
+
+
+def test_local_config_flags():
+    b = LocalBackend(path="/tmp/state")
+    assert b.config_flags == ["-backend-config=path=/tmp/state"]
 
 
 def test_hook_config_requires_exactly_one_executor():

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import Annotated, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from tfdo._internal.config.config_file import ConfigLayer
 from tfdo._internal.config.config_model import (
-    BackendDefaults,
+    BackendConfig,
     DependencyRef,
     HookConfig,
     TfDoConfig,
@@ -21,7 +21,7 @@ _T = TypeVar("_T")
 class ResolvedConfig(BaseModel):
     binary: str
     tf_version: str | None
-    backend: BackendDefaults | None
+    backend: Annotated[BackendConfig, Field(discriminator="type")] | None
     tags: dict[str, str]
     var_files: list[str]
     tags_inject: bool

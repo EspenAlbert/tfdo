@@ -91,9 +91,18 @@ def test_clean_terraform_cache(tmp_path: Path):
 
 
 def test_build_init_command():
-    assert _build_init_command("terraform", []) == "terraform init"
-    assert _build_init_command("tofu", ["-upgrade", "-input=false"]) == "tofu init -upgrade -input=false"
-    assert _build_init_command("mise x terraform@1.14 -- terraform", []) == "mise x terraform@1.14 -- terraform init"
+    assert _build_init_command("terraform", [], []) == "terraform init"
+    assert _build_init_command("tofu", [], ["-upgrade", "-input=false"]) == "tofu init -upgrade -input=false"
+    assert (
+        _build_init_command("mise x terraform@1.14 -- terraform", [], []) == "mise x terraform@1.14 -- terraform init"
+    )
+
+
+def test_build_init_command_backend_args_before_extra():
+    backend = ["-backend-config=bucket=b", "-backend-config=key=k"]
+    extra = ["-upgrade"]
+    result = _build_init_command("terraform", backend, extra)
+    assert result == "terraform init -backend-config=bucket=b -backend-config=key=k -upgrade"
 
 
 def test_init_success(tmp_path: Path):

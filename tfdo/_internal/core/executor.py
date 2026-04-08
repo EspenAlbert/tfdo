@@ -86,13 +86,13 @@ def terraform_init_should_retry(run: ShellRun) -> bool:
     raise AbortRetryError(f"permanent error: {stderr[:200]}")
 
 
-def _build_init_command(binary: str, extra_args: list[str]) -> str:
-    return " ".join([binary, "init", *extra_args])
+def _build_init_command(binary: str, backend_args: list[str], extra_args: list[str]) -> str:
+    return " ".join([binary, "init", *backend_args, *extra_args])
 
 
 def init(input_model: InitInput) -> InitResult:
     settings = input_model.settings
-    cmd = _build_init_command(binary.resolve_binary(settings), input_model.extra_args)
+    cmd = _build_init_command(binary.resolve_binary(settings), input_model.backend_args, input_model.extra_args)
     run = run_and_wait(
         cmd,
         attempts=4,

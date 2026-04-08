@@ -22,6 +22,7 @@ class TfDoBaseInput(BaseModel):
 
 
 class InitInput(TfDoBaseInput):
+    backend_args: list[str] = []
     extra_args: list[str] = []
     env: dict[str, str] | None = None
 

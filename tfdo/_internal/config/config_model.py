@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -8,22 +8,43 @@ from tfdo._internal.config.enums import BackendType, LifecycleEvent
 from tfdo._internal.settings import CheckConfig
 
 
-class BackendDefaults(BaseModel):
-    type: BackendType = BackendType.S3
-    bucket: str | None = None
-    key: str | None = None
+def _backend_config_flag(key: str, value: str) -> str:
+    return f"-backend-config={key}={value}"
+
+
+class S3Backend(BaseModel):
+    type: Literal[BackendType.S3] = BackendType.S3
+    bucket: str
+    key: str
     region: str | None = None
     dynamodb_table: str | None = None
-    encrypt: bool = True
-    path: str | None = None
+    encrypt: bool | None = None
 
-    @model_validator(mode="after")
-    def _validate_required_fields(self) -> Self:
-        if self.type == BackendType.S3 and (not self.bucket or not self.key):
-            raise ValueError("backend type=s3 requires 'bucket' and 'key'")
-        if self.type == BackendType.LOCAL and not self.path:
-            raise ValueError("backend type=local requires 'path'")
-        return self
+    @property
+    def config_flags(self) -> list[str]:
+        flags = [
+            _backend_config_flag("bucket", self.bucket),
+            _backend_config_flag("key", self.key),
+        ]
+        if self.region:
+            flags.append(_backend_config_flag("region", self.region))
+        if self.dynamodb_table:
+            flags.append(_backend_config_flag("dynamodb_table", self.dynamodb_table))
+        if self.encrypt is not None:
+            flags.append(_backend_config_flag("encrypt", str(self.encrypt).lower()))
+        return flags
+
+
+class LocalBackend(BaseModel):
+    type: Literal[BackendType.LOCAL] = BackendType.LOCAL
+    path: str
+
+    @property
+    def config_flags(self) -> list[str]:
+        return [_backend_config_flag("path", self.path)]
+
+
+BackendConfig = S3Backend | LocalBackend
 
 
 class HookConfig(BaseModel):
@@ -51,7 +72,7 @@ class DependencyRef(BaseModel):
 class TfDoConfig(BaseModel):
     binary: str | None = None
     tf_version: str | None = None
-    backend: BackendDefaults | None = None
+    backend: Annotated[BackendConfig, Field(discriminator="type")] | None = None
     check: CheckConfig | None = None
     tags_inject: bool | None = None
 
