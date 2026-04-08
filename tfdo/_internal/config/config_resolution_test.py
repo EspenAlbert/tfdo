@@ -10,7 +10,7 @@ from tfdo._internal.config.config_resolution import (
     resolve_config,
     resolve_tflint,
 )
-from tfdo._internal.config.enums import LifecycleEvent
+from tfdo._internal.config.enums import LifecycleEvent, TagsInject
 from tfdo._internal.settings import CheckConfig, InteractiveMode, TfDoSettings, TfDoUserConfig
 
 _patch_user_config_dir = f"{settings_mod.__name__}.{settings_mod.platformdirs.__name__}.user_config_dir"
@@ -43,25 +43,25 @@ def test_merge_hook_configs_sorted():
 def test_resolve_config_two_layers(tmp_path: Path):
     layers = [
         _layer(TfDoConfig(binary="terraform", tags={"team": "infra"}, var_files=["local.tfvars"])),
-        _layer(TfDoConfig(binary="tofu", tags={"env": "prod"}, tags_inject=True)),
+        _layer(TfDoConfig(binary="tofu", tags={"env": "prod"}, tags_inject=TagsInject.ALWAYS)),
     ]
     result = resolve_config(layers, TfDoUserConfig(), _settings(tmp_path))
     assert result.binary == "terraform"
     assert result.tags == {"env": "prod", "team": "infra"}
     assert result.var_files == ["local.tfvars"]
-    assert result.tags_inject
+    assert result.tags_inject == TagsInject.ALWAYS
 
 
 def test_resolve_config_three_layers(tmp_path: Path):
     layers = [
         _layer(TfDoConfig(tags={"env": "staging"})),
         _layer(TfDoConfig(tags={"tier": "mid"}, binary="tofu")),
-        _layer(TfDoConfig(tags={"env": "root", "org": "acme"}, tags_inject=True)),
+        _layer(TfDoConfig(tags={"env": "root", "org": "acme"}, tags_inject=TagsInject.ALWAYS)),
     ]
     result = resolve_config(layers, TfDoUserConfig(), _settings(tmp_path))
     assert result.binary == "tofu"
     assert result.tags == {"org": "acme", "tier": "mid", "env": "staging"}
-    assert result.tags_inject
+    assert result.tags_inject == TagsInject.ALWAYS
 
 
 def test_resolve_config_standalone(tmp_path: Path):
@@ -76,7 +76,7 @@ def test_resolve_config_defaults(tmp_path: Path):
     result = resolve_config([], TfDoUserConfig(), _settings(tmp_path))
     assert result.binary == "terraform"
     assert result.tf_version is None
-    assert not result.tags_inject
+    assert result.tags_inject == TagsInject.ALWAYS
     assert not result.check.tflint
 
 

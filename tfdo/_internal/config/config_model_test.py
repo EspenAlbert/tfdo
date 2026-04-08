@@ -15,7 +15,7 @@ def test_full_config_from_dict():
     data = {
         "binary": "tofu",
         "tf_version": "1.14",
-        "tags_inject": True,
+        "tags_inject": "always",
         "tags": {"env": "staging", "team": "infra"},
         "backend": {"type": "s3", "bucket": "my-bucket", "key": "state.tfstate", "region": "us-east-1"},
         "hook_configs": [

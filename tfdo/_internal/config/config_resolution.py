@@ -11,9 +11,10 @@ from tfdo._internal.config.config_model import (
     HookConfig,
     TfDoConfig,
 )
+from tfdo._internal.config.enums import TagsInject
 from tfdo._internal.settings import CheckConfig, TfDoSettings, TfDoUserConfig, load_user_config
 
-DEFAULT_TAGS_INJECT = False
+DEFAULT_TAGS_INJECT = TagsInject.ALWAYS
 
 _T = TypeVar("_T")
 
@@ -24,7 +25,7 @@ class ResolvedConfig(BaseModel):
     backend: Annotated[BackendConfig, Field(discriminator="type")] | None
     tags: dict[str, str]
     var_files: list[str]
-    tags_inject: bool
+    tags_inject: TagsInject
     hook_configs: list[HookConfig]
     dependencies: list[DependencyRef]
     check: CheckConfig

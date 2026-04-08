@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from tfdo._internal.config.config_resolution import ResolvedConfig
+from tfdo._internal.config.enums import TagsInject
 from tfdo._internal.run.discovery import (
     DiscoveredRunDir,
     build_run_dir_contexts,
@@ -108,7 +109,7 @@ def test_build_run_dir_contexts():
         backend=None,
         tags={"project": "myproj"},
         var_files=[],
-        tags_inject=False,
+        tags_inject=TagsInject.NEVER,
         hook_configs=[],
         dependencies=[],
         check=CheckConfig(),

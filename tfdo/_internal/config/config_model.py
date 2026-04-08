@@ -4,7 +4,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from tfdo._internal.config.enums import BackendType, LifecycleEvent
+from tfdo._internal.config.enums import BackendType, LifecycleEvent, TagsInject
 from tfdo._internal.settings import CheckConfig
 
 
@@ -74,7 +74,7 @@ class TfDoConfig(BaseModel):
     tf_version: str | None = None
     backend: Annotated[BackendConfig, Field(discriminator="type")] | None = None
     check: CheckConfig | None = None
-    tags_inject: bool | None = None
+    tags_inject: TagsInject | None = None
 
     tags: dict[str, str] = Field(default_factory=dict)
     hook_configs: list[HookConfig] = Field(default_factory=list)

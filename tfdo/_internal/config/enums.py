@@ -17,3 +17,8 @@ class LifecycleEvent(StrEnum):
 class BackendType(StrEnum):
     S3 = "s3"
     LOCAL = "local"
+
+
+class TagsInject(StrEnum):
+    ALWAYS = "always"
+    NEVER = "never"
