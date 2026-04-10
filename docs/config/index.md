@@ -258,7 +258,7 @@ def show_cmd() -> None:
     ...
 ```
 
-Print resolved tfdo.yaml config for current directory.
+Print resolved tfdo.yaml config layers and merged result for current work directory.
 
 ### Changes
 

@@ -51,7 +51,7 @@ Run apply across multiple run directories.
 > **Since:** unreleased
 
 ```python
-def run_callback(*, env: str | None = None, app_name: str | None = None, tags: list[str] = [], parallel: int = 10, on_failure: str = 'stop', dry_run: bool = False) -> None:
+def run_callback(*, env: str | None = None, app_name: str | None = None, tags: list[str] = [], parallel: int = 10, on_failure: FailureMode = <FailureMode.STOP: 'stop'>, dry_run: bool = False) -> None:
     ...
 ```
 
@@ -59,12 +59,12 @@ def run_callback(*, env: str | None = None, app_name: str | None = None, tags: l
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--env` | `str | None` | `None` | Filter by {env} selector from discovery pattern |
-| `--app` | `str | None` | `None` | Filter by {app} selector from discovery pattern |
-| `--tags` | `list[str]` | `[]` | Tag filter as key=value (repeatable, AND logic) |
-| `--parallel` | `int` | `10` | Max concurrent run_dir executions per wave |
-| `--on-failure` | `str` | `'stop'` | Failure behavior: stop (abort remaining), continue (run all) |
-| `--dry-run` | `bool` | `False` | Print resolved commands per run_dir without executing |
+| `--env` | `str | None` | `None` | Filter run directories by {env} selector from discovery pattern |
+| `--app` | `str | None` | `None` | Filter run directories by {app} selector from discovery pattern |
+| `--tags` | `list[str]` | `[]` | Tag filter as key=value, repeatable with AND logic (e.g. --tags env=dev --tags team=infra) |
+| `--parallel` | `int` | `10` | Max concurrent run directory executions per wave |
+| `--on-failure` | `FailureMode` | `<FailureMode.STOP: 'stop'>` | Failure behavior: stop aborts remaining directories, continue runs all [stop, continue] |
+| `--dry-run` | `bool` | `False` | Show execution plan (waves and run directories) without running terraform |
 
 ### Changes
 
@@ -118,7 +118,7 @@ Run init across multiple run directories.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--extra-args` | `list[str] | None` | `None` | Extra arguments forwarded to terraform init |
+| `--extra-args` | `list[str] | None` | `None` | Extra arguments forwarded to terraform init (e.g. --extra-args=-upgrade) |
 
 ### Changes
 
@@ -146,7 +146,7 @@ Run plan across multiple run directories.
 |---|---|---|---|---|
 | `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
-| `-o`, `--out` | `Path | None` | `None` | - | Write plans to file |
+| `-o`, `--out` | `Path | None` | `None` | - | Write plan output to file (per run directory) |
 | `--json` | `bool` | `False` | - | Output in JSON format |
 
 ### Changes
