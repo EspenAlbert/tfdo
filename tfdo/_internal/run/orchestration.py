@@ -216,6 +216,8 @@ def _run_event_hooks(registry: HookRegistry, event: LifecycleEvent, hook_ctx: Ho
         hook_execution.run_hooks(registry, event, hook_ctx)
     except HookAbortError as e:
         logger.warning(f"{rel}: {e}")
+    except Exception as e:
+        logger.warning(f"{rel}: unexpected error in {event} hooks: {e}")
 
 
 def _execute_run_dir(
