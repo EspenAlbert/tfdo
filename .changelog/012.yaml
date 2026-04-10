@@ -475,3 +475,8 @@ author: Espen Albert
 ignored: true
 message: 'fix(config): Fix tags_inject resolution, remove dead code, tighten resolve_tflint signature'
 short_sha: 7b7d21
+---
+name: set_hook_env
+ts: 2026-04-10 08:34:04.846662+00:00
+type: keep_private
+full_path: _internal.hooks.execution.set_hook_env
