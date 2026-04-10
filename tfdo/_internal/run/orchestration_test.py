@@ -323,3 +323,58 @@ def test_on_ok_fires_on_success(tmp_path: Path):
     ):
         _execute_run_dir(inp, run_dir, ctx, config)
     assert len(calls) == 1
+
+
+def test_on_error_fires_on_failure(tmp_path: Path):
+    run_dir = _make_run_dir(tmp_path)
+    calls: list[str] = []
+    registry = HookRegistry()
+    registry.register(
+        "on-error",
+        [LifecycleEvent.ON_ERROR],
+        lambda inp: calls.append("fired"),
+        priority=100,
+        source=HookSource.LOCAL,
+    )
+    config = _resolved_config()
+    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
+    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
+
+    executor_module = executor.__name__
+    module = _execute_run_dir.__module__
+    with (
+        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=1, stderr="fail")),
+        patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry),
+    ):
+        result = _execute_run_dir(inp, run_dir, ctx, config)
+    assert result.exit_code == 1
+    assert len(calls) == 1
+
+
+def test_before_hook_abort_fires_on_error(tmp_path: Path):
+    run_dir = _make_run_dir(tmp_path)
+    calls: list[str] = []
+    registry = HookRegistry()
+    registry.register(
+        "blocker",
+        [LifecycleEvent.PLAN_BEFORE],
+        lambda inp: ExitEvent(reason="abort"),
+        priority=100,
+        source=HookSource.LOCAL,
+    )
+    registry.register(
+        "notifier",
+        [LifecycleEvent.ON_ERROR],
+        lambda inp: calls.append("notified"),
+        priority=100,
+        source=HookSource.LOCAL,
+    )
+    config = _resolved_config()
+    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
+    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
+
+    module = _execute_run_dir.__module__
+    with patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry):
+        result = _execute_run_dir(inp, run_dir, ctx, config)
+    assert result.exit_code == 1
+    assert len(calls) == 1

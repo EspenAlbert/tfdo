@@ -211,6 +211,13 @@ def _dispatch_command(
     return RunDirResult(run_dir=rel, exit_code=result.exit_code, stdout=result.stdout, stderr=result.stderr or "")
 
 
+def _run_event_hooks(registry: HookRegistry, event: LifecycleEvent, hook_ctx: HookContext, rel: str) -> None:
+    try:
+        hook_execution.run_hooks(registry, event, hook_ctx)
+    except HookAbortError as e:
+        logger.warning(f"{rel}: {e}")
+
+
 def _execute_run_dir(
     inp: RunOrchestrationInput,
     run_dir_path: Path,
@@ -233,6 +240,7 @@ def _execute_run_dir(
         try:
             hook_execution.run_hooks(registry, before_event, hook_ctx)
         except HookAbortError as e:
+            _run_event_hooks(registry, LifecycleEvent.ON_ERROR, hook_ctx, rel)
             return RunDirResult(run_dir=rel, exit_code=1, stderr=str(e))
 
     result_dir = _dispatch_command(inp, prepared, all_extra, rel)
@@ -243,10 +251,7 @@ def _execute_run_dir(
         except HookAbortError as e:
             logger.warning(f"{rel}: {e}")
         ok_or_error = LifecycleEvent.ON_OK if result_dir.exit_code == 0 else LifecycleEvent.ON_ERROR
-        try:
-            hook_execution.run_hooks(registry, ok_or_error, hook_ctx)
-        except HookAbortError as e:
-            logger.warning(f"{rel}: {e}")
+        _run_event_hooks(registry, ok_or_error, hook_ctx, rel)
 
     return result_dir
 

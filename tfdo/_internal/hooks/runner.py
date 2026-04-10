@@ -10,7 +10,7 @@ from typing import Callable
 from ask_shell.shell import run_and_wait
 
 from tfdo._internal.config.config_model import HookConfig
-from tfdo._internal.hooks.execution import _hook_env
+from tfdo._internal.hooks.execution import set_hook_env
 from tfdo._internal.hooks.models import ExitEvent, HookEffect, HookInput, InputModification, RetryEvent
 
 logger = logging.getLogger(__name__)
@@ -59,6 +59,7 @@ class LocalHookRunner:
             mod = importlib.import_module(module_path)
         except ModuleNotFoundError as e:
             raise ValueError(f"py_locate module '{module_path}' not found") from e
+        # getattr needed: resolving user-provided dotted path at wrap time
         fn = getattr(mod, attr_name, None)
         if fn is None:
             raise ValueError(f"py_locate attribute '{attr_name}' not found in '{module_path}'")
@@ -69,7 +70,7 @@ class LocalHookRunner:
         accepts_input = len(params) >= 1
 
         def _run(hook_input: HookInput) -> HookEffect | None:
-            _hook_env.set(hook_input.env_dict())
+            set_hook_env(hook_input.env_dict())
             result = fn(hook_input) if accepts_input else fn()
             if result is None:
                 return None

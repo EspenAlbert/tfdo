@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from tfdo._internal.config.enums import HookOnError, LifecycleCommand, LifecycleEvent
-from tfdo._internal.hooks.execution import HookContext, _hook_env, lifecycle_events, run_hooks
+from tfdo._internal.hooks.execution import HookContext, get_hook_env, lifecycle_events, run_hooks, set_hook_env
 from tfdo._internal.hooks.models import ExitEvent, HookAbortError, HookInput
 from tfdo._internal.hooks.registry import HookRegistry, HookSource
 
@@ -56,9 +56,9 @@ def test_contextvar_isolation_across_threads():
     results: dict[str, dict[str, str]] = {}
 
     def _set_and_read(name: str, value: str) -> None:
-        _hook_env.set({name: value})
+        set_hook_env({name: value})
         threading.Event().wait(0.05)
-        results[name] = _hook_env.get()
+        results[name] = get_hook_env()
 
     t1 = threading.Thread(target=_set_and_read, args=("t1", "v1"))
     t2 = threading.Thread(target=_set_and_read, args=("t2", "v2"))

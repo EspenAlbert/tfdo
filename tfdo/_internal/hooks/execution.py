@@ -20,11 +20,16 @@ ENV_INVOKE_STATE_DIR = "TFDO_INVOKE_STATE_DIR"
 ENV_RUN_DIR = "TFDO_RUN_DIR"
 ENV_COMMAND = "TFDO_COMMAND"
 ENV_HOOK_POINT = "TFDO_HOOK_POINT"
+# TODO: wire up TFDO_ATTEMPT once retry support lands (file IPC follow-up)
 ENV_ATTEMPT = "TFDO_ATTEMPT"
 
 
 def get_hook_env() -> dict[str, str]:
     return _hook_env.get()
+
+
+def set_hook_env(env: dict[str, str]) -> None:
+    _hook_env.set(env)
 
 
 def get_hook_env_var(key: str) -> str | None:
@@ -73,6 +78,8 @@ def run_hooks(registry: HookRegistry, event: LifecycleEvent, ctx: HookContext) -
             if hook.on_error == HookOnError.ABORT:
                 raise HookAbortError(hook.name, effect)
             logger.warning(f"hook '{hook.name}' requested exit: {effect.reason}")
+        elif effect is not None:
+            logger.warning(f"hook '{hook.name}' returned unprocessed effect {type(effect).__name__}, ignoring")
 
 
 _LIFECYCLE_EVENTS: dict[LifecycleCommand, tuple[LifecycleEvent, LifecycleEvent]] = {
