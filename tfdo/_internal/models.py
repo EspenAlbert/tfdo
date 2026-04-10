@@ -22,8 +22,8 @@ class TfDoBaseInput(BaseModel):
 
 
 class InitInput(TfDoBaseInput):
-    backend_args: list[str] = []
-    extra_args: list[str] = []
+    backend_args: list[str] = Field(default_factory=list)
+    extra_args: list[str] = Field(default_factory=list)
     env: dict[str, str] | None = None
 
 
@@ -31,6 +31,7 @@ class LifecycleInput(TfDoBaseInput):
     var_file: Path | None = None
     init_mode: InitMode = InitMode.AUTO
     extra_args: list[str] = Field(default_factory=list)
+    init_backend_args: list[str] = Field(default_factory=list)
 
 
 class PlanInput(LifecycleInput):
@@ -69,8 +70,8 @@ class CheckInput(TfDoBaseInput):
     fix: bool = False
     diff: bool = False
     init_mode: InitMode = InitMode.AUTO
-    include_patterns: list[str] = []
-    exclude_patterns: list[str] = []
+    include_patterns: list[str] = Field(default_factory=list)
+    exclude_patterns: list[str] = Field(default_factory=list)
     tflint: bool = False
 
 

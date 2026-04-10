@@ -158,7 +158,7 @@ def _run_lifecycle[T: LifecycleResult](
     mode = input_model.init_mode
 
     if mode == InitMode.ALWAYS:
-        init_result = init(InitInput(settings=settings))
+        init_result = init(InitInput(settings=settings, backend_args=input_model.init_backend_args))
         if init_result.exit_code != 0:
             return result_cls(exit_code=init_result.exit_code)
 
@@ -168,7 +168,7 @@ def _run_lifecycle[T: LifecycleResult](
 
     if result.exit_code != 0 and mode == InitMode.AUTO and _needs_init(result.stderr or ""):
         logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
-        init_result = init(InitInput(settings=settings))
+        init_result = init(InitInput(settings=settings, backend_args=input_model.init_backend_args))
         if init_result.exit_code != 0:
             return result_cls(exit_code=init_result.exit_code)
         result = _run_command(settings, cmd, result_cls)

@@ -77,6 +77,14 @@ class TfDoSettings(StaticSettings):
     def with_work_dir(self, path: Path) -> TfDoSettings:
         return self.model_copy(update={"work_dir": path})
 
+    def with_overrides(self, work_dir: Path, binary: str | None = None, tf_version: str | None = None) -> TfDoSettings:
+        updates: dict = {"work_dir": work_dir}
+        if binary:
+            updates["binary"] = binary
+        if tf_version:
+            updates["tf_version"] = tf_version
+        return self.model_copy(update=updates)
+
 
 class CheckConfig(BaseModel):
     tflint: bool = False

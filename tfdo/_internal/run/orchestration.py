@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
+import re
 from concurrent.futures import Future
 from enum import StrEnum
 from pathlib import Path
 from typing import NamedTuple
 
-from ask_shell.shell import run_pool
+from ask_shell.shell import run_and_wait, run_pool
 from pydantic import BaseModel, Field
 from zero_3rdparty.file_utils import find_repo_root
 
@@ -35,6 +36,30 @@ from tfdo._internal.settings import TfDoSettings, load_user_config
 logger = logging.getLogger(__name__)
 
 MIN_CONCURRENT_SUBMITS = 2
+_GIT_REMOTE_RE = re.compile(r"(?:https?://[^/]+/|git@[^:]+:)(?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?$")
+
+
+def _parse_git_remote_url(url: str) -> tuple[str, str] | None:
+    if m := _GIT_REMOTE_RE.match(url.strip()):
+        return m.group("owner"), m.group("repo")
+    return None
+
+
+def _parse_git_remote(repo_root: Path) -> tuple[str, str]:
+    """Returns (owner, repo_name) from git remote origin URL."""
+    try:
+        run = run_and_wait(
+            "git remote get-url origin",
+            cwd=repo_root,
+            allow_non_zero_exit=True,
+            skip_binary_check=True,
+        )
+        url = run.stdout.strip()
+        if result := _parse_git_remote_url(url):
+            return result
+    except Exception:
+        logger.error(f"failed to read git remote for {repo_root}")
+    return ("unknown", repo_root.name)
 
 
 class FailureMode(StrEnum):
@@ -171,7 +196,7 @@ def prepare_run_dir(
     if cli_var_file:
         all_var_flags.append(f"-var-file={cli_var_file}")
 
-    dir_settings = settings.with_work_dir(run_dir_path)
+    dir_settings = settings.with_overrides(run_dir_path, config.binary, config.tf_version)
     init_input = InitInput(settings=dir_settings, backend_args=backend_args)
     return PreparedRunDir(init_input=init_input, lifecycle_flags=all_var_flags)
 
@@ -196,15 +221,30 @@ def _dispatch_command(
             run_dir=rel, exit_code=init_result.exit_code, stdout=init_result.stdout, stderr=init_result.stderr or ""
         )
     mode = inp.init_mode
+    backend_args = prepared.init_input.backend_args
     if inp.command == LifecycleCommand.PLAN:
-        result = executor.plan(PlanInput(settings=dir_settings, init_mode=mode, extra_args=extra_flags))
+        result = executor.plan(
+            PlanInput(settings=dir_settings, init_mode=mode, extra_args=extra_flags, init_backend_args=backend_args)
+        )
     elif inp.command == LifecycleCommand.APPLY:
         result = executor.apply(
-            ApplyInput(settings=dir_settings, auto_approve=inp.auto_approve, init_mode=mode, extra_args=extra_flags)
+            ApplyInput(
+                settings=dir_settings,
+                auto_approve=inp.auto_approve,
+                init_mode=mode,
+                extra_args=extra_flags,
+                init_backend_args=backend_args,
+            )
         )
     elif inp.command == LifecycleCommand.DESTROY:
         result = executor.destroy(
-            DestroyInput(settings=dir_settings, auto_approve=inp.auto_approve, init_mode=mode, extra_args=extra_flags)
+            DestroyInput(
+                settings=dir_settings,
+                auto_approve=inp.auto_approve,
+                init_mode=mode,
+                extra_args=extra_flags,
+                init_backend_args=backend_args,
+            )
         )
     else:
         raise ValueError(f"unsupported command: {inp.command}")
@@ -269,7 +309,7 @@ def _log_run_dir_output(result: RunDirResult, command: str) -> None:
     logger.info(f"--- {status} ---")
 
 
-def _discover_and_filter(inp: RunOrchestrationInput, repo_root: Path) -> list[DiscoveredRunDir]:
+def _discover_run_dirs(repo_root: Path) -> list[DiscoveredRunDir]:
     root_layers = load_config_layers(repo_root)
     if not root_layers:
         raise ValueError(f"no tfdo.yaml found at or above {repo_root}")
@@ -279,27 +319,23 @@ def _discover_and_filter(inp: RunOrchestrationInput, repo_root: Path) -> list[Di
         raise ValueError("root tfdo.yaml must define run_dir_discovery pattern")
 
     pattern = parse_discovery_pattern(root_config.run_dir_discovery)
-    discovered = discover_run_dirs(repo_root, pattern)
-    tag_filters = [TagFilter.parse(t) for t in inp.tag_filters]
-    return filtering.apply_filters(
-        discovered,
-        selector_filters=inp.selector_filters or None,
-        tag_filters=tag_filters or None,
-    )
+    return discover_run_dirs(repo_root, pattern)
 
 
 def _resolve_all_configs(
     discovered: list[DiscoveredRunDir],
     inp: RunOrchestrationInput,
+    repo_root: Path,
 ) -> tuple[dict[str, ResolvedConfig], dict[str, RunDirContext]]:
     user_config = load_user_config(inp.settings)
+    owner, repo_name = _parse_git_remote(repo_root)
     configs: dict[str, ResolvedConfig] = {}
     contexts: dict[str, RunDirContext] = {}
     for d in discovered:
         dir_layers = load_config_layers(d.path)
         cfg = config_resolution.resolve_config(dir_layers, user_config, inp.settings, d.selectors)
         configs[d.relative_path] = cfg
-        ctx_list = build_run_dir_contexts([d], cfg, "owner", "repo")
+        ctx_list = build_run_dir_contexts([d], cfg, owner, repo_name)
         contexts[d.relative_path] = ctx_list[0]
     return configs, contexts
 
@@ -351,26 +387,16 @@ def _execute_wave_parallel(
     return results, has_failure
 
 
-def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
-    repo_root = find_repo_root(inp.settings.work_dir)
-    discovered = _discover_and_filter(inp, repo_root)
-    if not discovered:
-        logger.warning("no run directories matched filters")
-        return OrchestrationResult()
-
-    configs, contexts = _resolve_all_configs(discovered, inp)
-    graph = build_dependency_graph(discovered, configs)
-    plan = graph.to_waves()
-
-    if inp.dry_run:
-        for wave in plan.waves:
-            for rd in wave.run_dirs:
-                logger.info(f"[dry-run] wave {wave.wave_index}: {rd} -> {inp.command}")
-        return OrchestrationResult(
-            results=[RunDirResult(run_dir=rd, exit_code=0, skipped=True) for w in plan.waves for rd in w.run_dirs],
-        )
-
-    sequential = not inp.auto_approve and inp.command in (LifecycleCommand.APPLY, LifecycleCommand.DESTROY)
+def _execute_plan(
+    plan: ExecutionPlan,
+    inp: RunOrchestrationInput,
+    repo_root: Path,
+    contexts: dict[str, RunDirContext],
+    configs: dict[str, ResolvedConfig],
+) -> list[RunDirResult]:
+    sequential = inp.parallel == 1 or (
+        not inp.auto_approve and inp.command in (LifecycleCommand.APPLY, LifecycleCommand.DESTROY)
+    )
     if sequential:
         logger.warning(f"interactive approval: running sequentially for {inp.command}")
 
@@ -387,5 +413,38 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
                 for rd in remaining_wave.run_dirs:
                     all_results.append(RunDirResult(run_dir=rd, exit_code=1, skipped=True))
             break
+    return all_results
 
-    return OrchestrationResult(results=all_results)
+
+def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
+    repo_root = find_repo_root(inp.settings.work_dir)
+    all_discovered = _discover_run_dirs(repo_root)
+    if not all_discovered:
+        logger.warning("no run directories matched filters")
+        return OrchestrationResult()
+
+    configs, contexts = _resolve_all_configs(all_discovered, inp, repo_root)
+    resolved_tags = {rel: cfg.tags for rel, cfg in configs.items()}
+    tag_filters = [TagFilter.parse(t) for t in inp.tag_filters]
+    discovered = filtering.apply_filters(
+        all_discovered,
+        selector_filters=inp.selector_filters or None,
+        tag_filters=tag_filters or None,
+        resolved_tags=resolved_tags,
+    )
+    if not discovered:
+        logger.warning("no run directories matched filters")
+        return OrchestrationResult()
+
+    graph = build_dependency_graph(discovered, configs)
+    plan = graph.to_waves()
+
+    if inp.dry_run:
+        for wave in plan.waves:
+            for rd in wave.run_dirs:
+                logger.info(f"[dry-run] wave {wave.wave_index}: {rd} -> {inp.command}")
+        return OrchestrationResult(
+            results=[RunDirResult(run_dir=rd, exit_code=0, skipped=True) for w in plan.waves for rd in w.run_dirs],
+        )
+
+    return OrchestrationResult(results=_execute_plan(plan, inp, repo_root, contexts, configs))

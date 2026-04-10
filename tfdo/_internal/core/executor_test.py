@@ -20,7 +20,7 @@ from tfdo._internal.core.executor import (
     plan,
     terraform_init_should_retry,
 )
-from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, PlanInput
+from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, InitResult, PlanInput, PlanResult
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 module_name = init.__module__
@@ -378,3 +378,32 @@ def test_destroy_rejects_no_approve_non_interactive(tmp_path: Path):
 def test_is_interactive_modes(tmp_path: Path):
     assert _make_settings(tmp_path, interactive=InteractiveMode.ALWAYS).is_interactive
     assert not _make_settings(tmp_path, interactive=InteractiveMode.NEVER).is_interactive
+
+
+def test_auto_init_uses_backend_args(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    backend_args = ["-backend-config=bucket=my-bucket"]
+    input_model = PlanInput(settings=settings, init_backend_args=backend_args)
+
+    init_calls: list[InitInput] = []
+
+    def mock_init(inp: InitInput) -> InitResult:
+        init_calls.append(inp)
+        return InitResult(exit_code=0, attempts_used=1)
+
+    module = plan.__module__
+    with (
+        patch(
+            f"{module}.{executor._run_command.__name__}",
+            side_effect=[
+                PlanResult(exit_code=1, stderr="terraform init is required"),
+                PlanResult(exit_code=0),
+            ],
+        ),
+        patch(f"{module}.{init.__name__}", side_effect=mock_init),
+    ):
+        result = plan(input_model)
+
+    assert result.exit_code == 0
+    assert len(init_calls) == 1
+    assert init_calls[0].backend_args == backend_args

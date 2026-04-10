@@ -12,7 +12,7 @@ from tfdo._internal.config.enums import HookOnError, LifecycleEvent, TagsInject
 from tfdo._internal.core import executor
 from tfdo._internal.hooks.models import ExitEvent, HookSource
 from tfdo._internal.hooks.registry import HookRegistry
-from tfdo._internal.models import PlanResult
+from tfdo._internal.models import PlanInput, PlanResult
 from tfdo._internal.run.discovery import DiscoveredRunDir
 from tfdo._internal.run.orchestration import (
     DependencyGraph,
@@ -23,6 +23,8 @@ from tfdo._internal.run.orchestration import (
     RunOrchestrationInput,
     _build_hook_registry,
     _execute_run_dir,
+    _execute_wave_sequential,
+    _parse_git_remote_url,
     _resolve_ref,
     build_dependency_graph,
     prepare_run_dir,
@@ -378,3 +380,91 @@ def test_before_hook_abort_fires_on_error(tmp_path: Path):
         result = _execute_run_dir(inp, run_dir, ctx, config)
     assert result.exit_code == 1
     assert len(calls) == 1
+
+
+def test_parse_git_remote_url_https():
+    assert _parse_git_remote_url("https://github.com/Owner/Repo.git") == ("Owner", "Repo")
+
+
+def test_parse_git_remote_url_ssh():
+    assert _parse_git_remote_url("git@github.com:Owner/Repo.git") == ("Owner", "Repo")
+
+
+def test_parse_git_remote_url_https_no_suffix():
+    assert _parse_git_remote_url("https://github.com/Owner/Repo") == ("Owner", "Repo")
+
+
+def test_parse_git_remote_url_fallback():
+    assert _parse_git_remote_url("not-a-url") is None
+
+
+def test_parallel_1_runs_sequentially(tmp_path: Path):
+    _setup_repo(tmp_path, ["envs/dev/api", "envs/dev/web"], "envs/{env}/{app}")
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
+
+    executor_module = executor.__name__
+    module = run_orchestration.__module__
+    with (
+        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
+        patch(f"{module}.{_execute_wave_sequential.__name__}", wraps=_execute_wave_sequential) as seq_mock,
+    ):
+        result = run_orchestration(inp)
+
+    assert result.exit_code == 0
+    assert seq_mock.call_count >= 1
+
+
+def test_prepare_run_dir_applies_binary_override(tmp_path: Path):
+    run_dir = tmp_path / "envs" / "dev" / "api"
+    run_dir.mkdir(parents=True)
+    settings = TfDoSettings(work_dir=tmp_path)
+    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
+    config = _resolved_config(binary="tofu", tf_version="1.6.0")
+    prepared = prepare_run_dir(settings, run_dir, ctx, config, None)
+    assert prepared.init_input.settings.binary == "tofu"
+    assert prepared.init_input.settings.tf_version == "1.6.0"
+
+
+def test_tag_filter_matches_per_dir_config_tags(tmp_path: Path):
+    _setup_repo(
+        tmp_path,
+        ["envs/dev/api", "envs/dev/web"],
+        "envs/{env}/{app}",
+        configs={"envs/dev/api": {"tags": {"tier": "critical"}}},
+    )
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(
+        settings=settings,
+        command=LifecycleCommand.PLAN,
+        dry_run=True,
+        tag_filters=["tier=critical"],
+    )
+    result = run_orchestration(inp)
+    assert len(result.results) == 1
+    assert result.results[0].run_dir == "envs/dev/api"
+
+
+def test_orchestration_plan_passes_backend_args(tmp_path: Path):
+    _setup_repo(
+        tmp_path,
+        ["envs/dev/api"],
+        "envs/{env}/{app}",
+        configs={"envs/dev/api": {"backend": {"type": "s3", "bucket": "my-bucket", "key": "state.tfstate"}}},
+    )
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
+
+    captured_inputs: list[PlanInput] = []
+
+    def mock_plan(input_model: PlanInput) -> PlanResult:
+        captured_inputs.append(input_model)
+        return PlanResult(exit_code=0)
+
+    executor_module = executor.__name__
+    with patch(f"{executor_module}.{executor.plan.__name__}", side_effect=mock_plan):
+        result = run_orchestration(inp)
+
+    assert result.exit_code == 0
+    assert len(captured_inputs) == 1
+    assert any("bucket" in arg for arg in captured_inputs[0].init_backend_args)
