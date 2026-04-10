@@ -10,7 +10,7 @@ from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
 from tfdo._internal.config.enums import TagsInject
 from tfdo._internal.core import executor
-from tfdo._internal.models import InitResult, PlanResult
+from tfdo._internal.models import PlanResult
 from tfdo._internal.run.discovery import DiscoveredRunDir
 from tfdo._internal.run.orchestration import (
     DependencyGraph,
@@ -148,10 +148,7 @@ def test_run_orchestration_with_mocked_executor(tmp_path: Path):
     inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, auto_approve=True, parallel=2)
 
     executor_module = executor.__name__
-    with (
-        patch(f"{executor_module}.{executor.init.__name__}", return_value=InitResult(exit_code=0, attempts_used=1)),
-        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
-    ):
+    with patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)):
         result = run_orchestration(inp)
 
     assert result.exit_code == 0
@@ -166,16 +163,16 @@ def test_run_orchestration_continue_on_error(tmp_path: Path):
 
     call_count = 0
 
-    def mock_init(input_model):
+    def mock_plan(input_model):
         nonlocal call_count
         call_count += 1
-        return InitResult(exit_code=1, attempts_used=1, stderr="init failed")
+        return PlanResult(exit_code=1, stderr="plan failed")
 
     inp = RunOrchestrationInput(
         settings=settings, command=LifecycleCommand.PLAN, on_failure=FailureMode.CONTINUE, parallel=2
     )
     executor_module = executor.__name__
-    with patch(f"{executor_module}.{executor.init.__name__}", side_effect=mock_init):
+    with patch(f"{executor_module}.{executor.plan.__name__}", side_effect=mock_plan):
         result = run_orchestration(inp)
 
     assert result.exit_code != 0
@@ -194,8 +191,8 @@ def test_run_orchestration_stops_on_first_failure(tmp_path: Path):
 
     executor_module = executor.__name__
     with patch(
-        f"{executor_module}.{executor.init.__name__}",
-        return_value=InitResult(exit_code=1, attempts_used=1, stderr="init failed"),
+        f"{executor_module}.{executor.plan.__name__}",
+        return_value=PlanResult(exit_code=1, stderr="plan failed"),
     ):
         result = run_orchestration(inp)
 

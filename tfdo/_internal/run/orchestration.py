@@ -196,39 +196,27 @@ def _execute_run_dir(
         logger.error(f"{rel}: preparation failed: {e}")
         return RunDirResult(run_dir=rel, exit_code=1, stderr=str(e))
 
-    init_result = executor.init(prepared.init_input)
-    if init_result.exit_code != 0:
+    dir_settings = prepared.init_input.settings
+    all_extra = [*prepared.lifecycle_flags, *inp.extra_flags]
+
+    if inp.command == LifecycleCommand.INIT:
+        init_result = executor.init(prepared.init_input)
         return RunDirResult(
             run_dir=rel,
             exit_code=init_result.exit_code,
             stdout=init_result.stdout,
             stderr=init_result.stderr or "",
         )
-
-    dir_settings = prepared.init_input.settings
-    all_extra = [*prepared.lifecycle_flags, *inp.extra_flags]
-
-    if inp.command == LifecycleCommand.INIT:
-        return RunDirResult(run_dir=rel, exit_code=0, stdout=init_result.stdout)
+    mode = inp.init_mode
     if inp.command == LifecycleCommand.PLAN:
-        result = executor.plan(PlanInput(settings=dir_settings, init_mode=InitMode.NEVER, extra_args=all_extra))
+        result = executor.plan(PlanInput(settings=dir_settings, init_mode=mode, extra_args=all_extra))
     elif inp.command == LifecycleCommand.APPLY:
         result = executor.apply(
-            ApplyInput(
-                settings=dir_settings,
-                auto_approve=inp.auto_approve,
-                init_mode=InitMode.NEVER,
-                extra_args=all_extra,
-            )
+            ApplyInput(settings=dir_settings, auto_approve=inp.auto_approve, init_mode=mode, extra_args=all_extra)
         )
     elif inp.command == LifecycleCommand.DESTROY:
         result = executor.destroy(
-            DestroyInput(
-                settings=dir_settings,
-                auto_approve=inp.auto_approve,
-                init_mode=InitMode.NEVER,
-                extra_args=all_extra,
-            )
+            DestroyInput(settings=dir_settings, auto_approve=inp.auto_approve, init_mode=mode, extra_args=all_extra)
         )
     else:
         raise ValueError(f"unsupported command: {inp.command}")
