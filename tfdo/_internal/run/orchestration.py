@@ -58,7 +58,7 @@ def _parse_git_remote(repo_root: Path) -> tuple[str, str]:
         if result := _parse_git_remote_url(url):
             return result
     except Exception:
-        logger.debug(f"failed to read git remote for {repo_root}")
+        logger.info(f"failed to read git remote for {repo_root}")
     return ("unknown", repo_root.name)
 
 
@@ -67,7 +67,7 @@ class FailureMode(StrEnum):
     CONTINUE = "continue"
 
 
-DEFAULT_PARALLEL = 4
+DEFAULT_PARALLEL = 10
 
 
 class RunOrchestrationInput(BaseModel):
@@ -373,7 +373,10 @@ def _execute_wave_parallel(
     futures: list[tuple[str, Future[RunDirResult]]] = []
 
     with run_pool(
-        task_name=f"wave-{wave.wave_index}", total=len(wave.run_dirs), max_concurrent_submits=max_submits
+        task_name=f"wave-{wave.wave_index}",
+        total=len(wave.run_dirs),
+        max_concurrent_submits=max_submits,
+        pool_thread_count=max_submits,
     ) as pool:
         for rel_path in wave.run_dirs:
             fut = pool.submit(_execute_run_dir, inp, repo_root / rel_path, contexts[rel_path], configs[rel_path])

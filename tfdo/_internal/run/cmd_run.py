@@ -15,7 +15,7 @@ class RunContext(BaseModel):
     settings: TfDoSettings
     selector_filters: dict[str, str] = Field(default_factory=dict)
     tag_filters: list[str] = Field(default_factory=list)
-    parallel: int = 4
+    parallel: int = 10
     on_failure: FailureMode = FailureMode.STOP
     dry_run: bool = False
 
