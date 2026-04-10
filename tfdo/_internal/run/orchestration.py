@@ -13,7 +13,12 @@ from zero_3rdparty.file_utils import find_repo_root
 from tfdo._internal.config import backend_resolution, config_resolution
 from tfdo._internal.config.config_file import load_config_layers
 from tfdo._internal.config.config_resolution import ResolvedConfig
+from tfdo._internal.config.enums import LifecycleCommand, LifecycleEvent
 from tfdo._internal.core import executor
+from tfdo._internal.hooks import execution as hook_execution
+from tfdo._internal.hooks.execution import HookContext
+from tfdo._internal.hooks.registry import HookRegistry
+from tfdo._internal.hooks.runner import LocalHookRunner
 from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, PlanInput
 from tfdo._internal.run import filtering, tags_injection, var_file_resolution
 from tfdo._internal.run.discovery import (
@@ -29,13 +34,6 @@ from tfdo._internal.settings import TfDoSettings, load_user_config
 logger = logging.getLogger(__name__)
 
 MIN_CONCURRENT_SUBMITS = 2
-
-
-class LifecycleCommand(StrEnum):
-    PLAN = "plan"
-    APPLY = "apply"
-    DESTROY = "destroy"
-    INIT = "init"
 
 
 class FailureMode(StrEnum):
@@ -177,6 +175,13 @@ def prepare_run_dir(
     return PreparedRunDir(init_input=init_input, lifecycle_flags=all_var_flags)
 
 
+def _build_hook_registry(config: ResolvedConfig, run_dir_path: Path) -> HookRegistry | None:
+    if not config.hook_configs:
+        return None
+    runner = LocalHookRunner(run_dir_path)
+    return HookRegistry.from_hook_configs(config.hook_configs, runner)
+
+
 def _execute_run_dir(
     inp: RunOrchestrationInput,
     run_dir_path: Path,
@@ -196,37 +201,50 @@ def _execute_run_dir(
         logger.error(f"{rel}: preparation failed: {e}")
         return RunDirResult(run_dir=rel, exit_code=1, stderr=str(e))
 
+    registry = _build_hook_registry(config, run_dir_path)
+    hook_ctx = HookContext(run_dir=run_dir_path, command=inp.command)
     dir_settings = prepared.init_input.settings
     all_extra = [*prepared.lifecycle_flags, *inp.extra_flags]
 
+    before_event, after_event = hook_execution.lifecycle_events(inp.command)
+    if registry and not hook_execution.run_before_hooks(registry, before_event, hook_ctx):
+        return RunDirResult(run_dir=rel, exit_code=1, stderr=f"aborted by {before_event} hook")
+
     if inp.command == LifecycleCommand.INIT:
         init_result = executor.init(prepared.init_input)
-        return RunDirResult(
+        result_dir = RunDirResult(
             run_dir=rel,
             exit_code=init_result.exit_code,
             stdout=init_result.stdout,
             stderr=init_result.stderr or "",
         )
-    mode = inp.init_mode
-    if inp.command == LifecycleCommand.PLAN:
-        result = executor.plan(PlanInput(settings=dir_settings, init_mode=mode, extra_args=all_extra))
-    elif inp.command == LifecycleCommand.APPLY:
-        result = executor.apply(
-            ApplyInput(settings=dir_settings, auto_approve=inp.auto_approve, init_mode=mode, extra_args=all_extra)
-        )
-    elif inp.command == LifecycleCommand.DESTROY:
-        result = executor.destroy(
-            DestroyInput(settings=dir_settings, auto_approve=inp.auto_approve, init_mode=mode, extra_args=all_extra)
-        )
     else:
-        raise ValueError(f"unsupported command: {inp.command}")
+        mode = inp.init_mode
+        if inp.command == LifecycleCommand.PLAN:
+            result = executor.plan(PlanInput(settings=dir_settings, init_mode=mode, extra_args=all_extra))
+        elif inp.command == LifecycleCommand.APPLY:
+            result = executor.apply(
+                ApplyInput(settings=dir_settings, auto_approve=inp.auto_approve, init_mode=mode, extra_args=all_extra)
+            )
+        elif inp.command == LifecycleCommand.DESTROY:
+            result = executor.destroy(
+                DestroyInput(settings=dir_settings, auto_approve=inp.auto_approve, init_mode=mode, extra_args=all_extra)
+            )
+        else:
+            raise ValueError(f"unsupported command: {inp.command}")
+        result_dir = RunDirResult(
+            run_dir=rel,
+            exit_code=result.exit_code,
+            stdout=result.stdout,
+            stderr=result.stderr or "",
+        )
 
-    return RunDirResult(
-        run_dir=rel,
-        exit_code=result.exit_code,
-        stdout=result.stdout,
-        stderr=result.stderr or "",
-    )
+    if registry:
+        hook_execution.run_after_hooks(registry, after_event, hook_ctx)
+        ok_or_error = LifecycleEvent.ON_OK if result_dir.exit_code == 0 else LifecycleEvent.ON_ERROR
+        hook_execution.run_after_hooks(registry, ok_or_error, hook_ctx)
+
+    return result_dir
 
 
 def _log_run_dir_output(result: RunDirResult, command: str) -> None:

@@ -19,6 +19,13 @@ class BackendType(StrEnum):
     LOCAL = "local"
 
 
+class LifecycleCommand(StrEnum):
+    PLAN = "plan"
+    APPLY = "apply"
+    DESTROY = "destroy"
+    INIT = "init"
+
+
 class TagsInject(StrEnum):
     ALWAYS = "always"
     NEVER = "never"
