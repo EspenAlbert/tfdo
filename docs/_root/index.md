@@ -86,7 +86,7 @@ class InteractiveMode(StrEnum):
 <a id="checkconfig_def"></a>
 
 ### class: `CheckConfig`
-- [source](../../tfdo/_internal/settings.py#L81)
+- [source](../../tfdo/_internal/settings.py#L89)
 > **Since:** 0.3.0
 
 ```python
@@ -108,7 +108,7 @@ class CheckConfig(BaseModel):
 <a id="tfdouserconfig_def"></a>
 
 ### class: `TfDoUserConfig`
-- [source](../../tfdo/_internal/settings.py#L85)
+- [source](../../tfdo/_internal/settings.py#L93)
 > **Since:** 0.3.0
 
 ```python
