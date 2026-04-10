@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import inspect
 import logging
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable
 
 from pydantic import BaseModel
 
-from tfdo._internal.config.enums import LifecycleEvent
+from tfdo._internal.config.enums import HookOnError, LifecycleEvent
 from tfdo._internal.hooks.models import HookEffect, HookInput, HookSource
 
 if TYPE_CHECKING:
@@ -16,29 +18,45 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+HookFn = Callable[[HookInput], HookEffect | None]
+HookFnAny = HookFn | Callable[[], HookEffect | None]
+
+
+def _wrap_zero_arg(fn: HookFnAny) -> HookFn:
+    def _wrapped(_input: HookInput) -> HookEffect | None:
+        return fn()  # pyright: ignore[reportCallIssue]
+
+    return _wrapped
+
+
 class RegisteredHook(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     name: str
     source: HookSource
     priority: int
-    fn: Callable[[HookInput], HookEffect | None]
+    on_error: HookOnError
+    fn: HookFn
 
 
+@dataclass
 class HookRegistry:
-    def __init__(self) -> None:
-        self._hooks: dict[LifecycleEvent, list[RegisteredHook]] = defaultdict(list)
+    _hooks: dict[LifecycleEvent, list[RegisteredHook]] = field(init=False, default_factory=lambda: defaultdict(list))
 
     def register(
         self,
         name: str,
         events: list[LifecycleEvent],
-        fn: Callable[[HookInput], HookEffect | None],
+        fn: HookFnAny,
         priority: int,
         source: HookSource,
+        on_error: HookOnError | None = None,
     ) -> None:
-        hook = RegisteredHook(name=name, source=source, priority=priority, fn=fn)
+        params = inspect.signature(fn).parameters
+        wrapped: HookFn = _wrap_zero_arg(fn) if not params else fn  # pyright: ignore[reportAssignmentType]
         for event in events:
+            mode = on_error or LifecycleEvent.default_on_error(event)
+            hook = RegisteredHook(name=name, source=source, priority=priority, on_error=mode, fn=wrapped)
             self._hooks[event].append(hook)
 
     def get_hooks(self, event: LifecycleEvent) -> list[RegisteredHook]:
@@ -55,5 +73,6 @@ class HookRegistry:
                 fn=fn,
                 priority=config.priority,
                 source=HookSource.LOCAL,
+                on_error=config.on_error,
             )
         return registry

@@ -3,9 +3,11 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-from tfdo._internal.config.enums import LifecycleCommand, LifecycleEvent
-from tfdo._internal.hooks.execution import HookContext, _hook_env, lifecycle_events, run_after_hooks, run_before_hooks
-from tfdo._internal.hooks.models import ExitEvent, HookInput
+import pytest
+
+from tfdo._internal.config.enums import HookOnError, LifecycleCommand, LifecycleEvent
+from tfdo._internal.hooks.execution import HookContext, _hook_env, lifecycle_events, run_hooks
+from tfdo._internal.hooks.models import ExitEvent, HookAbortError, HookInput
 from tfdo._internal.hooks.registry import HookRegistry, HookSource
 
 
@@ -13,7 +15,7 @@ def _make_ctx(tmp_path: Path) -> HookContext:
     return HookContext(run_dir=tmp_path, command="plan")
 
 
-def test_before_hook_exit_event_returns_false(tmp_path: Path):
+def test_hook_exit_event_raises(tmp_path: Path):
     registry = HookRegistry()
     registry.register(
         "abort",
@@ -23,42 +25,30 @@ def test_before_hook_exit_event_returns_false(tmp_path: Path):
         source=HookSource.LOCAL,
     )
 
-    assert not run_before_hooks(registry, LifecycleEvent.PLAN_BEFORE, _make_ctx(tmp_path))
+    with pytest.raises(HookAbortError, match="stop") as exc_info:
+        run_hooks(registry, LifecycleEvent.PLAN_BEFORE, _make_ctx(tmp_path))
+    assert exc_info.value.exit_event.reason == "stop"
 
 
-def test_before_hook_exception_returns_false(tmp_path: Path):
+def test_hook_exception_raises_abort_error(tmp_path: Path):
     def _raise(inp: HookInput) -> None:
         raise RuntimeError("boom")
 
     registry = HookRegistry()
     registry.register("boom", [LifecycleEvent.PLAN_BEFORE], _raise, priority=100, source=HookSource.LOCAL)
-    assert not run_before_hooks(registry, LifecycleEvent.PLAN_BEFORE, _make_ctx(tmp_path))
+
+    with pytest.raises(HookAbortError, match="boom"):
+        run_hooks(registry, LifecycleEvent.PLAN_BEFORE, _make_ctx(tmp_path))
 
 
-def test_before_hook_success_returns_true(tmp_path: Path):
+def test_hook_success_no_exception(tmp_path: Path):
     calls: list[str] = []
     registry = HookRegistry()
     registry.register(
         "ok", [LifecycleEvent.PLAN_BEFORE], lambda inp: calls.append("ok"), priority=100, source=HookSource.LOCAL
     )
 
-    assert run_before_hooks(registry, LifecycleEvent.PLAN_BEFORE, _make_ctx(tmp_path))
-    assert calls == ["ok"]
-
-
-def test_after_hook_failure_continues(tmp_path: Path):
-    calls: list[str] = []
-
-    def _raise(inp: HookInput) -> None:
-        raise RuntimeError("boom")
-
-    registry = HookRegistry()
-    registry.register("fail", [LifecycleEvent.PLAN_AFTER], _raise, priority=50, source=HookSource.LOCAL)
-    registry.register(
-        "ok", [LifecycleEvent.PLAN_AFTER], lambda inp: calls.append("ok"), priority=100, source=HookSource.LOCAL
-    )
-
-    run_after_hooks(registry, LifecycleEvent.PLAN_AFTER, _make_ctx(tmp_path))
+    run_hooks(registry, LifecycleEvent.PLAN_BEFORE, _make_ctx(tmp_path))
     assert calls == ["ok"]
 
 
@@ -89,6 +79,55 @@ def test_lifecycle_events_mapping():
     before, after = lifecycle_events(LifecycleCommand.APPLY)
     assert before == LifecycleEvent.APPLY_BEFORE
     assert after == LifecycleEvent.APPLY_AFTER
+
+
+def test_warn_mode_exception_logs_and_continues(tmp_path: Path, caplog):
+    calls: list[str] = []
+
+    def _raise(inp: HookInput) -> None:
+        raise RuntimeError("boom")
+
+    registry = HookRegistry()
+    registry.register(
+        "fail", [LifecycleEvent.PLAN_BEFORE], _raise, priority=50, source=HookSource.LOCAL, on_error=HookOnError.WARN
+    )
+    registry.register(
+        "ok",
+        [LifecycleEvent.PLAN_BEFORE],
+        lambda inp: calls.append("ok"),
+        priority=100,
+        source=HookSource.LOCAL,
+        on_error=HookOnError.WARN,
+    )
+
+    run_hooks(registry, LifecycleEvent.PLAN_BEFORE, _make_ctx(tmp_path))
+    assert calls == ["ok"]
+    assert "hook 'fail' failed: boom" in caplog.text
+
+
+def test_warn_mode_exit_event_logs_and_continues(tmp_path: Path, caplog):
+    calls: list[str] = []
+    registry = HookRegistry()
+    registry.register(
+        "exit",
+        [LifecycleEvent.PLAN_BEFORE],
+        lambda inp: ExitEvent(reason="soft-stop"),
+        priority=50,
+        source=HookSource.LOCAL,
+        on_error=HookOnError.WARN,
+    )
+    registry.register(
+        "ok",
+        [LifecycleEvent.PLAN_BEFORE],
+        lambda inp: calls.append("ok"),
+        priority=100,
+        source=HookSource.LOCAL,
+        on_error=HookOnError.WARN,
+    )
+
+    run_hooks(registry, LifecycleEvent.PLAN_BEFORE, _make_ctx(tmp_path))
+    assert calls == ["ok"]
+    assert "soft-stop" in caplog.text
 
 
 def test_hook_context_skips_none_fields(tmp_path: Path):

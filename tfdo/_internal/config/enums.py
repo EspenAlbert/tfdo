@@ -1,4 +1,11 @@
+from __future__ import annotations
+
 from enum import StrEnum
+
+
+class HookOnError(StrEnum):
+    ABORT = "abort"
+    WARN = "warn"
 
 
 class LifecycleEvent(StrEnum):
@@ -12,6 +19,10 @@ class LifecycleEvent(StrEnum):
     DESTROY_AFTER = "destroy_after"
     ON_OK = "on_ok"
     ON_ERROR = "on_error"
+
+    @classmethod
+    def default_on_error(cls, event: LifecycleEvent) -> HookOnError:
+        return HookOnError.ABORT if event.endswith("_before") else HookOnError.WARN
 
 
 class BackendType(StrEnum):

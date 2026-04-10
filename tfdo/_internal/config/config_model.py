@@ -4,7 +4,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from tfdo._internal.config.enums import BackendType, LifecycleEvent, TagsInject
+from tfdo._internal.config.enums import BackendType, HookOnError, LifecycleEvent, TagsInject
 from tfdo._internal.settings import CheckConfig
 
 
@@ -54,6 +54,7 @@ class HookConfig(BaseModel):
     lifecycle_events: list[LifecycleEvent]
     timeout_seconds: int = 30
     priority: int = 5000
+    on_error: HookOnError | None = None
 
     @model_validator(mode="after")
     def _exactly_one_executor(self) -> Self:

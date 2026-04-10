@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from ask_shell.shell import run_and_wait
 
 from tfdo._internal.config.config_model import HookConfig
 from tfdo._internal.config.enums import LifecycleEvent
@@ -21,7 +22,8 @@ def test_wrap_cmd_passes_env_and_timeout(tmp_path: Path):
     )
     runner = LocalHookRunner(tmp_path)
 
-    with patch("ask_shell.shell.run_and_wait") as mock_raw:
+    runner_module = LocalHookRunner.__module__
+    with patch(f"{runner_module}.{run_and_wait.__name__}") as mock_raw:
         fn = runner.wrap(config)
         result = fn(_make_input())
 

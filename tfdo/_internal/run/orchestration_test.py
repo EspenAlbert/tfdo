@@ -6,11 +6,12 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from tfdo._internal.config.config_model import DependencyRef, HookConfig
+from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
-from tfdo._internal.config.enums import LifecycleEvent, TagsInject
+from tfdo._internal.config.enums import HookOnError, LifecycleEvent, TagsInject
 from tfdo._internal.core import executor
-from tfdo._internal.hooks.models import ExitEvent, HookInput
+from tfdo._internal.hooks.models import ExitEvent, HookSource
+from tfdo._internal.hooks.registry import HookRegistry
 from tfdo._internal.models import PlanResult
 from tfdo._internal.run.discovery import DiscoveredRunDir
 from tfdo._internal.run.orchestration import (
@@ -20,6 +21,7 @@ from tfdo._internal.run.orchestration import (
     OrchestrationResult,
     RunDirResult,
     RunOrchestrationInput,
+    _build_hook_registry,
     _execute_run_dir,
     _resolve_ref,
     build_dependency_graph,
@@ -217,81 +219,107 @@ def test_run_orchestration_selector_filter(tmp_path: Path):
     assert result.results[0].run_dir == "envs/dev/api"
 
 
-def test_before_hook_failure_aborts_command(tmp_path: Path):
+def _make_run_dir(tmp_path: Path) -> Path:
     run_dir = tmp_path / "envs" / "dev" / "api"
     run_dir.mkdir(parents=True)
     (run_dir / "main.tf").write_text(TF_BACKEND)
+    return run_dir
 
-    hook = HookConfig(
-        name="blocker",
-        py_locate="tfdo._internal.run.orchestration_test._abort_hook",
-        lifecycle_events=[LifecycleEvent.PLAN_BEFORE],
+
+def test_warn_mode_before_hook_does_not_abort(tmp_path: Path):
+    run_dir = _make_run_dir(tmp_path)
+    registry = HookRegistry()
+    registry.register(
+        "soft-lint",
+        [LifecycleEvent.PLAN_BEFORE],
+        lambda inp: ExitEvent(reason="lint-warn"),
+        priority=100,
+        source=HookSource.LOCAL,
+        on_error=HookOnError.WARN,
     )
-    config = _resolved_config(hook_configs=[hook])
-    settings = TfDoSettings(work_dir=tmp_path)
+    config = _resolved_config()
     ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN)
-
-    result = _execute_run_dir(inp, run_dir, ctx, config)
-    assert result.exit_code == 1
-    assert "aborted" in result.stderr
-
-
-def test_after_hook_failure_does_not_abort(tmp_path: Path):
-    run_dir = tmp_path / "envs" / "dev" / "api"
-    run_dir.mkdir(parents=True)
-    (run_dir / "main.tf").write_text(TF_BACKEND)
-
-    hook = HookConfig(
-        name="flaky-after",
-        py_locate="tfdo._internal.run.orchestration_test._raise_hook",
-        lifecycle_events=[LifecycleEvent.PLAN_AFTER],
-    )
-    config = _resolved_config(hook_configs=[hook])
-    settings = TfDoSettings(work_dir=tmp_path)
-    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN)
+    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
 
     executor_module = executor.__name__
-    with patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)):
+    module = _execute_run_dir.__module__
+    with (
+        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
+        patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry),
+    ):
         result = _execute_run_dir(inp, run_dir, ctx, config)
+    assert result.exit_code == 0
 
+
+def test_before_hook_failure_aborts_command(tmp_path: Path):
+    run_dir = _make_run_dir(tmp_path)
+    registry = HookRegistry()
+    registry.register(
+        "blocker",
+        [LifecycleEvent.PLAN_BEFORE],
+        lambda inp: ExitEvent(reason="test-abort"),
+        priority=100,
+        source=HookSource.LOCAL,
+    )
+    config = _resolved_config()
+    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
+    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
+
+    module = _execute_run_dir.__module__
+    with patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry):
+        result = _execute_run_dir(inp, run_dir, ctx, config)
+    assert result.exit_code == 1
+    assert "test-abort" in result.stderr
+
+
+def test_after_hook_failure_does_not_change_exit_code(tmp_path: Path):
+    run_dir = _make_run_dir(tmp_path)
+
+    def _raise_hook(inp):
+        raise RuntimeError("after hook failure")
+
+    registry = HookRegistry()
+    registry.register(
+        "flaky-after",
+        [LifecycleEvent.PLAN_AFTER],
+        _raise_hook,
+        priority=100,
+        source=HookSource.LOCAL,
+    )
+    config = _resolved_config()
+    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
+    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
+
+    executor_module = executor.__name__
+    module = _execute_run_dir.__module__
+    with (
+        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
+        patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry),
+    ):
+        result = _execute_run_dir(inp, run_dir, ctx, config)
     assert result.exit_code == 0
 
 
 def test_on_ok_fires_on_success(tmp_path: Path):
-    run_dir = tmp_path / "envs" / "dev" / "api"
-    run_dir.mkdir(parents=True)
-    (run_dir / "main.tf").write_text(TF_BACKEND)
-
-    _ON_OK_CALLS.clear()
-    hook = HookConfig(
-        name="on-ok",
-        py_locate="tfdo._internal.run.orchestration_test._on_ok_hook",
-        lifecycle_events=[LifecycleEvent.ON_OK],
+    run_dir = _make_run_dir(tmp_path)
+    calls: list[str] = []
+    registry = HookRegistry()
+    registry.register(
+        "on-ok",
+        [LifecycleEvent.ON_OK],
+        lambda inp: calls.append("fired"),
+        priority=100,
+        source=HookSource.LOCAL,
     )
-    config = _resolved_config(hook_configs=[hook])
-    settings = TfDoSettings(work_dir=tmp_path)
+    config = _resolved_config()
     ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN)
+    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
 
     executor_module = executor.__name__
-    with patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)):
+    module = _execute_run_dir.__module__
+    with (
+        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
+        patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry),
+    ):
         _execute_run_dir(inp, run_dir, ctx, config)
-
-    assert len(_ON_OK_CALLS) == 1
-
-
-_ON_OK_CALLS: list[str] = []
-
-
-def _abort_hook(hook_input: HookInput) -> ExitEvent:
-    return ExitEvent(reason="test-abort")
-
-
-def _raise_hook(hook_input: HookInput) -> None:
-    raise RuntimeError("after hook failure")
-
-
-def _on_ok_hook(hook_input: HookInput) -> None:
-    _ON_OK_CALLS.append("fired")
+    assert len(calls) == 1

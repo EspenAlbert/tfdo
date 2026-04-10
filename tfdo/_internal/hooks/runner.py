@@ -3,10 +3,14 @@ from __future__ import annotations
 import importlib
 import inspect
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from ask_shell.shell import run_and_wait
+
 from tfdo._internal.config.config_model import HookConfig
+from tfdo._internal.hooks.execution import _hook_env
 from tfdo._internal.hooks.models import ExitEvent, HookEffect, HookInput, InputModification, RetryEvent
 
 logger = logging.getLogger(__name__)
@@ -14,9 +18,9 @@ logger = logging.getLogger(__name__)
 _HOOK_EFFECT_TYPES = (ExitEvent, InputModification, RetryEvent)
 
 
+@dataclass
 class LocalHookRunner:
-    def __init__(self, run_dir: Path) -> None:
-        self._run_dir = run_dir
+    run_dir: Path
 
     def wrap(self, config: HookConfig) -> Callable[[HookInput], HookEffect | None]:
         if config.cmd:
@@ -26,18 +30,17 @@ class LocalHookRunner:
         raise ValueError(f"hook '{config.name}' has neither cmd nor py_locate")
 
     def _wrap_cmd(self, config: HookConfig) -> Callable[[HookInput], HookEffect | None]:
-        from ask_shell.shell import run_and_wait
-
+        assert config.cmd is not None
         cmd = config.cmd
         timeout = config.timeout_seconds
-        run_dir = self._run_dir
+        cwd = self.run_dir
 
         def _run(hook_input: HookInput) -> HookEffect | None:
             run_and_wait(
                 cmd,
                 timeout=timeout,
-                cwd=run_dir,
-                env=dict(hook_input.env_vars),
+                cwd=cwd,
+                env=hook_input.env_dict(),
                 allow_non_zero_exit=False,
                 skip_binary_check=True,
             )
@@ -66,9 +69,7 @@ class LocalHookRunner:
         accepts_input = len(params) >= 1
 
         def _run(hook_input: HookInput) -> HookEffect | None:
-            from tfdo._internal.hooks.execution import _hook_env
-
-            _hook_env.set(dict(hook_input.env_vars))
+            _hook_env.set(hook_input.env_dict())
             result = fn(hook_input) if accepts_input else fn()
             if result is None:
                 return None

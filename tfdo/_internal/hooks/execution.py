@@ -6,8 +6,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from tfdo._internal.config.enums import LifecycleCommand, LifecycleEvent
-from tfdo._internal.hooks.models import ExitEvent, HookEnvVars, HookInput
+from tfdo._internal.config.enums import HookOnError, LifecycleCommand, LifecycleEvent
+from tfdo._internal.hooks.models import ExitEvent, HookAbortError, HookEnvVars, HookInput
 from tfdo._internal.hooks.registry import HookRegistry
 
 logger = logging.getLogger(__name__)
@@ -53,38 +53,26 @@ class HookContext(BaseModel):
         return HookInput(env_vars=env)
 
 
-def run_before_hooks(registry: HookRegistry, event: LifecycleEvent, ctx: HookContext) -> bool:
-    hooks = registry.get_hooks(event)
-    if not hooks:
-        return True
-    hook_input = ctx.to_hook_input(event)
-    _hook_env.set(dict(hook_input.env_vars))
-    for hook in hooks:
-        try:
-            effect = hook.fn(hook_input)
-        except Exception:
-            logger.exception(f"before hook '{hook.name}' raised an exception")
-            return False
-        if isinstance(effect, ExitEvent):
-            logger.error(f"hook '{hook.name}' requested exit: {effect.reason}")
-            return False
-    return True
-
-
-def run_after_hooks(registry: HookRegistry, event: LifecycleEvent, ctx: HookContext) -> None:
+def run_hooks(registry: HookRegistry, event: LifecycleEvent, ctx: HookContext) -> None:
     hooks = registry.get_hooks(event)
     if not hooks:
         return
     hook_input = ctx.to_hook_input(event)
-    _hook_env.set(dict(hook_input.env_vars))
+    _hook_env.set(hook_input.env_dict())
     for hook in hooks:
         try:
             effect = hook.fn(hook_input)
-        except Exception:
-            logger.warning(f"after hook '{hook.name}' raised an exception, continuing", exc_info=True)
+        except HookAbortError:
+            raise
+        except Exception as e:
+            if hook.on_error == HookOnError.ABORT:
+                raise HookAbortError(hook.name, ExitEvent(reason=str(e))) from e
+            logger.warning(f"hook '{hook.name}' failed: {e}")
             continue
         if isinstance(effect, ExitEvent):
-            logger.warning(f"after hook '{hook.name}' requested exit: {effect.reason}, ignoring in after phase")
+            if hook.on_error == HookOnError.ABORT:
+                raise HookAbortError(hook.name, effect)
+            logger.warning(f"hook '{hook.name}' requested exit: {effect.reason}")
 
 
 _LIFECYCLE_EVENTS: dict[LifecycleCommand, tuple[LifecycleEvent, LifecycleEvent]] = {
