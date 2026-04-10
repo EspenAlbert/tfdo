@@ -58,7 +58,7 @@ def _parse_git_remote(repo_root: Path) -> tuple[str, str]:
         if result := _parse_git_remote_url(url):
             return result
     except Exception:
-        logger.error(f"failed to read git remote for {repo_root}")
+        logger.debug(f"failed to read git remote for {repo_root}")
     return ("unknown", repo_root.name)
 
 
@@ -67,10 +67,13 @@ class FailureMode(StrEnum):
     CONTINUE = "continue"
 
 
+DEFAULT_PARALLEL = 4
+
+
 class RunOrchestrationInput(BaseModel):
     settings: TfDoSettings
     command: LifecycleCommand
-    parallel: int = 10
+    parallel: int = DEFAULT_PARALLEL
     on_failure: FailureMode = FailureMode.STOP
     dry_run: bool = False
     selector_filters: dict[str, str] = Field(default_factory=dict)
@@ -366,7 +369,7 @@ def _execute_wave_parallel(
     configs: dict[str, ResolvedConfig],
     effective_parallel: int,
 ) -> tuple[list[RunDirResult], bool]:
-    max_submits = max(effective_parallel, MIN_CONCURRENT_SUBMITS)
+    max_submits = min(max(effective_parallel, MIN_CONCURRENT_SUBMITS), len(wave.run_dirs))
     futures: list[tuple[str, Future[RunDirResult]]] = []
 
     with run_pool(
@@ -394,17 +397,17 @@ def _execute_plan(
     contexts: dict[str, RunDirContext],
     configs: dict[str, ResolvedConfig],
 ) -> list[RunDirResult]:
-    sequential = inp.parallel == 1 or (
-        not inp.auto_approve and inp.command in (LifecycleCommand.APPLY, LifecycleCommand.DESTROY)
-    )
-    if sequential:
+    needs_approval = not inp.auto_approve and inp.command in (LifecycleCommand.APPLY, LifecycleCommand.DESTROY)
+    sequential = inp.parallel == 1 or needs_approval
+    if needs_approval:
         logger.warning(f"interactive approval: running sequentially for {inp.command}")
 
     all_results: list[RunDirResult] = []
     for wave in plan.waves:
+        use_sequential = sequential or len(wave.run_dirs) <= 1
         wave_results, has_failure = (
             _execute_wave_sequential(wave, inp, repo_root, contexts, configs)
-            if sequential
+            if use_sequential
             else _execute_wave_parallel(wave, inp, repo_root, contexts, configs, inp.parallel)
         )
         all_results.extend(wave_results)
@@ -414,6 +417,38 @@ def _execute_plan(
                     all_results.append(RunDirResult(run_dir=rd, exit_code=1, skipped=True))
             break
     return all_results
+
+
+def _resolve_ref_path(ref: str, run_dir_path: str) -> str:
+    parent = run_dir_path.rsplit("/", 1)[0] if "/" in run_dir_path else ""
+    return f"{parent}/{ref}" if parent else ref
+
+
+def _include_dependency_targets(
+    filtered: list[DiscoveredRunDir],
+    all_discovered: list[DiscoveredRunDir],
+    configs: dict[str, ResolvedConfig],
+) -> list[DiscoveredRunDir]:
+    """Pull in transitive dependency targets that were excluded by filters."""
+    filtered_paths = {d.relative_path for d in filtered}
+    all_by_path = {d.relative_path: d for d in all_discovered}
+    added: set[str] = set()
+    queue = list(filtered_paths)
+    while queue:
+        rel = queue.pop()
+        if cfg := configs.get(rel):
+            for dep_ref in cfg.dependencies:
+                dep_path = _resolve_ref_path(dep_ref.ref, rel)
+                if dep_path not in filtered_paths and dep_path not in added and dep_path in all_by_path:
+                    added.add(dep_path)
+                    queue.append(dep_path)
+    if added:
+        logger.info(f"auto-included {len(added)} dependency targets: {sorted(added)}")
+        return sorted(
+            [*filtered, *(all_by_path[p] for p in added)],
+            key=lambda d: d.relative_path,
+        )
+    return filtered
 
 
 def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
@@ -436,6 +471,7 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
         logger.warning("no run directories matched filters")
         return OrchestrationResult()
 
+    discovered = _include_dependency_targets(discovered, all_discovered, configs)
     graph = build_dependency_graph(discovered, configs)
     plan = graph.to_waves()
 

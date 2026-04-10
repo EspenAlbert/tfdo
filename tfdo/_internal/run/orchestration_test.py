@@ -24,6 +24,7 @@ from tfdo._internal.run.orchestration import (
     _build_hook_registry,
     _execute_run_dir,
     _execute_wave_sequential,
+    _include_dependency_targets,
     _parse_git_remote_url,
     _resolve_ref,
     build_dependency_graph,
@@ -151,7 +152,7 @@ def test_run_orchestration_with_mocked_executor(tmp_path: Path):
         configs={"envs/dev/compute": {"dependencies": [{"ref": "network"}]}},
     )
     settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, auto_approve=True, parallel=2)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
 
     executor_module = executor.__name__
     with patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)):
@@ -175,7 +176,7 @@ def test_run_orchestration_continue_on_error(tmp_path: Path):
         return PlanResult(exit_code=1, stderr="plan failed")
 
     inp = RunOrchestrationInput(
-        settings=settings, command=LifecycleCommand.PLAN, on_failure=FailureMode.CONTINUE, parallel=2
+        settings=settings, command=LifecycleCommand.PLAN, on_failure=FailureMode.CONTINUE, parallel=1
     )
     executor_module = executor.__name__
     with patch(f"{executor_module}.{executor.plan.__name__}", side_effect=mock_plan):
@@ -193,7 +194,7 @@ def test_run_orchestration_stops_on_first_failure(tmp_path: Path):
         configs={"envs/dev/compute": {"dependencies": [{"ref": "network"}]}},
     )
     settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=2)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
 
     executor_module = executor.__name__
     with patch(
@@ -443,6 +444,43 @@ def test_tag_filter_matches_per_dir_config_tags(tmp_path: Path):
     result = run_orchestration(inp)
     assert len(result.results) == 1
     assert result.results[0].run_dir == "envs/dev/api"
+
+
+def test_include_dependency_targets_pulls_in_missing_deps():
+    all_discovered = [
+        DiscoveredRunDir(path=Path("/r/envs/dev/app1"), relative_path="envs/dev/app1", selectors={}),
+        DiscoveredRunDir(path=Path("/r/envs/dev/app2"), relative_path="envs/dev/app2", selectors={}),
+    ]
+    filtered = [all_discovered[1]]
+    configs = {
+        "envs/dev/app1": _resolved_config(),
+        "envs/dev/app2": _resolved_config(dependencies=[DependencyRef(ref="app1")]),
+    }
+    result = _include_dependency_targets(filtered, all_discovered, configs)
+    paths = [d.relative_path for d in result]
+    assert "envs/dev/app1" in paths
+    assert "envs/dev/app2" in paths
+
+
+def test_filter_with_deps_auto_includes_targets(tmp_path: Path):
+    _setup_repo(
+        tmp_path,
+        ["envs/dev/net", "envs/dev/app"],
+        "envs/{env}/{svc}",
+        configs={"envs/dev/app": {"dependencies": [{"ref": "net"}]}},
+    )
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(
+        settings=settings,
+        command=LifecycleCommand.PLAN,
+        dry_run=True,
+        selector_filters={"svc": "app"},
+    )
+    result = run_orchestration(inp)
+    dirs = [r.run_dir for r in result.results]
+    assert "envs/dev/net" in dirs
+    assert "envs/dev/app" in dirs
+    assert dirs.index("envs/dev/net") < dirs.index("envs/dev/app")
 
 
 def test_orchestration_plan_passes_backend_args(tmp_path: Path):

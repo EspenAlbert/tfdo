@@ -47,7 +47,7 @@ def resolve_backend_args(backend: BackendConfig, ctx: RunDirContext) -> list[str
     resolved = _resolve_backend(backend, ctx)
     match resolved:
         case LocalBackend(path=path):
-            Path(path).mkdir(parents=True, exist_ok=True)
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
     return resolved.config_flags
 
 

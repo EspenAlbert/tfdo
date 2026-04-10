@@ -15,7 +15,7 @@ class RunContext(BaseModel):
     settings: TfDoSettings
     selector_filters: dict[str, str] = Field(default_factory=dict)
     tag_filters: list[str] = Field(default_factory=list)
-    parallel: int = 10
+    parallel: int = 4
     on_failure: FailureMode = FailureMode.STOP
     dry_run: bool = False
 
@@ -48,7 +48,7 @@ def run_callback(
     app_name: str | None = run_options.app_option(),
     tags: list[str] = run_options.tags_option(),
     parallel: int = run_options.parallel_option(),
-    on_failure: str = run_options.on_failure_option(),
+    on_failure: FailureMode = run_options.on_failure_option(),
     dry_run: bool = run_options.dry_run_option(),
 ) -> None:
     parent_settings = get_settings(ctx)
@@ -62,7 +62,7 @@ def run_callback(
         selector_filters=selector_filters,
         tag_filters=tags,
         parallel=parallel,
-        on_failure=FailureMode(on_failure),
+        on_failure=on_failure,
         dry_run=dry_run,
     )
 
@@ -71,7 +71,7 @@ def run_callback(
 def run_init_cmd(
     ctx: typer.Context,
     extra_args: list[str] | None = typer.Option(
-        None, "--extra-args", help="Extra arguments forwarded to terraform init"
+        None, "--extra-args", help="Extra arguments forwarded to terraform init (e.g. --extra-args=-upgrade)"
     ),
 ) -> None:
     """Run init across multiple run directories."""
@@ -87,7 +87,7 @@ def run_plan_cmd(
     ctx: typer.Context,
     var_file: Path | None = cmd_options.var_file_option(),
     init_mode: InitMode = cmd_options.init_mode_option(),
-    out: Path | None = typer.Option(None, "-o", "--out", help="Write plans to file"),
+    out: Path | None = typer.Option(None, "-o", "--out", help="Write plan output to file (per run directory)"),
     json_output: bool = typer.Option(False, "--json", help="Output in JSON format"),
 ) -> None:
     """Run plan across multiple run directories."""

@@ -50,12 +50,13 @@ def test_s3_backend_with_dynamodb():
     assert "-backend-config=dynamodb_table=locks-staging" in args
 
 
-def test_local_backend_creates_dir(tmp_path: Path):
-    state_dir = tmp_path / "state" / "compute"
-    backend = LocalBackend(path=str(state_dir))
+def test_local_backend_creates_parent_dir(tmp_path: Path):
+    state_file = tmp_path / "state" / "compute" / "terraform.tfstate"
+    backend = LocalBackend(path=str(state_file))
     args = resolve_init_backend_args(backend, _CTX)
-    assert args == [f"-backend-config=path={state_dir}"]
-    assert state_dir.is_dir()
+    assert args == [f"-backend-config=path={state_file}"]
+    assert state_file.parent.is_dir()
+    assert not state_file.exists()
 
 
 def test_none_backend_returns_empty():

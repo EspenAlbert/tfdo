@@ -39,7 +39,7 @@ def config_show(input_model: ConfigShowInput) -> ConfigShowResult:
 
 @config_app.command("show")
 def show_cmd(ctx: typer.Context) -> None:
-    """Print resolved tfdo.yaml config for current directory."""
+    """Print resolved tfdo.yaml config layers and merged result for current work directory."""
     settings = get_settings(ctx)
     result = config_show(ConfigShowInput(settings=settings))
     if result.resolved is None:
