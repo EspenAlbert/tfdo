@@ -50,11 +50,11 @@ class HclResourcePathsResult(BaseModel):
         return json.dumps(payload, indent=2, sort_keys=True)
 
 
-def collect_resource_argument_paths(root: Path) -> HclResourcePathsResult:
+def collect_resource_argument_paths(root: Path, *, include_hidden: bool = False) -> HclResourcePathsResult:
     root_resolved = root.resolve()
     acc: dict[tuple[Path, str], set[str]] = {}
     errors: list[HclParseError] = []
-    for path in iter_tf_files(root, include_hidden=True):
+    for path in iter_tf_files(root, include_hidden=include_hidden):
         rel_file = path.resolve().relative_to(root_resolved)
         try:
             with path.open(encoding="utf-8") as f:
