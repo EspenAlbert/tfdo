@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from tfdo._internal.core import tf_files
 from tfdo._internal.run.discovery import has_backend_block
 
 logger = logging.getLogger(__name__)
@@ -18,15 +19,7 @@ class ScanResult(BaseModel):
 
 
 def _walk_for_backend_dirs(repo_root: Path) -> list[Path]:
-    result: list[Path] = []
-    for directory in sorted(repo_root.rglob("*")):
-        if not directory.is_dir():
-            continue
-        if any(part.startswith(".") for part in directory.relative_to(repo_root).parts):
-            continue
-        if has_backend_block(directory):
-            result.append(directory)
-    return result
+    return [d for d in tf_files.find_tf_directories(repo_root) if has_backend_block(d)]
 
 
 def _infer_pattern(relative_paths: list[str]) -> str | None:

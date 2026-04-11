@@ -19,7 +19,7 @@
 <a id="run_apply_cmd_def"></a>
 
 ### cli_command: `run_apply_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L105)
+- [source](../../tfdo/_internal/run/cmd_run.py#L112)
 > **Since:** unreleased
 
 ```python
@@ -47,11 +47,11 @@ Run apply across multiple run directories.
 <a id="run_callback_def"></a>
 
 ### cli_command: `run_callback`
-- [source](../../tfdo/_internal/run/cmd_run.py#L44)
+- [source](../../tfdo/_internal/run/cmd_run.py#L46)
 > **Since:** unreleased
 
 ```python
-def run_callback(*, env: str | None = None, app_name: str | None = None, tags: list[str] = [], parallel: int = 10, on_failure: FailureMode = <FailureMode.STOP: 'stop'>, dry_run: bool = False) -> None:
+def run_callback(*, env: str | None = None, app_name: str | None = None, team: str | None = None, tags: list[str] = [], changed: bool = False, parallel: int = 10, on_failure: FailureMode = <FailureMode.STOP: 'stop'>, dry_run: bool = False) -> None:
     ...
 ```
 
@@ -61,7 +61,9 @@ def run_callback(*, env: str | None = None, app_name: str | None = None, tags: l
 |---|---|---|---|
 | `--env` | `str | None` | `None` | Filter run directories by {env} selector from discovery pattern |
 | `--app` | `str | None` | `None` | Filter run directories by {app} selector from discovery pattern |
+| `--team` | `str | None` | `None` | Filter by team: uses {team} selector if in discovery pattern, otherwise falls back to tags.team |
 | `--tags` | `list[str]` | `[]` | Tag filter as key=value, repeatable with AND logic (e.g. --tags env=dev --tags team=infra) |
+| `--changed` | `bool` | `False` | Limit to run directories affected by git diff vs HEAD |
 | `--parallel` | `int` | `10` | Max concurrent run directory executions per wave |
 | `--on-failure` | `FailureMode` | `<FailureMode.STOP: 'stop'>` | Failure behavior: stop aborts remaining directories, continue runs all [stop, continue] |
 | `--dry-run` | `bool` | `False` | Show execution plan (waves and run directories) without running terraform |
@@ -76,7 +78,7 @@ def run_callback(*, env: str | None = None, app_name: str | None = None, tags: l
 <a id="run_destroy_cmd_def"></a>
 
 ### cli_command: `run_destroy_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L120)
+- [source](../../tfdo/_internal/run/cmd_run.py#L127)
 > **Since:** unreleased
 
 ```python
@@ -104,7 +106,7 @@ Run destroy across multiple run directories.
 <a id="run_init_cmd_def"></a>
 
 ### cli_command: `run_init_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L70)
+- [source](../../tfdo/_internal/run/cmd_run.py#L77)
 > **Since:** unreleased
 
 ```python
@@ -130,7 +132,7 @@ Run init across multiple run directories.
 <a id="run_plan_cmd_def"></a>
 
 ### cli_command: `run_plan_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L84)
+- [source](../../tfdo/_internal/run/cmd_run.py#L91)
 > **Since:** unreleased
 
 ```python

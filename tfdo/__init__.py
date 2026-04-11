@@ -5,14 +5,14 @@ from tfdo import config
 from tfdo._internal.core.cmd_info import info_cmd
 from tfdo import hooks
 from tfdo import inspect
+from tfdo import run
+from tfdo import schema
 from tfdo._internal.settings import CheckConfig
 from tfdo._internal.settings import InteractiveMode
 from tfdo._internal.settings import TfDoSettings
 from tfdo._internal.settings import TfDoUserConfig
-from tfdo import run
 from tfdo._internal.typer_app import get_settings
 from tfdo._internal.typer_app import main_callback
-from tfdo import schema
 
 VERSION = "0.5.0"
 __all__ = [
@@ -21,12 +21,12 @@ __all__ = [
     "info_cmd",
     "hooks",
     "inspect",
+    "run",
+    "schema",
     "CheckConfig",
     "InteractiveMode",
     "TfDoSettings",
     "TfDoUserConfig",
-    "run",
     "get_settings",
     "main_callback",
-    "schema",
 ]

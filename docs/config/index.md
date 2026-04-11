@@ -24,7 +24,7 @@
 <a id="backendtype_def"></a>
 
 ### class: `BackendType`
-- [source](../../tfdo/_internal/config/enums.py#L28)
+- [source](../../tfdo/_internal/config/enums.py#L29)
 > **Since:** unreleased
 
 ```python
@@ -192,7 +192,7 @@ class S3Backend(BaseModel):
 <a id="tagsinject_def"></a>
 
 ### class: `TagsInject`
-- [source](../../tfdo/_internal/config/enums.py#L40)
+- [source](../../tfdo/_internal/config/enums.py#L41)
 > **Since:** unreleased
 
 ```python
@@ -250,7 +250,7 @@ class TfDoConfig(BaseModel):
 <a id="show_cmd_def"></a>
 
 ### cli_command: `show_cmd`
-- [source](../../tfdo/_internal/config/cmd_config.py#L40)
+- [source](../../tfdo/_internal/config/cmd_config.py#L59)
 > **Since:** unreleased
 
 ```python

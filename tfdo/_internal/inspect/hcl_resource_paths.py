@@ -54,7 +54,7 @@ def collect_resource_argument_paths(root: Path) -> HclResourcePathsResult:
     root_resolved = root.resolve()
     acc: dict[tuple[Path, str], set[str]] = {}
     errors: list[HclParseError] = []
-    for path in iter_tf_files(root):
+    for path in iter_tf_files(root, include_hidden=True):
         rel_file = path.resolve().relative_to(root_resolved)
         try:
             with path.open(encoding="utf-8") as f:

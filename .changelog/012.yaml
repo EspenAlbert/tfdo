@@ -480,3 +480,33 @@ name: set_hook_env
 ts: 2026-04-10 08:34:04.846662+00:00
 type: keep_private
 full_path: _internal.hooks.execution.set_hook_env
+---
+name: team_option
+ts: 2026-04-11 09:05:05.639246+00:00
+type: keep_private
+full_path: _internal.run.run_options.team_option
+---
+name: changed_option
+ts: 2026-04-11 09:05:05.639369+00:00
+type: keep_private
+full_path: _internal.run.run_options.changed_option
+---
+name: scan_for_run_dirs
+ts: 2026-04-11 09:06:09.460732+00:00
+type: keep_private
+full_path: _internal.config.scan.scan_for_run_dirs
+---
+name: config_init
+ts: 2026-04-11 09:08:50.385072+00:00
+type: keep_private
+full_path: _internal.config.cmd_config.config_init
+---
+name: ScanResult
+ts: 2026-04-11 09:08:58.472694+00:00
+type: keep_private
+full_path: _internal.config.scan.ScanResult
+---
+name: ConfigInitInput
+ts: 2026-04-11 09:09:03.351068+00:00
+type: keep_private
+full_path: _internal.config.cmd_config.ConfigInitInput

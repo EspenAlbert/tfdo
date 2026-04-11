@@ -40,14 +40,15 @@ def config_show(input_model: ConfigShowInput) -> ConfigShowResult:
 
 
 class ConfigInitInput(TfDoBaseInput):
-    scan: bool = False
-    write: bool = False
+    dry_run: bool = False
 
 
 def config_init(input_model: ConfigInitInput) -> ScanResult:
     repo_root = find_repo_root(input_model.settings.work_dir)
     result = scan_for_run_dirs(repo_root)
-    if input_model.write and result.inferred_pattern:
+    if input_model.dry_run:
+        return result
+    if result.inferred_pattern:
         config_content = yaml.dump({"run_dir_discovery": result.inferred_pattern}, default_flow_style=False)
         config_path = repo_root / "tfdo.yaml"
         ensure_parents_write_text(config_path, config_content)
@@ -72,12 +73,11 @@ def show_cmd(ctx: typer.Context) -> None:
 @config_app.command("init")
 def init_cmd(
     ctx: typer.Context,
-    scan: bool = typer.Option(False, "--scan", help="Detect run directories by backend blocks and infer pattern"),
-    write: bool = typer.Option(False, "--write", help="Write inferred config to tfdo.yaml at repo root"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview detected directories without writing tfdo.yaml"),
 ) -> None:
     """Detect run directories and generate a starter tfdo.yaml."""
     settings = get_settings(ctx)
-    result = config_init(ConfigInitInput(settings=settings, scan=scan, write=write))
+    result = config_init(ConfigInitInput(settings=settings, dry_run=dry_run))
     if not result.directories:
         logger.info("no directories with backend blocks found")
         return
