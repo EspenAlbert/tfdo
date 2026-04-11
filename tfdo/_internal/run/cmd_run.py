@@ -18,6 +18,7 @@ class RunContext(BaseModel):
     parallel: int = 10
     on_failure: FailureMode = FailureMode.STOP
     dry_run: bool = False
+    changed: bool = False
 
     def build_input(self, command: LifecycleCommand, **kwargs) -> RunOrchestrationInput:
         return RunOrchestrationInput(
@@ -26,6 +27,7 @@ class RunContext(BaseModel):
             parallel=self.parallel,
             on_failure=self.on_failure,
             dry_run=self.dry_run,
+            changed=self.changed,
             selector_filters=self.selector_filters,
             tag_filters=self.tag_filters,
             **kwargs,
@@ -46,7 +48,9 @@ def run_callback(
     ctx: typer.Context,
     env: str | None = run_options.env_option(),
     app_name: str | None = run_options.app_option(),
+    team: str | None = run_options.team_option(),
     tags: list[str] = run_options.tags_option(),
+    changed: bool = run_options.changed_option(),
     parallel: int = run_options.parallel_option(),
     on_failure: FailureMode = run_options.on_failure_option(),
     dry_run: bool = run_options.dry_run_option(),
@@ -57,6 +61,8 @@ def run_callback(
         selector_filters["env"] = env
     if app_name:
         selector_filters["app"] = app_name
+    if team:
+        selector_filters["team"] = team
     ctx.obj = RunContext(
         settings=parent_settings,
         selector_filters=selector_filters,
@@ -64,6 +70,7 @@ def run_callback(
         parallel=parallel,
         on_failure=on_failure,
         dry_run=dry_run,
+        changed=changed,
     )
 
 

@@ -21,9 +21,11 @@ from tfdo._internal.run.orchestration import (
     OrchestrationResult,
     RunDirResult,
     RunOrchestrationInput,
+    _build_effective_filters,
     _build_hook_registry,
     _execute_run_dir,
     _execute_wave_sequential,
+    _fire_on_all_done,
     _include_dependency_targets,
     _parse_git_remote_url,
     _resolve_ref,
@@ -506,3 +508,66 @@ def test_orchestration_plan_passes_backend_args(tmp_path: Path):
     assert result.exit_code == 0
     assert len(captured_inputs) == 1
     assert any("bucket" in arg for arg in captured_inputs[0].init_backend_args)
+
+
+def test_team_fallback_to_tag_filter():
+    discovered = [
+        DiscoveredRunDir(
+            path=Path("/r/envs/dev/api"), relative_path="envs/dev/api", selectors={"env": "dev", "app": "api"}
+        ),
+    ]
+    inp = RunOrchestrationInput(
+        settings=TfDoSettings(work_dir=Path("/r")),
+        command=LifecycleCommand.PLAN,
+        selector_filters={"team": "infra"},
+    )
+    sel, tags = _build_effective_filters(inp, discovered)
+    assert sel is None or "team" not in sel
+    assert tags
+    assert any(t.key == "team" for t in tags)
+
+
+def test_team_stays_as_selector_when_in_pattern():
+    discovered = [
+        DiscoveredRunDir(
+            path=Path("/r/envs/dev/infra"),
+            relative_path="envs/dev/infra",
+            selectors={"env": "dev", "team": "infra"},
+        ),
+    ]
+    inp = RunOrchestrationInput(
+        settings=TfDoSettings(work_dir=Path("/r")),
+        command=LifecycleCommand.PLAN,
+        selector_filters={"team": "infra"},
+    )
+    sel, tags = _build_effective_filters(inp, discovered)
+    assert sel and "team" in sel
+
+
+def test_changed_filter_integration(tmp_path: Path):
+    _setup_repo(tmp_path, ["envs/dev/api", "envs/dev/web"], "envs/{env}/{app}")
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, dry_run=True, changed=True)
+
+    module = run_orchestration.__module__
+    with patch(f"{module}._get_changed_files", return_value=["envs/dev/api/main.tf"]):
+        result = run_orchestration(inp)
+
+    assert len(result.results) == 1
+    assert result.results[0].run_dir == "envs/dev/api"
+
+
+def test_on_all_done_fires_after_execution(tmp_path: Path):
+    _setup_repo(tmp_path, ["envs/dev/api"], "envs/{env}/{app}")
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
+
+    executor_module = executor.__name__
+    module = run_orchestration.__module__
+    with (
+        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
+        patch(f"{module}.{_fire_on_all_done.__name__}") as fire_mock,
+    ):
+        run_orchestration(inp)
+
+    assert fire_mock.call_count == 1

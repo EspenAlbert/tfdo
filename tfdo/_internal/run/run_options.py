@@ -11,10 +11,22 @@ def app_option() -> str | None:
     return typer.Option(None, "--app", help="Filter run directories by {app} selector from discovery pattern")
 
 
+def team_option() -> str | None:
+    return typer.Option(
+        None,
+        "--team",
+        help="Filter by team: uses {team} selector if in discovery pattern, otherwise falls back to tags.team",
+    )
+
+
 def tags_option() -> list[str]:
     return typer.Option(
         [], "--tags", help="Tag filter as key=value, repeatable with AND logic (e.g. --tags env=dev --tags team=infra)"
     )
+
+
+def changed_option() -> bool:
+    return typer.Option(False, "--changed", help="Limit to run directories affected by git diff vs HEAD")
 
 
 def parallel_option() -> int:

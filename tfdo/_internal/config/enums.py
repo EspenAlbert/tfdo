@@ -19,6 +19,7 @@ class LifecycleEvent(StrEnum):
     DESTROY_AFTER = "destroy_after"
     ON_OK = "on_ok"
     ON_ERROR = "on_error"
+    ON_ALL_DONE = "on_all_done"
 
     @classmethod
     def default_on_error(cls, event: LifecycleEvent) -> HookOnError:

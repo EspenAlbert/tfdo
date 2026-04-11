@@ -76,6 +76,7 @@ class RunOrchestrationInput(BaseModel):
     parallel: int = DEFAULT_PARALLEL
     on_failure: FailureMode = FailureMode.STOP
     dry_run: bool = False
+    changed: bool = False
     selector_filters: dict[str, str] = Field(default_factory=dict)
     tag_filters: list[str] = Field(default_factory=list)
     init_mode: InitMode = InitMode.AUTO
@@ -454,6 +455,42 @@ def _include_dependency_targets(
     return filtered
 
 
+def _get_changed_files(repo_root: Path) -> list[str]:
+    run = run_and_wait("git diff --name-only HEAD", cwd=repo_root, allow_non_zero_exit=True, skip_binary_check=True)
+    return [line.strip() for line in run.stdout.strip().splitlines() if line.strip()]
+
+
+def _build_effective_filters(
+    inp: RunOrchestrationInput,
+    all_discovered: list[DiscoveredRunDir],
+) -> tuple[dict[str, str] | None, list[TagFilter] | None]:
+    selector_filters = dict(inp.selector_filters) if inp.selector_filters else {}
+    tag_filters = [TagFilter.parse(t) for t in inp.tag_filters]
+
+    if "team" in selector_filters:
+        has_team_selector = any("team" in d.selectors for d in all_discovered)
+        if not has_team_selector:
+            team_val = selector_filters.pop("team")
+            tag_filters.append(TagFilter(key="team", values=team_val.split(",")))
+
+    return selector_filters or None, tag_filters or None
+
+
+def _fire_on_all_done(repo_root: Path, inp: RunOrchestrationInput) -> None:
+    root_layers = load_config_layers(repo_root)
+    if not root_layers:
+        return
+    user_config = load_user_config(inp.settings)
+    root_config = config_resolution.resolve_config(root_layers, user_config, inp.settings)
+    registry = _build_hook_registry(root_config, repo_root)
+    if not registry:
+        return
+    if not registry.get_hooks(LifecycleEvent.ON_ALL_DONE):
+        return
+    hook_ctx = HookContext(run_dir=repo_root, command=inp.command)
+    _run_event_hooks(registry, LifecycleEvent.ON_ALL_DONE, hook_ctx, "orchestration")
+
+
 def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
     repo_root = find_repo_root(inp.settings.work_dir)
     all_discovered = _discover_run_dirs(repo_root)
@@ -463,11 +500,13 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
 
     configs, contexts = _resolve_all_configs(all_discovered, inp, repo_root)
     resolved_tags = {rel: cfg.tags for rel, cfg in configs.items()}
-    tag_filters = [TagFilter.parse(t) for t in inp.tag_filters]
+    selector_filters, tag_filters = _build_effective_filters(inp, all_discovered)
+    changed_files = _get_changed_files(repo_root) if inp.changed else None
     discovered = filtering.apply_filters(
         all_discovered,
-        selector_filters=inp.selector_filters or None,
-        tag_filters=tag_filters or None,
+        selector_filters=selector_filters,
+        tag_filters=tag_filters,
+        changed_files=changed_files,
         resolved_tags=resolved_tags,
     )
     if not discovered:
@@ -486,4 +525,6 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
             results=[RunDirResult(run_dir=rd, exit_code=0, skipped=True) for w in plan.waves for rd in w.run_dirs],
         )
 
-    return OrchestrationResult(results=_execute_plan(plan, inp, repo_root, contexts, configs))
+    results = _execute_plan(plan, inp, repo_root, contexts, configs)
+    _fire_on_all_done(repo_root, inp)
+    return OrchestrationResult(results=results)
