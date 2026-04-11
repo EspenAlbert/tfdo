@@ -19,6 +19,7 @@ groups:
   - _internal.config.config_model
   - _internal.config.enums
   owned_refs:
+  - _internal.config.cmd_config.init_cmd
   - _internal.config.cmd_config.show_cmd
   - _internal.config.config_model.DependencyRef
   - _internal.config.config_model.HookConfig

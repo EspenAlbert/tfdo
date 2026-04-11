@@ -25,7 +25,7 @@
 > **Since:** 0.4.0
 
 ```python
-def inspect_hcl_paths_cmd(*, path: Path = Path('.'), as_json: bool = False, output: Path | None = None) -> None:
+def inspect_hcl_paths_cmd(*, path: Path = Path('.'), hidden: bool = False, as_json: bool = False, output: Path | None = None) -> None:
     ...
 ```
 
@@ -34,6 +34,7 @@ def inspect_hcl_paths_cmd(*, path: Path = Path('.'), as_json: bool = False, outp
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--path`, `-p` | `Path` | `Path('.')` | Root directory to scan for Terraform files |
+| `--hidden` | `bool` | `False` | Include hidden directories (dot-prefixed) in the scan |
 | `--json` | `bool` | `False` | Print JSON to stdout |
 | `--output`, `-o` | `Path | None` | `None` | Write JSON here instead of stdout (requires --json) |
 
@@ -47,7 +48,7 @@ def inspect_hcl_paths_cmd(*, path: Path = Path('.'), as_json: bool = False, outp
 <a id="inspect_resource_usage_cmd_def"></a>
 
 ### cli_command: `inspect_resource_usage_cmd`
-- [source](../../tfdo/_internal/inspect/cmd_inspect.py#L55)
+- [source](../../tfdo/_internal/inspect/cmd_inspect.py#L56)
 > **Since:** 0.4.0
 
 ```python
@@ -181,7 +182,7 @@ class SchemaSearchRowsBehavior(StrEnum):
 <a id="inspect_api_coverage_cmd_def"></a>
 
 ### cli_command: `inspect_api_coverage_cmd`
-- [source](../../tfdo/_internal/inspect/cmd_inspect.py#L137)
+- [source](../../tfdo/_internal/inspect/cmd_inspect.py#L138)
 > **Since:** 0.5.0
 
 ```python

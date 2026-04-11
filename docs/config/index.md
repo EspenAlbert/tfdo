@@ -13,6 +13,7 @@
 - [`S3Backend`](#s3backend_def)
 - [`TagsInject`](#tagsinject_def)
 - [`TfDoConfig`](#tfdoconfig_def)
+- [`init_cmd`](#init_cmd_def)
 - [`show_cmd`](#show_cmd_def)
 <!-- === OK_EDIT: pkg-ext symbols === -->
 
@@ -266,3 +267,29 @@ Print resolved tfdo.yaml config layers and merged result for current work direct
 |---------|--------|
 | unreleased | Made public |
 <!-- === OK_EDIT: pkg-ext show_cmd_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext init_cmd_def === -->
+<a id="init_cmd_def"></a>
+
+### cli_command: `init_cmd`
+- [source](../../tfdo/_internal/config/cmd_config.py#L73)
+> **Since:** 0.1.0
+
+```python
+def init_cmd(*, dry_run: bool = False) -> None:
+    ...
+```
+
+Detect run directories and generate a starter tfdo.yaml.
+
+**CLI Options:**
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--dry-run` | `bool` | `False` | Preview detected directories without writing tfdo.yaml |
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| 0.1.0 | Made public |
+<!-- === OK_EDIT: pkg-ext init_cmd_def === -->
