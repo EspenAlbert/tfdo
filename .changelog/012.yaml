@@ -468,14 +468,6 @@ ts: 2026-04-10 08:12:28.761009+00:00
 type: keep_private
 full_path: _internal.hooks.models.HookAbortError
 ---
-name: ''
-ts: 2026-04-10 08:12:34.626644+00:00
-type: fix
-author: Espen Albert
-ignored: true
-message: 'fix(config): Fix tags_inject resolution, remove dead code, tighten resolve_tflint signature'
-short_sha: 7b7d21
----
 name: set_hook_env
 ts: 2026-04-10 08:34:04.846662+00:00
 type: keep_private
@@ -510,3 +502,15 @@ name: ConfigInitInput
 ts: 2026-04-11 09:09:03.351068+00:00
 type: keep_private
 full_path: _internal.config.cmd_config.ConfigInitInput
+---
+name: hcl2_loads
+ts: 2026-04-12 17:39:39.032013+00:00
+type: keep_private
+full_path: _internal.hcl_compat.hcl2_loads
+---
+name: init_cmd
+ts: 2026-04-12 17:39:39.036506+00:00
+type: make_public
+details: CLI command in _internal/config/cmd_config.py
+full_path: _internal.config.cmd_config.init_cmd
+group: config

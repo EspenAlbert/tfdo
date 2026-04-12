@@ -4,9 +4,8 @@ import json
 import logging
 from pathlib import Path
 
-from hcl2.api import loads as hcl2_loads
-
 from tfdo._internal.config.enums import TagsInject
+from tfdo._internal.hcl_compat import hcl2_loads
 
 logger = logging.getLogger(__name__)
 

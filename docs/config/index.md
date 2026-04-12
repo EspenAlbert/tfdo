@@ -272,7 +272,7 @@ Print resolved tfdo.yaml config layers and merged result for current work direct
 
 ### cli_command: `init_cmd`
 - [source](../../tfdo/_internal/config/cmd_config.py#L73)
-> **Since:** 0.1.0
+> **Since:** unreleased
 
 ```python
 def init_cmd(*, dry_run: bool = False) -> None:
@@ -291,5 +291,5 @@ Detect run directories and generate a starter tfdo.yaml.
 
 | Version | Change |
 |---------|--------|
-| 0.1.0 | Made public |
+| unreleased | Made public |
 <!-- === OK_EDIT: pkg-ext init_cmd_def === -->

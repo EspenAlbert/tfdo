@@ -4,10 +4,10 @@ import logging
 import re
 from pathlib import Path
 
-from hcl2.api import loads as hcl2_loads
 from pydantic import BaseModel, Field
 
 from tfdo._internal.config.config_resolution import ResolvedConfig
+from tfdo._internal.hcl_compat import hcl2_loads
 from tfdo._internal.run.run_context import RunDirContext
 
 logger = logging.getLogger(__name__)
