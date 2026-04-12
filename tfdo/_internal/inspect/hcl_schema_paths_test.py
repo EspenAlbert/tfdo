@@ -3,8 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hcl2.api import load as hcl2_load
-
+from tfdo._internal.hcl_compat import hcl2_load
 from tfdo._internal.inspect.hcl_schema_paths import collect_resource_body_paths_assisted
 from tfdo._internal.schema.models import ResourceSchema
 from tfdo._internal.schema.resource_input_paths import resource_schema_input_paths

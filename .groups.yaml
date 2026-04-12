@@ -32,8 +32,8 @@ groups:
   - _internal.config.enums.TagsInject
 - name: core
   owned_modules:
+  - _internal.check.cmd_check
   - _internal.core.cmd_apply
-  - _internal.core.cmd_check
   - _internal.core.cmd_destroy
   - _internal.core.cmd_init
   - _internal.core.cmd_plan

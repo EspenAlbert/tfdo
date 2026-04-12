@@ -4,10 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from hcl2.api import load as hcl2_load
 from pydantic import BaseModel, Field
 
 from tfdo._internal.core.tf_files import iter_tf_files
+from tfdo._internal.hcl_compat import hcl2_load
 
 _TERRAFORM_META_PATHS: frozenset[str] = frozenset(
     {"connection", "count", "depends_on", "for_each", "lifecycle", "provider", "provisioner"}

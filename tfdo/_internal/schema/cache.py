@@ -4,7 +4,7 @@ import json
 import logging
 from pathlib import Path
 
-from hcl2.api import load as hcl2_load
+from tfdo._internal.hcl_compat import hcl2_load
 
 logger = logging.getLogger(__name__)
 
