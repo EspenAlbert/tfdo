@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import IO, Any
+from typing import Any, TextIO
 
 from hcl2.api import load as _hcl2_load
 from hcl2.utils import SerializationOptions
@@ -12,5 +12,5 @@ _V7_COMPAT = SerializationOptions(
 )
 
 
-def hcl2_load(fp: IO[str]) -> dict[str, Any]:
+def hcl2_load(fp: TextIO) -> dict[str, Any]:
     return _hcl2_load(fp, serialization_options=_V7_COMPAT)
