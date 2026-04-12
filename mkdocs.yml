@@ -13,9 +13,7 @@ theme:
 # === DO_NOT_EDIT: pkg-ext nav ===
 nav:
   - Home: index.md
-  - tfdo:
-    - Overview: _root/index.md
-    - TfDoSettings: _root/tfdosettings.md
+  - tfdo: _root/index.md
   - core: core/index.md
   - inspect: inspect/index.md
   - schema: schema/index.md
