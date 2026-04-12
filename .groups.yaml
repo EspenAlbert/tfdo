@@ -13,27 +13,10 @@ groups:
   - _internal.settings.TfDoUserConfig
   - _internal.typer_app.get_settings
   - _internal.typer_app.main_callback
-- name: config
-  owned_modules:
-  - _internal.config.cmd_config
-  - _internal.config.config_model
-  - _internal.config.enums
-  owned_refs:
-  - _internal.config.cmd_config.init_cmd
-  - _internal.config.cmd_config.show_cmd
-  - _internal.config.config_model.DependencyRef
-  - _internal.config.config_model.HookConfig
-  - _internal.config.config_model.LocalBackend
-  - _internal.config.config_model.S3Backend
-  - _internal.config.config_model.TfDoConfig
-  - _internal.config.enums.BackendType
-  - _internal.config.enums.HookOnError
-  - _internal.config.enums.LifecycleEvent
-  - _internal.config.enums.TagsInject
 - name: core
   owned_modules:
+  - _internal.check.cmd_check
   - _internal.core.cmd_apply
-  - _internal.core.cmd_check
   - _internal.core.cmd_destroy
   - _internal.core.cmd_init
   - _internal.core.cmd_plan
@@ -45,15 +28,6 @@ groups:
   - _internal.core.cmd_init.init_cmd
   - _internal.core.cmd_plan.plan_cmd
   - _internal.models.InitMode
-- name: hooks
-  owned_modules:
-  - _internal.hooks.models
-  owned_refs:
-  - _internal.hooks.models.ExitEvent
-  - _internal.hooks.models.HookEnvVars
-  - _internal.hooks.models.HookInput
-  - _internal.hooks.models.InputModification
-  - _internal.hooks.models.RetryEvent
 - name: inspect
   owned_modules:
   - _internal.inspect.cmd_inspect
@@ -67,15 +41,6 @@ groups:
   - _internal.inspect.description_search_logic.MatchingSchemaResource
   - _internal.inspect.resource_usage_logic.SchemaSearch
   - _internal.inspect.resource_usage_logic.SchemaSearchRowsBehavior
-- name: run
-  owned_modules:
-  - _internal.run.cmd_run
-  owned_refs:
-  - _internal.run.cmd_run.run_apply_cmd
-  - _internal.run.cmd_run.run_callback
-  - _internal.run.cmd_run.run_destroy_cmd
-  - _internal.run.cmd_run.run_init_cmd
-  - _internal.run.cmd_run.run_plan_cmd
 - name: schema
   owned_modules:
   - _internal.schema.cmd_schema
