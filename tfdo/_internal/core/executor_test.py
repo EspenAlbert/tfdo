@@ -20,7 +20,7 @@ from tfdo._internal.core.executor import (
     plan,
     terraform_init_should_retry,
 )
-from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, PlanInput
+from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, InitResult, PlanInput, PlanResult
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 module_name = init.__module__
@@ -37,10 +37,13 @@ def _make_settings(
     return TfDoSettings.for_testing(tmp_path, work_dir=tmp_path, interactive=interactive, tf_version=tf_version)
 
 
-def _mock_run(exit_code: int = 0, stderr: str = "", attempt: int = 1, cwd: Path | None = None) -> MagicMock:
+def _mock_run(
+    exit_code: int = 0, stderr: str = "", stdout: str = "", attempt: int = 1, cwd: Path | None = None
+) -> MagicMock:
     run = MagicMock(spec=ShellRun)
     run.exit_code = exit_code
     run.stderr = stderr
+    run.stdout = stdout
     run.current_attempt = attempt
     run.config = MagicMock()
     run.config.cwd = cwd or Path("/tmp")
@@ -91,9 +94,18 @@ def test_clean_terraform_cache(tmp_path: Path):
 
 
 def test_build_init_command():
-    assert _build_init_command("terraform", []) == "terraform init"
-    assert _build_init_command("tofu", ["-upgrade", "-input=false"]) == "tofu init -upgrade -input=false"
-    assert _build_init_command("mise x terraform@1.14 -- terraform", []) == "mise x terraform@1.14 -- terraform init"
+    assert _build_init_command("terraform", [], []) == "terraform init"
+    assert _build_init_command("tofu", [], ["-upgrade", "-input=false"]) == "tofu init -upgrade -input=false"
+    assert (
+        _build_init_command("mise x terraform@1.14 -- terraform", [], []) == "mise x terraform@1.14 -- terraform init"
+    )
+
+
+def test_build_init_command_backend_args_before_extra():
+    backend = ["-backend-config=bucket=b", "-backend-config=key=k"]
+    extra = ["-upgrade"]
+    result = _build_init_command("terraform", backend, extra)
+    assert result == "terraform init -backend-config=bucket=b -backend-config=key=k -upgrade"
 
 
 def test_init_success(tmp_path: Path):
@@ -155,6 +167,23 @@ def test_plan_success(tmp_path: Path):
         result = plan(PlanInput(settings=settings))
     assert result.exit_code == 0
     assert "terraform plan" in mock_raw.call_args[0][0]
+
+
+def test_lifecycle_result_captures_stdout_stderr(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0, stdout="Plan: 2 to add", stderr="Warning: deprecated")
+    with patch(_patch_run, return_value=run):
+        result = plan(PlanInput(settings=settings))
+    assert result.stdout == "Plan: 2 to add"
+    assert result.stderr == "Warning: deprecated"
+
+
+def test_init_result_captures_stdout(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0, stdout="Initializing provider plugins...", attempt=1)
+    with patch(_patch_run, return_value=run):
+        result = init(InitInput(settings=settings))
+    assert result.stdout == "Initializing provider plugins..."
 
 
 def test_plan_exit_code_2_changes_detected(tmp_path: Path):
@@ -349,3 +378,32 @@ def test_destroy_rejects_no_approve_non_interactive(tmp_path: Path):
 def test_is_interactive_modes(tmp_path: Path):
     assert _make_settings(tmp_path, interactive=InteractiveMode.ALWAYS).is_interactive
     assert not _make_settings(tmp_path, interactive=InteractiveMode.NEVER).is_interactive
+
+
+def test_auto_init_uses_backend_args(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    backend_args = ["-backend-config=bucket=my-bucket"]
+    input_model = PlanInput(settings=settings, init_backend_args=backend_args)
+
+    init_calls: list[InitInput] = []
+
+    def mock_init(inp: InitInput) -> InitResult:
+        init_calls.append(inp)
+        return InitResult(exit_code=0, attempts_used=1)
+
+    module = plan.__module__
+    with (
+        patch(
+            f"{module}.{executor._run_command.__name__}",
+            side_effect=[
+                PlanResult(exit_code=1, stderr="terraform init is required"),
+                PlanResult(exit_code=0),
+            ],
+        ),
+        patch(f"{module}.{init.__name__}", side_effect=mock_init),
+    ):
+        result = plan(input_model)
+
+    assert result.exit_code == 0
+    assert len(init_calls) == 1
+    assert init_calls[0].backend_args == backend_args

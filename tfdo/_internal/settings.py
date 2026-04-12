@@ -74,6 +74,17 @@ class TfDoSettings(StaticSettings):
     def schema_cache_dir(self) -> Path:
         return Path(platformdirs.user_cache_dir(self.app_name())) / SCHEMA_CACHE_SUBDIR
 
+    def with_work_dir(self, path: Path) -> TfDoSettings:
+        return self.model_copy(update={"work_dir": path})
+
+    def with_overrides(self, work_dir: Path, binary: str | None = None, tf_version: str | None = None) -> TfDoSettings:
+        updates: dict = {"work_dir": work_dir}
+        if binary:
+            updates["binary"] = binary
+        if tf_version:
+            updates["tf_version"] = tf_version
+        return self.model_copy(update=updates)
+
 
 class CheckConfig(BaseModel):
     tflint: bool = False
@@ -93,12 +104,3 @@ def load_user_config(settings: TfDoSettings) -> TfDoUserConfig:
     except Exception:
         logger.warning(f"failed to parse user config at {path}")
         return TfDoUserConfig()
-
-
-def resolve_tflint_flag(cli_value: bool | None, settings: TfDoSettings) -> bool:
-    if cli_value is not None:
-        return cli_value
-    user_config = load_user_config(settings)
-    if user_config.check and user_config.check.tflint:
-        return True
-    return False

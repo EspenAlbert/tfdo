@@ -4,8 +4,9 @@ import typer
 
 from tfdo._internal import cmd_options
 from tfdo._internal.check import check_logic
+from tfdo._internal.config.config_file import load_config_layers
+from tfdo._internal.config.config_resolution import resolve_tflint
 from tfdo._internal.models import CheckInput, CheckResult, DirCheckResult, InitMode
-from tfdo._internal.settings import resolve_tflint_flag
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
@@ -68,7 +69,8 @@ def check_cmd(
 ) -> None:
     """Run terraform fmt check + validate (ruff-style)."""
     settings = get_settings(ctx)
-    tflint_enabled = resolve_tflint_flag(tflint, settings)
+    layers = load_config_layers(settings.work_dir)
+    tflint_enabled = resolve_tflint(tflint, settings, layers=layers)
     input_model = CheckInput(
         settings=settings,
         fix=fix,

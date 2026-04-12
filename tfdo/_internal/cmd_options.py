@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 import typer
@@ -33,13 +33,10 @@ def exclude_option(
     default_patterns: Sequence[str] | None = None,
     help_text: str = "Glob patterns: matching directories are skipped",
 ) -> list[str]:
-    factory: Callable[[], list[str]] = list
-    if default_patterns:
-        factory = lambda: list(default_patterns)  # noqa: E731
+    defaults = list(default_patterns) if default_patterns else []
     return typer.Option(
-        ...,
+        defaults,
         "--exclude",
-        default_factory=factory,
         help=help_text,
     )
 

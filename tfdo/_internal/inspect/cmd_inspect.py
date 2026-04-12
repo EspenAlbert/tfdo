@@ -31,6 +31,7 @@ app.add_typer(inspect_app, name="inspect")
 @inspect_app.command("hcl-paths")
 def inspect_hcl_paths_cmd(
     path: Path = typer.Option(Path.cwd(), "--path", "-p", help="Root directory to scan for Terraform files"),
+    hidden: bool = typer.Option(False, "--hidden", help="Include hidden directories (dot-prefixed) in the scan"),
     as_json: bool = typer.Option(False, "--json", help="Print JSON to stdout"),
     output: Path | None = typer.Option(
         None,
@@ -40,7 +41,7 @@ def inspect_hcl_paths_cmd(
     ),
 ) -> None:
     exit_if_output_without_json(as_json=as_json, output=output, logger=logger)
-    result = inspect_hcl_paths(InspectHclPathsInput(root=path))
+    result = inspect_hcl_paths(InspectHclPathsInput(root=path, include_hidden=hidden))
     if as_json:
         write_json_cli_output(f"{result.to_canonical_json()}\n", output=output)
         return

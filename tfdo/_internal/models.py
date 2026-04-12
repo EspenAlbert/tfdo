@@ -5,7 +5,7 @@ from functools import total_ordering
 from pathlib import Path
 from typing import ClassVar, Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from tfdo._internal.settings import TfDoSettings
 
@@ -22,13 +22,16 @@ class TfDoBaseInput(BaseModel):
 
 
 class InitInput(TfDoBaseInput):
-    extra_args: list[str] = []
+    backend_args: list[str] = Field(default_factory=list)
+    extra_args: list[str] = Field(default_factory=list)
     env: dict[str, str] | None = None
 
 
 class LifecycleInput(TfDoBaseInput):
     var_file: Path | None = None
     init_mode: InitMode = InitMode.AUTO
+    extra_args: list[str] = Field(default_factory=list)
+    init_backend_args: list[str] = Field(default_factory=list)
 
 
 class PlanInput(LifecycleInput):
@@ -67,19 +70,22 @@ class CheckInput(TfDoBaseInput):
     fix: bool = False
     diff: bool = False
     init_mode: InitMode = InitMode.AUTO
-    include_patterns: list[str] = []
-    exclude_patterns: list[str] = []
+    include_patterns: list[str] = Field(default_factory=list)
+    exclude_patterns: list[str] = Field(default_factory=list)
     tflint: bool = False
 
 
 class InitResult(BaseModel):
     exit_code: int
     attempts_used: int
+    stdout: str = ""
     stderr: str | None = None
 
 
 class LifecycleResult(BaseModel):
     exit_code: int
+    stdout: str = ""
+    stderr: str | None = None
 
 
 class PlanResult(LifecycleResult):

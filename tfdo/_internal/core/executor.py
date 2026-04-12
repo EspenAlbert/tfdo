@@ -86,13 +86,13 @@ def terraform_init_should_retry(run: ShellRun) -> bool:
     raise AbortRetryError(f"permanent error: {stderr[:200]}")
 
 
-def _build_init_command(binary: str, extra_args: list[str]) -> str:
-    return " ".join([binary, "init", *extra_args])
+def _build_init_command(binary: str, backend_args: list[str], extra_args: list[str]) -> str:
+    return " ".join([binary, "init", *backend_args, *extra_args])
 
 
 def init(input_model: InitInput) -> InitResult:
     settings = input_model.settings
-    cmd = _build_init_command(binary.resolve_binary(settings), input_model.extra_args)
+    cmd = _build_init_command(binary.resolve_binary(settings), input_model.backend_args, input_model.extra_args)
     run = run_and_wait(
         cmd,
         attempts=4,
@@ -110,6 +110,7 @@ def init(input_model: InitInput) -> InitResult:
     return InitResult(
         exit_code=exit_code,
         attempts_used=run.current_attempt,
+        stdout=run.stdout,
         stderr=stderr_detail or None,
     )
 
@@ -136,7 +137,7 @@ def _build_lifecycle_command(binary: str, subcommand: str, var_file: Path | None
     return " ".join(parts)
 
 
-def _run_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, result_cls: type[T]) -> tuple[T, str]:
+def _run_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, result_cls: type[T]) -> T:
     try:
         run = run_and_wait(
             cmd,
@@ -145,9 +146,9 @@ def _run_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, result_cl
             skip_binary_check=True,
             user_input=settings.is_interactive,
         )
-        return result_cls(exit_code=run.exit_code or 0), run.stderr
+        return result_cls(exit_code=run.exit_code or 0, stdout=run.stdout, stderr=run.stderr or None)
     except ShellError as e:
-        return result_cls(exit_code=e.exit_code or 1), e.stderr
+        return result_cls(exit_code=e.exit_code or 1, stderr=e.stderr or None)
 
 
 def _run_lifecycle[T: LifecycleResult](
@@ -157,19 +158,20 @@ def _run_lifecycle[T: LifecycleResult](
     mode = input_model.init_mode
 
     if mode == InitMode.ALWAYS:
-        init_result = init(InitInput(settings=settings))
+        init_result = init(InitInput(settings=settings, backend_args=input_model.init_backend_args))
         if init_result.exit_code != 0:
             return result_cls(exit_code=init_result.exit_code)
 
-    cmd = _build_lifecycle_command(binary.resolve_binary(settings), subcommand, input_model.var_file, extra_flags)
-    result, stderr = _run_command(settings, cmd, result_cls)
+    all_flags = [*extra_flags, *input_model.extra_args]
+    cmd = _build_lifecycle_command(binary.resolve_binary(settings), subcommand, input_model.var_file, all_flags)
+    result = _run_command(settings, cmd, result_cls)
 
-    if result.exit_code != 0 and mode == InitMode.AUTO and _needs_init(stderr):
+    if result.exit_code != 0 and mode == InitMode.AUTO and _needs_init(result.stderr or ""):
         logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
-        init_result = init(InitInput(settings=settings))
+        init_result = init(InitInput(settings=settings, backend_args=input_model.init_backend_args))
         if init_result.exit_code != 0:
             return result_cls(exit_code=init_result.exit_code)
-        result, _ = _run_command(settings, cmd, result_cls)
+        result = _run_command(settings, cmd, result_cls)
 
     return result
 

@@ -147,7 +147,10 @@ def test_hidden_dir_tf_is_scanned_parse_error_recorded(tmp_path: Path) -> None:
     hidden = tmp_path / ".hidden"
     hidden.mkdir()
     (hidden / "bad.tf").write_text("not valid hcl {{{\n", encoding="utf-8")
-    result = collect_resource_argument_paths(tmp_path)
+    result_no_hidden = collect_resource_argument_paths(tmp_path)
+    assert any(r.address == "null_resource.a" for r in result_no_hidden.rows)
+    assert len(result_no_hidden.errors) == 0
+    result = collect_resource_argument_paths(tmp_path, include_hidden=True)
     assert any(r.address == "null_resource.a" for r in result.rows)
     assert len(result.errors) == 1
     assert result.errors[0].path.name == "bad.tf"

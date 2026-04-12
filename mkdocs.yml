@@ -16,8 +16,11 @@ nav:
   - tfdo:
     - Overview: _root/index.md
     - TfDoSettings: _root/tfdosettings.md
+  - config: config/index.md
   - core: core/index.md
+  - hooks: hooks/index.md
   - inspect: inspect/index.md
+  - run: run/index.md
   - schema: schema/index.md
 # === OK_EDIT: pkg-ext nav ===
 

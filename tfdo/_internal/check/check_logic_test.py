@@ -14,6 +14,7 @@ from tfdo._internal.check.check_logic import (
     _run_tflint,
     check,
 )
+from tfdo._internal.config.config_resolution import resolve_tflint
 from tfdo._internal.core.tf_files import find_tf_directories
 from tfdo._internal.models import (
     CheckInput,
@@ -32,7 +33,6 @@ from tfdo._internal.settings import (
     TfDoSettings,
     TfDoUserConfig,
     load_user_config,
-    resolve_tflint_flag,
 )
 
 module_name = check.__module__
@@ -442,28 +442,28 @@ def test_dir_check_result_tflint_has_issues():
     assert dr.has_issues
 
 
-# --- user config / resolve_tflint_flag tests ---
+# --- user config / resolve_tflint tests ---
 
 
-def test_resolve_tflint_flag_cli_overrides(tmp_path: Path):
+def test_resolve_tflint_cli_overrides(tmp_path: Path):
     settings = _make_settings(tmp_path)
-    assert resolve_tflint_flag(True, settings)
-    assert not resolve_tflint_flag(False, settings)
+    assert resolve_tflint(True, settings, layers=[])
+    assert not resolve_tflint(False, settings, layers=[])
 
 
-def test_resolve_tflint_flag_user_config(tmp_path: Path):
+def test_resolve_tflint_user_config(tmp_path: Path):
     settings = _make_settings(tmp_path)
     with patch(_patch_user_config_dir, return_value=str(tmp_path / "config")):
         config_path = settings.user_config_path
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text("check:\n  tflint: true\n")
-        assert resolve_tflint_flag(None, settings)
+        assert resolve_tflint(None, settings, layers=[])
 
 
-def test_resolve_tflint_flag_default(tmp_path: Path):
+def test_resolve_tflint_default(tmp_path: Path):
     settings = _make_settings(tmp_path)
     with patch(_patch_user_config_dir, return_value=str(tmp_path / "config")):
-        assert not resolve_tflint_flag(None, settings)
+        assert not resolve_tflint(None, settings, layers=[])
 
 
 def test_load_user_config_missing_file(tmp_path: Path):

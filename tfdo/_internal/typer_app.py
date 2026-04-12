@@ -6,7 +6,7 @@ from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 app = typer.Typer(
     name="tfdo",
-    help="Terraform/OpenTofu lifecycle CLI with retry, workspaces, and CI scaffold",
+    help="Terraform/OpenTofu lifecycle CLI with multi-directory orchestration, retry, and CI scaffold",
     pretty_exceptions_enable=False,
     pretty_exceptions_show_locals=False,
 )
