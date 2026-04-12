@@ -545,7 +545,7 @@ wheels = [
 
 [[package]]
 name = "pkg-ext"
-version = "0.4.5"
+version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ask-shell" },
@@ -554,9 +554,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "zero-3rdparty" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/be/dd49ef5bb41a23667a4da9ec30819320f05787ec4422edb011f8aca6ec35/pkg_ext-0.4.5.tar.gz", hash = "sha256:f406b798308c65b96bf425f7bd4b9ba25be6e746380895dc9314be1bb083340d", size = 78425, upload-time = "2026-03-25T21:53:56.355Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/6d/550da4f5d3c6db3edeec6b720a19095538e36fa5890b15dd1fc6f5275a33/pkg_ext-0.4.6.tar.gz", hash = "sha256:365af3ab9b72597ff2c9fe1e253a5e73359f1bf30d34d88ca0a5b27bfe293bd0", size = 79005, upload-time = "2026-04-12T16:31:00.232Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/ac/d35aa7a56316f421db0dde313a13b90e8541b23e2f12ad480898798702cb/pkg_ext-0.4.5-py3-none-any.whl", hash = "sha256:256cbd8a3dd6d320b2a0ffc2fb2ffd9e338a9de8dec51d998cd36df4f8cd7b14", size = 112992, upload-time = "2026-03-25T21:53:55.15Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/14/229dfeec2659300a56d31f8cdf145fc5ddf352e8fc7e3c655b331e7cd2f0/pkg_ext-0.4.6-py3-none-any.whl", hash = "sha256:a59b0a259d83434fc5bff3f666f84a5ff23e91ba795bd8dc39916f1d76950969", size = 113562, upload-time = "2026-04-12T16:30:58.646Z" },
 ]
 
 [[package]]
@@ -995,15 +995,15 @@ wheels = [
 
 [[package]]
 name = "rich"
-version = "14.3.4"
+version = "15.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e9/67/cae617f1351490c25a4b8ac3b8b63a4dda609295d8222bad12242dfdc629/rich-14.3.4.tar.gz", hash = "sha256:817e02727f2b25b40ef56f5aa2217f400c8489f79ca8f46ea2b70dd5e14558a9", size = 230524, upload-time = "2026-04-11T02:57:45.419Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz", hash = "sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36", size = 230680, upload-time = "2026-04-12T08:24:00.75Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/76/6d163cfac87b632216f71879e6b2cf17163f773ff59c00b5ff4900a80fa3/rich-14.3.4-py3-none-any.whl", hash = "sha256:07e7adb4690f68864777b1450859253bed81a99a31ac321ac1817b2313558952", size = 310480, upload-time = "2026-04-11T02:57:47.484Z" },
+    { url = "https://files.pythonhosted.org/packages/82/3b/64d4899d73f91ba49a8c18a8ff3f0ea8f1c1d75481760df8c68ef5235bf5/rich-15.0.0-py3-none-any.whl", hash = "sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb", size = 310654, upload-time = "2026-04-12T08:24:02.83Z" },
 ]
 
 [[package]]
