@@ -20,7 +20,7 @@
 
 ### class: `ExitEvent`
 - [source](../../tfdo/_internal/hooks/models.py#L26)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class ExitEvent(BaseModel):
@@ -29,20 +29,20 @@ class ExitEvent(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| reason | `str` | - | unreleased |
+| reason | `str` | - | 0.6.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext exitevent_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext hookenvvars_def === -->
 <a id="hookenvvars_def"></a>
 
 ### class: `HookEnvVars`
 - [source](../../tfdo/_internal/hooks/models.py#L9)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class HookEnvVars(dict):
@@ -53,14 +53,14 @@ class HookEnvVars(dict):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext hookenvvars_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext hookinput_def === -->
 <a id="hookinput_def"></a>
 
 ### class: `HookInput`
 - [source](../../tfdo/_internal/hooks/models.py#L19)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class HookInput(BaseModel):
@@ -69,20 +69,20 @@ class HookInput(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| env_vars | `HookEnvVars` | - | unreleased |
+| env_vars | `HookEnvVars` | - | 0.6.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext hookinput_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext inputmodification_def === -->
 <a id="inputmodification_def"></a>
 
 ### class: `InputModification`
 - [source](../../tfdo/_internal/hooks/models.py#L30)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class InputModification(BaseModel):
@@ -93,22 +93,22 @@ class InputModification(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| env_vars | `dict[str, str]` | `...` | unreleased |
-| extra_var_files | `list[str]` | `...` | unreleased |
-| extra_args | `list[str]` | `...` | unreleased |
+| env_vars | `dict[str, str]` | `...` | 0.6.0 |
+| extra_var_files | `list[str]` | `...` | 0.6.0 |
+| extra_args | `list[str]` | `...` | 0.6.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext inputmodification_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext retryevent_def === -->
 <a id="retryevent_def"></a>
 
 ### class: `RetryEvent`
 - [source](../../tfdo/_internal/hooks/models.py#L36)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class RetryEvent(BaseModel):
@@ -117,11 +117,11 @@ class RetryEvent(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| reason | `str` | - | unreleased |
+| reason | `str` | - | 0.6.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext retryevent_def === -->

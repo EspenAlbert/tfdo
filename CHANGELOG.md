@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.6.0 2026-04-12T17-41Z
+
+### Config
+- New function `show_cmd`
+- New class `HookOnError`
+- New class `LifecycleEvent`
+- New class `BackendType`
+- New class `TagsInject`
+- New class `S3Backend`
+- New class `LocalBackend`
+- New class `HookConfig`
+- New class `DependencyRef`
+- New class `TfDoConfig`
+- New function `init_cmd`
+
+### Hooks
+- New class `HookEnvVars`
+- New class `HookInput`
+- New class `ExitEvent`
+- New class `InputModification`
+- New class `RetryEvent`
+
+### Run
+- New function `run_callback`
+- New function `run_init_cmd`
+- New function `run_plan_cmd`
+- New function `run_apply_cmd`
+- New function `run_destroy_cmd`
+
+
 ## 0.5.0 2026-03-25T22-01Z
 
 ### Inspect

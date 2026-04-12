@@ -514,3 +514,8 @@ type: make_public
 details: CLI command in _internal/config/cmd_config.py
 full_path: _internal.config.cmd_config.init_cmd
 group: config
+---
+name: 0.6.0
+ts: 2026-04-12 17:41:51.539989+00:00
+type: release
+old_version: 0.5.0

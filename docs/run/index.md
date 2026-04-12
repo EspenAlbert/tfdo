@@ -20,7 +20,7 @@
 
 ### cli_command: `run_apply_cmd`
 - [source](../../tfdo/_internal/run/cmd_run.py#L112)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 def run_apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
@@ -41,14 +41,14 @@ Run apply across multiple run directories.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext run_apply_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext run_callback_def === -->
 <a id="run_callback_def"></a>
 
 ### cli_command: `run_callback`
 - [source](../../tfdo/_internal/run/cmd_run.py#L46)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 def run_callback(*, env: str | None = None, app_name: str | None = None, team: str | None = None, tags: list[str] = [], changed: bool = False, parallel: int = 10, on_failure: FailureMode = <FailureMode.STOP: 'stop'>, dry_run: bool = False) -> None:
@@ -72,14 +72,14 @@ def run_callback(*, env: str | None = None, app_name: str | None = None, team: s
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext run_callback_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext run_destroy_cmd_def === -->
 <a id="run_destroy_cmd_def"></a>
 
 ### cli_command: `run_destroy_cmd`
 - [source](../../tfdo/_internal/run/cmd_run.py#L127)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 def run_destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
@@ -100,14 +100,14 @@ Run destroy across multiple run directories.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext run_destroy_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext run_init_cmd_def === -->
 <a id="run_init_cmd_def"></a>
 
 ### cli_command: `run_init_cmd`
 - [source](../../tfdo/_internal/run/cmd_run.py#L77)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 def run_init_cmd(*, extra_args: list[str] | None = None) -> None:
@@ -126,14 +126,14 @@ Run init across multiple run directories.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext run_init_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext run_plan_cmd_def === -->
 <a id="run_plan_cmd_def"></a>
 
 ### cli_command: `run_plan_cmd`
 - [source](../../tfdo/_internal/run/cmd_run.py#L91)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 def run_plan_cmd(*, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, out: Path | None = None, json_output: bool = False) -> None:
@@ -155,5 +155,5 @@ Run plan across multiple run directories.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext run_plan_cmd_def === -->

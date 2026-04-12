@@ -14,7 +14,7 @@ from tfdo._internal.settings import TfDoUserConfig
 from tfdo._internal.typer_app import get_settings
 from tfdo._internal.typer_app import main_callback
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 __all__ = [
     "core",
     "config",

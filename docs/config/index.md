@@ -26,7 +26,7 @@
 
 ### class: `BackendType`
 - [source](../../tfdo/_internal/config/enums.py#L29)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class BackendType(StrEnum):
@@ -37,14 +37,14 @@ class BackendType(StrEnum):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext backendtype_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext dependencyref_def === -->
 <a id="dependencyref_def"></a>
 
 ### class: `DependencyRef`
 - [source](../../tfdo/_internal/config/config_model.py#L68)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class DependencyRef(BaseModel):
@@ -54,21 +54,21 @@ class DependencyRef(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| ref | `str` | - | unreleased |
-| outputs | `bool` | `True` | unreleased |
+| ref | `str` | - | 0.6.0 |
+| outputs | `bool` | `True` | 0.6.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext dependencyref_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext hookconfig_def === -->
 <a id="hookconfig_def"></a>
 
 ### class: `HookConfig`
 - [source](../../tfdo/_internal/config/config_model.py#L50)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class HookConfig(BaseModel):
@@ -83,26 +83,26 @@ class HookConfig(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| name | `str` | - | unreleased |
-| cmd | `str | None` | `None` | unreleased |
-| py_locate | `str | None` | `None` | unreleased |
-| lifecycle_events | `list[LifecycleEvent]` | - | unreleased |
-| timeout_seconds | `int` | `30` | unreleased |
-| priority | `int` | `5000` | unreleased |
-| on_error | `HookOnError | None` | `None` | unreleased |
+| name | `str` | - | 0.6.0 |
+| cmd | `str | None` | `None` | 0.6.0 |
+| py_locate | `str | None` | `None` | 0.6.0 |
+| lifecycle_events | `list[LifecycleEvent]` | - | 0.6.0 |
+| timeout_seconds | `int` | `30` | 0.6.0 |
+| priority | `int` | `5000` | 0.6.0 |
+| on_error | `HookOnError | None` | `None` | 0.6.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext hookconfig_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext hookonerror_def === -->
 <a id="hookonerror_def"></a>
 
 ### class: `HookOnError`
 - [source](../../tfdo/_internal/config/enums.py#L6)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class HookOnError(StrEnum):
@@ -113,14 +113,14 @@ class HookOnError(StrEnum):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext hookonerror_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext lifecycleevent_def === -->
 <a id="lifecycleevent_def"></a>
 
 ### class: `LifecycleEvent`
 - [source](../../tfdo/_internal/config/enums.py#L11)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class LifecycleEvent(StrEnum):
@@ -131,14 +131,14 @@ class LifecycleEvent(StrEnum):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext lifecycleevent_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext localbackend_def === -->
 <a id="localbackend_def"></a>
 
 ### class: `LocalBackend`
 - [source](../../tfdo/_internal/config/config_model.py#L38)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class LocalBackend(BaseModel):
@@ -148,21 +148,21 @@ class LocalBackend(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| type | `Literal[local]` | `<BackendType.LOCAL: 'local'>` | unreleased |
-| path | `str` | - | unreleased |
+| type | `Literal[local]` | `<BackendType.LOCAL: 'local'>` | 0.6.0 |
+| path | `str` | - | 0.6.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext localbackend_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext s3backend_def === -->
 <a id="s3backend_def"></a>
 
 ### class: `S3Backend`
 - [source](../../tfdo/_internal/config/config_model.py#L15)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class S3Backend(BaseModel):
@@ -176,25 +176,25 @@ class S3Backend(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| type | `Literal[s3]` | `<BackendType.S3: 's3'>` | unreleased |
-| bucket | `str` | - | unreleased |
-| key | `str` | - | unreleased |
-| region | `str | None` | `None` | unreleased |
-| dynamodb_table | `str | None` | `None` | unreleased |
-| encrypt | `bool | None` | `None` | unreleased |
+| type | `Literal[s3]` | `<BackendType.S3: 's3'>` | 0.6.0 |
+| bucket | `str` | - | 0.6.0 |
+| key | `str` | - | 0.6.0 |
+| region | `str | None` | `None` | 0.6.0 |
+| dynamodb_table | `str | None` | `None` | 0.6.0 |
+| encrypt | `bool | None` | `None` | 0.6.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext s3backend_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext tagsinject_def === -->
 <a id="tagsinject_def"></a>
 
 ### class: `TagsInject`
 - [source](../../tfdo/_internal/config/enums.py#L41)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class TagsInject(StrEnum):
@@ -205,14 +205,14 @@ class TagsInject(StrEnum):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tagsinject_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext tfdoconfig_def === -->
 <a id="tfdoconfig_def"></a>
 
 ### class: `TfDoConfig`
 - [source](../../tfdo/_internal/config/config_model.py#L73)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 class TfDoConfig(BaseModel):
@@ -230,29 +230,29 @@ class TfDoConfig(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| binary | `str | None` | `None` | unreleased |
-| tf_version | `str | None` | `None` | unreleased |
-| backend | `Annotated[S3Backend | LocalBackend, annotation=NoneType required=True discriminator='type'] | None` | `None` | unreleased |
-| check | `CheckConfig | None` | `None` | unreleased |
-| tags_inject | `TagsInject | None` | `None` | unreleased |
-| tags | `dict[str, str]` | `...` | unreleased |
-| hook_configs | `list[HookConfig]` | `...` | unreleased |
-| dependencies | `list[DependencyRef]` | `...` | unreleased |
-| var_files | `list[str]` | `...` | unreleased |
-| run_dir_discovery | `str | None` | `None` | unreleased |
+| binary | `str | None` | `None` | 0.6.0 |
+| tf_version | `str | None` | `None` | 0.6.0 |
+| backend | `Annotated[S3Backend | LocalBackend, annotation=NoneType required=True discriminator='type'] | None` | `None` | 0.6.0 |
+| check | `CheckConfig | None` | `None` | 0.6.0 |
+| tags_inject | `TagsInject | None` | `None` | 0.6.0 |
+| tags | `dict[str, str]` | `...` | 0.6.0 |
+| hook_configs | `list[HookConfig]` | `...` | 0.6.0 |
+| dependencies | `list[DependencyRef]` | `...` | 0.6.0 |
+| var_files | `list[str]` | `...` | 0.6.0 |
+| run_dir_discovery | `str | None` | `None` | 0.6.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tfdoconfig_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext show_cmd_def === -->
 <a id="show_cmd_def"></a>
 
 ### cli_command: `show_cmd`
 - [source](../../tfdo/_internal/config/cmd_config.py#L59)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 def show_cmd() -> None:
@@ -265,14 +265,14 @@ Print resolved tfdo.yaml config layers and merged result for current work direct
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext show_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext init_cmd_def === -->
 <a id="init_cmd_def"></a>
 
 ### cli_command: `init_cmd`
 - [source](../../tfdo/_internal/config/cmd_config.py#L73)
-> **Since:** unreleased
+> **Since:** 0.6.0
 
 ```python
 def init_cmd(*, dry_run: bool = False) -> None:
@@ -291,5 +291,5 @@ Detect run directories and generate a starter tfdo.yaml.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext init_cmd_def === -->

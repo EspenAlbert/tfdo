@@ -1,5 +1,5 @@
 pkg_import_name: tfdo
-version: 0.5.0
+version: 0.6.0
 groups:
 - name: __ROOT__
   symbols:
@@ -21,7 +21,7 @@ groups:
   - name: CheckConfig
     module_path: _internal.settings
     docstring: ''
-    line_number: 78
+    line_number: 89
     type: class
     mro_bases:
     - BaseModel
@@ -176,7 +176,7 @@ groups:
   - name: TfDoUserConfig
     module_path: _internal.settings
     docstring: ''
-    line_number: 82
+    line_number: 93
     type: class
     mro_bases:
     - BaseModel
@@ -331,12 +331,403 @@ groups:
       required: false
       is_argument: false
       hidden: false
+- name: config
+  symbols:
+  - name: init_cmd
+    module_path: _internal.config.cmd_config
+    docstring: Detect run directories and generate a starter tfdo.yaml.
+    line_number: 73
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: dry_run
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: dry_run
+      type_annotation: bool
+      flags:
+      - --dry-run
+      help: Preview detected directories without writing tfdo.yaml
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+  - name: show_cmd
+    module_path: _internal.config.cmd_config
+    docstring: Print resolved tfdo.yaml config layers and merged result for current work directory.
+    line_number: 59
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      return_annotation: None
+      return_type_imports: []
+    cli_params: []
+  - name: DependencyRef
+    module_path: _internal.config.config_model
+    docstring: ''
+    line_number: 68
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: ref
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: outputs
+      type_annotation: bool
+      type_imports: []
+      default:
+        value_repr: 'True'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+  - name: HookConfig
+    module_path: _internal.config.config_model
+    docstring: ''
+    line_number: 50
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: name
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: cmd
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: py_locate
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: lifecycle_events
+      type_annotation: list[LifecycleEvent]
+      type_imports:
+      - tfdo._internal.config.enums.LifecycleEvent
+      is_class_var: false
+      is_computed: false
+    - name: timeout_seconds
+      type_annotation: int
+      type_imports: []
+      default:
+        value_repr: '30'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: priority
+      type_annotation: int
+      type_imports: []
+      default:
+        value_repr: '5000'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: on_error
+      type_annotation: HookOnError | None
+      type_imports:
+      - tfdo._internal.config.enums.HookOnError
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+  - name: LocalBackend
+    module_path: _internal.config.config_model
+    docstring: ''
+    line_number: 38
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: type
+      type_annotation: Literal[local]
+      type_imports: []
+      default:
+        value_repr: '<BackendType.LOCAL: ''local''>'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: path
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+  - name: S3Backend
+    module_path: _internal.config.config_model
+    docstring: ''
+    line_number: 15
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: type
+      type_annotation: Literal[s3]
+      type_imports: []
+      default:
+        value_repr: '<BackendType.S3: ''s3''>'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: bucket
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: key
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: region
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: dynamodb_table
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: encrypt
+      type_annotation: bool | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+  - name: TfDoConfig
+    module_path: _internal.config.config_model
+    docstring: ''
+    line_number: 73
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: binary
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: tf_version
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: backend
+      type_annotation: Annotated[S3Backend | LocalBackend, annotation=NoneType required=True discriminator='type'] | None
+      type_imports:
+      - tfdo._internal.config.config_model.S3Backend
+      - tfdo._internal.config.config_model.LocalBackend
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: check
+      type_annotation: CheckConfig | None
+      type_imports:
+      - tfdo._internal.settings.CheckConfig
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: tags_inject
+      type_annotation: TagsInject | None
+      type_imports:
+      - tfdo._internal.config.enums.TagsInject
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: tags
+      type_annotation: dict[str, str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: hook_configs
+      type_annotation: list[HookConfig]
+      type_imports:
+      - tfdo._internal.config.config_model.HookConfig
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: dependencies
+      type_annotation: list[DependencyRef]
+      type_imports:
+      - tfdo._internal.config.config_model.DependencyRef
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: var_files
+      type_annotation: list[str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: run_dir_discovery
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+  - name: BackendType
+    module_path: _internal.config.enums
+    docstring: ''
+    line_number: 29
+    type: class
+    mro_bases:
+    - StrEnum
+    - str
+    - ReprEnum
+    - Enum
+    num_direct_bases: 1
+    init_signature:
+      parameters:
+      - name: self
+        kind: positional_or_keyword
+        type_imports: []
+      - name: args
+        kind: var_positional
+        type_imports: []
+      - name: kwds
+        kind: var_keyword
+        type_imports: []
+      return_type_imports: []
+  - name: HookOnError
+    module_path: _internal.config.enums
+    docstring: ''
+    line_number: 6
+    type: class
+    mro_bases:
+    - StrEnum
+    - str
+    - ReprEnum
+    - Enum
+    num_direct_bases: 1
+    init_signature:
+      parameters:
+      - name: self
+        kind: positional_or_keyword
+        type_imports: []
+      - name: args
+        kind: var_positional
+        type_imports: []
+      - name: kwds
+        kind: var_keyword
+        type_imports: []
+      return_type_imports: []
+  - name: LifecycleEvent
+    module_path: _internal.config.enums
+    docstring: ''
+    line_number: 11
+    type: class
+    mro_bases:
+    - StrEnum
+    - str
+    - ReprEnum
+    - Enum
+    num_direct_bases: 1
+    init_signature:
+      parameters:
+      - name: self
+        kind: positional_or_keyword
+        type_imports: []
+      - name: args
+        kind: var_positional
+        type_imports: []
+      - name: kwds
+        kind: var_keyword
+        type_imports: []
+      return_type_imports: []
+  - name: TagsInject
+    module_path: _internal.config.enums
+    docstring: ''
+    line_number: 41
+    type: class
+    mro_bases:
+    - StrEnum
+    - str
+    - ReprEnum
+    - Enum
+    num_direct_bases: 1
+    init_signature:
+      parameters:
+      - name: self
+        kind: positional_or_keyword
+        type_imports: []
+      - name: args
+        kind: var_positional
+        type_imports: []
+      - name: kwds
+        kind: var_keyword
+        type_imports: []
+      return_type_imports: []
 - name: core
   symbols:
   - name: check_cmd
     module_path: _internal.check.cmd_check
     docstring: Run terraform fmt check + validate (ruff-style).
-    line_number: 58
+    line_number: 59
     type: cli_command
     signature:
       parameters:
@@ -739,12 +1130,110 @@ groups:
         kind: var_keyword
         type_imports: []
       return_type_imports: []
+- name: hooks
+  symbols:
+  - name: ExitEvent
+    module_path: _internal.hooks.models
+    docstring: ''
+    line_number: 26
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: reason
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+  - name: HookEnvVars
+    module_path: _internal.hooks.models
+    docstring: ''
+    line_number: 9
+    type: class
+    mro_bases:
+    - dict
+    num_direct_bases: 1
+    init_signature:
+      parameters:
+      - name: self
+        kind: positional_only
+        type_imports: []
+      - name: args
+        kind: var_positional
+        type_imports: []
+      - name: kwargs
+        kind: var_keyword
+        type_imports: []
+      return_type_imports: []
+  - name: HookInput
+    module_path: _internal.hooks.models
+    docstring: ''
+    line_number: 19
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: env_vars
+      type_annotation: HookEnvVars
+      type_imports:
+      - tfdo._internal.hooks.models.HookEnvVars
+      is_class_var: false
+      is_computed: false
+  - name: InputModification
+    module_path: _internal.hooks.models
+    docstring: ''
+    line_number: 30
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: env_vars
+      type_annotation: dict[str, str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: extra_var_files
+      type_annotation: list[str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: extra_args
+      type_annotation: list[str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+  - name: RetryEvent
+    module_path: _internal.hooks.models
+    docstring: ''
+    line_number: 36
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: reason
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
 - name: inspect
   symbols:
   - name: inspect_api_coverage_cmd
     module_path: _internal.inspect.cmd_inspect
     docstring: ''
-    line_number: 137
+    line_number: 138
     type: cli_command
     signature:
       parameters:
@@ -920,6 +1409,13 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
+      - name: hidden
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
       - name: as_json
         kind: positional_or_keyword
         type_annotation: bool
@@ -948,6 +1444,15 @@ groups:
       required: false
       is_argument: false
       hidden: false
+    - param_name: hidden
+      type_annotation: bool
+      flags:
+      - --hidden
+      help: Include hidden directories (dot-prefixed) in the scan
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
     - param_name: as_json
       type_annotation: bool
       flags:
@@ -970,7 +1475,7 @@ groups:
   - name: inspect_resource_usage_cmd
     module_path: _internal.inspect.cmd_inspect
     docstring: ''
-    line_number: 55
+    line_number: 56
     type: cli_command
     signature:
       parameters:
@@ -1309,6 +1814,420 @@ groups:
         kind: var_keyword
         type_imports: []
       return_type_imports: []
+- name: run
+  symbols:
+  - name: run_apply_cmd
+    module_path: _internal.run.cmd_run
+    docstring: Run apply across multiple run directories.
+    line_number: 112
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: auto_approve
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: var_file
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: init_mode
+        kind: positional_or_keyword
+        type_annotation: InitMode
+        type_imports:
+        - tfdo._internal.models.InitMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: auto_approve
+      type_annotation: bool
+      flags:
+      - --auto-approve
+      help: Skip interactive approval prompts
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: var_file
+      type_annotation: Path | None
+      flags:
+      - --var-file
+      - -f
+      help: Path to a terraform .tfvars file
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: init_mode
+      type_annotation: InitMode
+      flags:
+      - --init-mode
+      - -I
+      help: 'Init behavior: auto (run init on error related to init), always (run init first), never (skip init)'
+      default_repr: '<InitMode.AUTO: ''auto''>'
+      required: false
+      envvar: TFDO_INIT_MODE
+      is_argument: false
+      hidden: false
+      choices:
+      - auto
+      - always
+      - never
+  - name: run_callback
+    module_path: _internal.run.cmd_run
+    docstring: ''
+    line_number: 46
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: env
+        kind: positional_or_keyword
+        type_annotation: str | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: app_name
+        kind: positional_or_keyword
+        type_annotation: str | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: team
+        kind: positional_or_keyword
+        type_annotation: str | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: tags
+        kind: positional_or_keyword
+        type_annotation: list[str]
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: changed
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: parallel
+        kind: positional_or_keyword
+        type_annotation: int
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: on_failure
+        kind: positional_or_keyword
+        type_annotation: FailureMode
+        type_imports:
+        - tfdo._internal.run.orchestration.FailureMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: dry_run
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: env
+      type_annotation: str | None
+      flags:
+      - --env
+      help: Filter run directories by {env} selector from discovery pattern
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: app_name
+      type_annotation: str | None
+      flags:
+      - --app
+      help: Filter run directories by {app} selector from discovery pattern
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: team
+      type_annotation: str | None
+      flags:
+      - --team
+      help: 'Filter by team: uses {team} selector if in discovery pattern, otherwise falls back to tags.team'
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: tags
+      type_annotation: list[str]
+      flags:
+      - --tags
+      help: Tag filter as key=value, repeatable with AND logic (e.g. --tags env=dev --tags team=infra)
+      default_repr: '[]'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: changed
+      type_annotation: bool
+      flags:
+      - --changed
+      help: Limit to run directories affected by git diff vs HEAD
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: parallel
+      type_annotation: int
+      flags:
+      - --parallel
+      help: Max concurrent run directory executions per wave
+      default_repr: '10'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: on_failure
+      type_annotation: FailureMode
+      flags:
+      - --on-failure
+      help: 'Failure behavior: stop aborts remaining directories, continue runs all'
+      default_repr: '<FailureMode.STOP: ''stop''>'
+      required: false
+      is_argument: false
+      hidden: false
+      choices:
+      - stop
+      - continue
+    - param_name: dry_run
+      type_annotation: bool
+      flags:
+      - --dry-run
+      help: Show execution plan (waves and run directories) without running terraform
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+  - name: run_destroy_cmd
+    module_path: _internal.run.cmd_run
+    docstring: Run destroy across multiple run directories.
+    line_number: 127
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: auto_approve
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: var_file
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: init_mode
+        kind: positional_or_keyword
+        type_annotation: InitMode
+        type_imports:
+        - tfdo._internal.models.InitMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: auto_approve
+      type_annotation: bool
+      flags:
+      - --auto-approve
+      help: Skip interactive approval prompts
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: var_file
+      type_annotation: Path | None
+      flags:
+      - --var-file
+      - -f
+      help: Path to a terraform .tfvars file
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: init_mode
+      type_annotation: InitMode
+      flags:
+      - --init-mode
+      - -I
+      help: 'Init behavior: auto (run init on error related to init), always (run init first), never (skip init)'
+      default_repr: '<InitMode.AUTO: ''auto''>'
+      required: false
+      envvar: TFDO_INIT_MODE
+      is_argument: false
+      hidden: false
+      choices:
+      - auto
+      - always
+      - never
+  - name: run_init_cmd
+    module_path: _internal.run.cmd_run
+    docstring: Run init across multiple run directories.
+    line_number: 77
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: extra_args
+        kind: positional_or_keyword
+        type_annotation: list[str] | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: extra_args
+      type_annotation: list[str] | None
+      flags:
+      - --extra-args
+      help: Extra arguments forwarded to terraform init (e.g. --extra-args=-upgrade)
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+  - name: run_plan_cmd
+    module_path: _internal.run.cmd_run
+    docstring: Run plan across multiple run directories.
+    line_number: 91
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: var_file
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: init_mode
+        kind: positional_or_keyword
+        type_annotation: InitMode
+        type_imports:
+        - tfdo._internal.models.InitMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: out
+        kind: positional_or_keyword
+        type_annotation: Path | None
+        type_imports:
+        - pathlib.Path
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: json_output
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: var_file
+      type_annotation: Path | None
+      flags:
+      - --var-file
+      - -f
+      help: Path to a terraform .tfvars file
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: init_mode
+      type_annotation: InitMode
+      flags:
+      - --init-mode
+      - -I
+      help: 'Init behavior: auto (run init on error related to init), always (run init first), never (skip init)'
+      default_repr: '<InitMode.AUTO: ''auto''>'
+      required: false
+      envvar: TFDO_INIT_MODE
+      is_argument: false
+      hidden: false
+      choices:
+      - auto
+      - always
+      - never
+    - param_name: out
+      type_annotation: Path | None
+      flags:
+      - -o
+      - --out
+      help: Write plan output to file (per run directory)
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: json_output
+      type_annotation: bool
+      flags:
+      - --json
+      help: Output in JSON format
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
 - name: schema
   symbols:
   - name: schema_diff_cmd
@@ -1683,4 +2602,4 @@ groups:
         is_factory: true
       is_class_var: false
       is_computed: false
-dumped_at: 2026-03-25 22:01:01.716434+00:00
+dumped_at: 2026-04-12 17:41:51.434023+00:00
