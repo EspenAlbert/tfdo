@@ -32,6 +32,9 @@ def dedup_new_entities(existing: list[HclEntity], candidates: list[HclEntity]) -
     return [
         e
         for e in candidates
+        # TfTerraform and TfRequiredProviders are both nested inside terraform{} and are
+        # never copied as blocks — required_providers are merged individually via
+        # update_required_providers in merge_run_dir.
         if not isinstance(e, TfTerraform | TfRequiredProviders) and entity_key(e) not in existing_keys
     ]
 
