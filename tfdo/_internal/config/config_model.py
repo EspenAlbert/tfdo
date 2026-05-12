@@ -92,9 +92,23 @@ class DependencyRef(BaseModel):
     outputs: bool = True
 
 
+_LOCAL_SOURCE_PREFIXES = ("./", "../", "/")
+
+
 class ProviderConstraint(BaseModel):
     name: str
     constraint: str | None = None
+
+
+class ModuleConstraint(BaseModel):
+    source: str
+    constraint: str | None = None
+
+    @model_validator(mode="after")
+    def _reject_local_source(self) -> Self:
+        if any(self.source.startswith(p) for p in _LOCAL_SOURCE_PREFIXES):
+            raise ValueError(f"local module source not allowed in tfdo.yaml: {self.source!r}")
+        return self
 
 
 class TfDoConfig(BaseModel):
@@ -112,6 +126,7 @@ class TfDoConfig(BaseModel):
 
     run_dir_discovery: str | None = None
     providers: list[ProviderConstraint] = Field(default_factory=list)
+    modules: list[ModuleConstraint] = Field(default_factory=list)
 
 
 def merge_providers(parents: list[TfDoConfig], child: TfDoConfig) -> list[ProviderConstraint]:
@@ -120,4 +135,12 @@ def merge_providers(parents: list[TfDoConfig], child: TfDoConfig) -> list[Provid
     for cfg in [*parents, child]:
         for p in cfg.providers:
             merged[p.name] = p
+    return list(merged.values())
+
+
+def merge_modules(parents: list[TfDoConfig], child: TfDoConfig) -> list[ModuleConstraint]:
+    merged: dict[str, ModuleConstraint] = {}
+    for cfg in [*parents, child]:
+        for m in cfg.modules:
+            merged[m.source] = m
     return list(merged.values())

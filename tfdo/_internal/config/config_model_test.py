@@ -5,9 +5,11 @@ from tfdo._internal.config.config_model import (
     DependencyRef,
     HookConfig,
     LocalBackend,
+    ModuleConstraint,
     ProviderConstraint,
     S3Backend,
     TfDoConfig,
+    merge_modules,
     merge_providers,
 )
 from tfdo._internal.config.enums import LifecycleEvent
@@ -164,3 +166,51 @@ def test_provider_constraint_round_trip():
     reloaded = TfDoConfig(**dumped)
     assert reloaded.providers[0].name == "mongodbatlas"
     assert reloaded.providers[0].constraint == "~> 2.1"
+
+
+def _mod_cfg(*modules: tuple[str, str | None]) -> TfDoConfig:
+    return TfDoConfig(modules=[ModuleConstraint(source=s, constraint=c) for s, c in modules])
+
+
+def test_merge_modules_dev_inherits_root():
+    root = _mod_cfg(("terraform-mongodbatlas-modules/project/mongodbatlas", "~> 1.0"))
+    result = merge_modules([root], TfDoConfig())
+    assert len(result) == 1
+    assert result[0].source == "terraform-mongodbatlas-modules/project/mongodbatlas"
+    assert result[0].constraint == "~> 1.0"
+
+
+def test_merge_modules_prod_overrides_constraint():
+    root = _mod_cfg(("terraform-mongodbatlas-modules/project/mongodbatlas", "~> 1.0"))
+    prod = _mod_cfg(("terraform-mongodbatlas-modules/project/mongodbatlas", "~> 1.5"))
+    result = merge_modules([root], prod)
+    assert len(result) == 1
+    assert result[0].constraint == "~> 1.5"
+
+
+def test_merge_modules_child_adds_new_source():
+    root = _mod_cfg(("org/networking/aws", "~> 2.0"))
+    child = _mod_cfg(("org/compute/aws", None))
+    result = merge_modules([root], child)
+    assert {m.source for m in result} == {"org/networking/aws", "org/compute/aws"}
+
+
+def test_merge_modules_child_clears_constraint():
+    root = _mod_cfg(("org/networking/aws", "~> 2.0"))
+    child = _mod_cfg(("org/networking/aws", None))
+    result = merge_modules([root], child)
+    assert len(result) == 1
+    assert result[0].constraint is None
+
+
+def test_module_constraint_round_trip():
+    cfg = TfDoConfig(modules=[ModuleConstraint(source="org/net/aws", constraint="~> 1.0")])
+    reloaded = TfDoConfig(**cfg.model_dump())
+    assert reloaded.modules[0].source == "org/net/aws"
+    assert reloaded.modules[0].constraint == "~> 1.0"
+
+
+@pytest.mark.parametrize("source", ["./local", "../shared", "/abs/path"])
+def test_module_constraint_rejects_local_source(source: str):
+    with pytest.raises(ValidationError, match="local module source not allowed"):
+        ModuleConstraint(source=source)
