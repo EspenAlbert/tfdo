@@ -291,6 +291,18 @@ def delete_module_block(original: str, module_name: str) -> str:
     return _delete_block(original, ("module", module_name))
 
 
+def delete_variable_block(original: str, var_name: str) -> str:
+    return _delete_block(original, ("variable", var_name))
+
+
+def delete_output_block(original: str, output_name: str) -> str:
+    return _delete_block(original, ("output", output_name))
+
+
+def delete_provider_block(original: str, provider_name: str) -> str:
+    return _delete_block(original, ("provider", provider_name))
+
+
 def update_required_providers(original: str, providers: dict[str, dict[str, Any]]) -> str:
     doc = hcl2.loads(original)
     terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc)) or {}

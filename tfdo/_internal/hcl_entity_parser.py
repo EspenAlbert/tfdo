@@ -74,6 +74,13 @@ class TfProvider(Event):
 
 type HclEntity = TfVariable | TfOutput | TfResource | TfModuleCall | TfRequiredProviders | TfTerraform | TfProvider
 
+
+class TfModuleExample(Event):
+    name: str
+    path: Path
+    entities: list[HclEntity] = Field(default_factory=list)
+
+
 _MODULE_RESERVED_ATTRS = frozenset({"source", "version"})
 _PROVIDER_RESERVED_ATTRS = frozenset({"alias"})
 
@@ -270,3 +277,19 @@ def parse_dir_entities(path: Path) -> list[HclEntity]:
     for file in path.glob("**/*.tf"):
         entities.extend(parse_entities(file))
     return entities
+
+
+def parse_module_examples(module_path: Path) -> list[TfModuleExample]:
+    examples_dir = module_path / "examples"
+    if not examples_dir.is_dir():
+        return []
+    examples = []
+    for candidate in sorted(examples_dir.iterdir()):
+        if not candidate.is_dir():
+            continue
+        tf_files = list(candidate.glob("*.tf"))
+        if not tf_files:
+            continue
+        entities = parse_dir_entities(candidate)
+        examples.append(TfModuleExample(name=candidate.name, path=candidate, entities=entities))
+    return examples
