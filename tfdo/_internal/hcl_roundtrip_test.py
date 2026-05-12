@@ -221,6 +221,7 @@ def test_read_module_block_values_returns_hcl_value_models() -> None:
         "project_id": hcl_roundtrip.HclAttrRef("mongodbatlas_project.this.id"),
     }
 
+
 def test_read_module_block_attrs_raises_on_missing_block() -> None:
     with pytest.raises(ValueError, match="module alerts not found"):
         hcl_roundtrip.read_module_block_attrs(_BASE_FIXTURE, module_name="alerts")
