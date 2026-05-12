@@ -46,6 +46,10 @@ class TfResource(Event):
     name: str
     attrs: dict[str, HclValue] = Field(default_factory=dict)
 
+    @property
+    def provider_name(self) -> str:
+        return self.type.split("_")[0]
+
 
 class TfModuleCall(Event):
     file_path: Path

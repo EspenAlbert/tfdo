@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from tfdo._internal.hcl_entity_parser import (
+    HclEntity,
     TfModuleCall,
     TfModuleExample,
     TfOutput,
@@ -107,7 +108,7 @@ def test_select_entities_excludes_unreferenced_variables_when_resource_dropped(
 
 
 def test_collect_var_refs_from_nested_dict_and_list() -> None:
-    entities = [
+    entities: list[HclEntity] = [
         TfResource(
             file_path=_FAKE_PATH,
             type="aws_s3_bucket",
@@ -120,6 +121,24 @@ def test_collect_var_refs_from_nested_dict_and_list() -> None:
     ]
     refs = collect_var_refs(entities)
     assert refs == {"env", "region"}
+
+
+def test_select_entities_includes_output_referencing_kept_module(dev_cluster_example: TfModuleExample) -> None:
+    selection = RunDirSelection(
+        include_resources=set(),
+        include_modules={"cluster"},
+        include_providers={"mongodbatlas"},
+    )
+    result = select_entities(dev_cluster_example, selection)
+    output_names = {e.name for e in result if isinstance(e, TfOutput)}
+    assert "cluster" in output_names
+
+
+def test_select_entities_excludes_output_when_module_not_kept(dev_cluster_example: TfModuleExample) -> None:
+    selection = RunDirSelection(include_resources=set(), include_modules=set(), include_providers=set())
+    result = select_entities(dev_cluster_example, selection)
+    output_names = {e.name for e in result if isinstance(e, TfOutput)}
+    assert output_names == set()
 
 
 def test_select_entities_excludes_non_selected_provider(dev_cluster_example: TfModuleExample) -> None:

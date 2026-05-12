@@ -47,6 +47,10 @@ terraform {
       source  = "mongodb/mongodbatlas"
       version = "~> 2.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 2.0"
+    }
   }
   required_version = ">= 1.9"
 }
@@ -136,6 +140,47 @@ def test_generate_run_dir_preserves_versions_tf(tmp_path: Path) -> None:
     versions_out = (out / "versions.tf").read_text()
     assert "mongodbatlas" in versions_out
     assert "required_version" in versions_out
+
+
+def test_generate_run_dir_keeps_required_provider_implied_by_selected_resource(tmp_path: Path) -> None:
+    # random_pet resource is selected but there is no provider "random" {} block.
+    # The required_providers entry for random must be kept because the resource implies it.
+    module_path = _write_example(tmp_path)
+    examples = parse_module_examples(module_path)
+    example = examples[0]
+
+    selection = RunDirSelection(
+        include_resources={("random_pet", "generated_name")},
+        include_modules={"cluster"},
+        include_providers={"mongodbatlas"},
+    )
+    selected = select_entities(example, selection)
+    out = tmp_path / "run_dir"
+    generate_run_dir(example, selected, out)
+
+    versions_out = (out / "versions.tf").read_text()
+    assert "mongodbatlas" in versions_out
+    assert "random" in versions_out
+
+
+def test_generate_run_dir_prunes_unused_required_provider(tmp_path: Path) -> None:
+    module_path = _write_example(tmp_path)
+    examples = parse_module_examples(module_path)
+    example = examples[0]
+
+    # deselect the random_pet resource → random provider no longer needed
+    selection = RunDirSelection(
+        include_resources=set(),
+        include_modules={"cluster"},
+        include_providers={"mongodbatlas"},
+    )
+    selected = select_entities(example, selection)
+    out = tmp_path / "run_dir"
+    generate_run_dir(example, selected, out)
+
+    versions_out = (out / "versions.tf").read_text()
+    assert "mongodbatlas" in versions_out
+    assert "random" not in versions_out
 
 
 def test_parse_module_examples_finds_example_dirs(tmp_path: Path) -> None:

@@ -10,6 +10,7 @@ from tfdo._internal.hcl_entity_parser import (
     TfModuleExample,
     TfOutput,
     TfProvider,
+    TfRequiredProviders,
     TfResource,
     TfVariable,
 )
@@ -19,6 +20,7 @@ from tfdo._internal.hcl_roundtrip import (
     delete_provider_block,
     delete_resource_block,
     delete_variable_block,
+    remove_required_providers,
 )
 
 
@@ -44,8 +46,25 @@ def _delete_entity(text: str, entity: HclEntity) -> str:
     return text
 
 
+def _prune_required_providers(text: str, file_entities: list[HclEntity], selected_provider_names: set[str]) -> str:
+    for entity in file_entities:
+        if not isinstance(entity, TfRequiredProviders):
+            continue
+        for provider in entity.providers:
+            if provider.name not in selected_provider_names:
+                try:
+                    text = remove_required_providers(text, provider.name)
+                except ValueError:
+                    pass
+    return text
+
+
 def generate_run_dir(example: TfModuleExample, selected_entities: list[HclEntity], output_dir: Path) -> None:
     selected_keys = {_entity_key(e) for e in selected_entities}
+    selected_provider_names = (
+        {e.name for e in selected_entities if isinstance(e, TfProvider)}
+        | {e.provider_name for e in selected_entities if isinstance(e, TfResource)}
+    )
 
     by_file: dict[Path, list[HclEntity]] = {}
     for entity in example.entities:
@@ -56,5 +75,6 @@ def generate_run_dir(example: TfModuleExample, selected_entities: list[HclEntity
         for entity in file_entities:
             if _entity_key(entity) not in selected_keys:
                 text = _delete_entity(text, entity)
+        text = _prune_required_providers(text, file_entities, selected_provider_names)
         dest = output_dir / source_file.name
         ensure_parents_write_text(dest, text)
