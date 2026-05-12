@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
@@ -56,10 +57,8 @@ def _build_patch_text(source_file: Path, entities_to_add: list[HclEntity], all_f
         if entity_key(entity) not in add_keys:
             text = _delete_entity(text, entity)
     if any(isinstance(e, TfTerraform) for e in all_file_entities):
-        try:
+        with contextlib.suppress(ValueError):
             text = delete_terraform_block(text)
-        except ValueError:
-            pass
     return text
 
 

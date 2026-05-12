@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from tfdo._internal.hcl_entity_parser import TfModuleCall
-from tfdo._internal.hcl_example_prompt import _editable_fields, _parse_user_hcl_value, _strip_quotes
+from tfdo._internal.hcl_example_prompt import _editable_fields, _hcl_value_display, _parse_user_hcl_value, _strip_quotes
 from tfdo._internal.hcl_roundtrip import HclAttrRef, HclExpression, HclLiteral, HclVarRef
 
 
@@ -56,8 +56,6 @@ def test_strip_quotes(raw: str, expected: str) -> None:
     ],
 )
 def test_hcl_value_display_bare_string(value, expected: str) -> None:
-    from tfdo._internal.hcl_example_prompt import _hcl_value_display
-
     assert _hcl_value_display(value) == expected
 
 
