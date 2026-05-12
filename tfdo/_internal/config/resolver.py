@@ -45,6 +45,7 @@ class ResolvedProvider(BaseModel):
     is_declared_in_hcl: bool = False
     is_declared_in_tfdo_yaml: bool = False
     has_hints_entry: bool = False
+    is_force_injected: bool = False
 
 
 class ResolvedModule(BaseModel):
@@ -206,6 +207,7 @@ def _build_providers(
                 is_declared_in_hcl=name in hcl_names,
                 is_declared_in_tfdo_yaml=name in tfdo_yaml_names,
                 has_hints_entry=hints is not None,
+                is_force_injected=name in force_inject,
             )
         )
 

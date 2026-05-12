@@ -66,8 +66,9 @@ def test_force_inject_from_run_dir_tfdo_yaml(fixture_root: Path, settings: TfDoS
     assert rp.name == "random"
     assert rp.constraint is None
     assert rp.source == "hashicorp/random"
-    assert rp.is_declared_in_tfdo_yaml is True
-    assert rp.has_hints_entry is False
+    assert rp.is_declared_in_tfdo_yaml
+    assert not rp.has_hints_entry
+    assert rp.is_force_injected
 
 
 def test_classification_flags(fixture_root: Path, settings: TfDoSettings) -> None:
@@ -89,9 +90,10 @@ def test_classification_flags(fixture_root: Path, settings: TfDoSettings) -> Non
     assert len(result.required_providers) == 1
     rp = result.required_providers[0]
     assert rp.name == "mongodbatlas"
-    assert rp.is_declared_in_hcl is True
-    assert rp.is_declared_in_tfdo_yaml is True
-    assert rp.has_hints_entry is True
+    assert rp.is_declared_in_hcl
+    assert rp.is_declared_in_tfdo_yaml
+    assert rp.has_hints_entry
+    assert not rp.is_force_injected
     assert rp.source == "mongodb/mongodbatlas"
     assert rp.constraint == "~> 2.0"
 
