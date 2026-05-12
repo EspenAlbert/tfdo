@@ -65,6 +65,7 @@ class AuthBundle(BaseModel):
 
 
 class ProviderHints(BaseModel):
+    source: str | None = None
     auth_bundles: list[AuthBundle] = Field(default_factory=list)
     auth_variables: list[VariableMapping] = Field(default_factory=list)
     variable_options: list[VariableMapping] = Field(default_factory=list)
