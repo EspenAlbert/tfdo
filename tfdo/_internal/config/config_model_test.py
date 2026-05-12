@@ -5,8 +5,10 @@ from tfdo._internal.config.config_model import (
     DependencyRef,
     HookConfig,
     LocalBackend,
+    ProviderConstraint,
     S3Backend,
     TfDoConfig,
+    merge_providers,
 )
 from tfdo._internal.config.enums import LifecycleEvent
 
@@ -116,3 +118,49 @@ def test_hook_config_valid():
 def test_dependency_ref_defaults():
     d = DependencyRef(ref="../vpc")
     assert d.outputs
+
+
+def _cfg(*providers: tuple[str, str | None]) -> TfDoConfig:
+    return TfDoConfig(providers=[ProviderConstraint(name=n, constraint=c) for n, c in providers])
+
+
+def test_merge_providers_dev_inherits_root():
+    root = _cfg(("mongodbatlas", "~> 2.0"))
+    dev = TfDoConfig()
+    result = merge_providers([root], dev)
+    assert len(result) == 1
+    assert result[0].name == "mongodbatlas"
+    assert result[0].constraint == "~> 2.0"
+
+
+def test_merge_providers_prod_overrides_constraint():
+    root = _cfg(("mongodbatlas", "~> 2.0"))
+    prod = _cfg(("mongodbatlas", "~> 2.10"))
+    result = merge_providers([root], prod)
+    assert len(result) == 1
+    assert result[0].constraint == "~> 2.10"
+
+
+def test_merge_providers_child_adds_new_name():
+    root = _cfg(("mongodbatlas", "~> 2.0"))
+    child = _cfg(("random", None))
+    result = merge_providers([root], child)
+    names = {p.name for p in result}
+    assert names == {"mongodbatlas", "random"}
+
+
+def test_merge_providers_child_clears_constraint():
+    root = _cfg(("mongodbatlas", "~> 2.0"))
+    child = _cfg(("mongodbatlas", None))
+    result = merge_providers([root], child)
+    assert len(result) == 1
+    assert result[0].name == "mongodbatlas"
+    assert result[0].constraint is None
+
+
+def test_provider_constraint_round_trip():
+    cfg = TfDoConfig(providers=[ProviderConstraint(name="mongodbatlas", constraint="~> 2.1")])
+    dumped = cfg.model_dump()
+    reloaded = TfDoConfig(**dumped)
+    assert reloaded.providers[0].name == "mongodbatlas"
+    assert reloaded.providers[0].constraint == "~> 2.1"

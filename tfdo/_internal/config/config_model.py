@@ -92,6 +92,11 @@ class DependencyRef(BaseModel):
     outputs: bool = True
 
 
+class ProviderConstraint(BaseModel):
+    name: str
+    constraint: str | None = None
+
+
 class TfDoConfig(BaseModel):
     binary: str | None = None
     tf_version: str | None = None
@@ -106,3 +111,13 @@ class TfDoConfig(BaseModel):
     var_files: list[str] = Field(default_factory=list)
 
     run_dir_discovery: str | None = None
+    providers: list[ProviderConstraint] = Field(default_factory=list)
+
+
+def merge_providers(parents: list[TfDoConfig], child: TfDoConfig) -> list[ProviderConstraint]:
+    """Merge provider constraints from root → env → run-dir; child wins for constraint."""
+    merged: dict[str, ProviderConstraint] = {}
+    for cfg in [*parents, child]:
+        for p in cfg.providers:
+            merged[p.name] = p
+    return list(merged.values())
