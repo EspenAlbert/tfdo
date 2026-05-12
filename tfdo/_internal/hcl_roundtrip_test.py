@@ -126,6 +126,26 @@ def test_add_resource_block_raises_if_block_exists() -> None:
         )
 
 
+def test_delete_resource_block_removes_resource_and_keeps_user_content() -> None:
+    output = hcl_roundtrip.delete_resource_block(
+        _BASE_FIXTURE,
+        resource_type="mongodbatlas_project",
+        resource_name="this",
+    )
+    assert 'resource "mongodbatlas_project" "this" {' not in output
+    assert "# user-added, run-dir specific" in output
+    assert 'provider "random" {}' in output
+
+
+def test_delete_resource_block_raises_on_missing_block() -> None:
+    with pytest.raises(ValueError, match="no block with labels"):
+        hcl_roundtrip.delete_resource_block(
+            _BASE_FIXTURE,
+            resource_type="mongodbatlas_project",
+            resource_name="missing",
+        )
+
+
 def test_add_module_block_adds_new_module() -> None:
     output = hcl_roundtrip.add_module_block(
         _BASE_FIXTURE,
@@ -148,6 +168,26 @@ def test_add_module_block_raises_if_block_exists() -> None:
             module_name="alerts",
             attrs={"source": '"./modules/alerts"'},
         )
+
+
+def test_delete_module_block_removes_module_and_keeps_other_content() -> None:
+    fixture = hcl_roundtrip.add_module_block(
+        _BASE_FIXTURE,
+        module_name="alerts",
+        attrs={
+            "source": '"./modules/alerts"',
+            "project_id": "mongodbatlas_project.this.id",
+        },
+    )
+    output = hcl_roundtrip.delete_module_block(fixture, module_name="alerts")
+    assert 'module "alerts" {' not in output
+    assert 'resource "mongodbatlas_project" "this" {' in output
+    assert 'provider "random" {}' in output
+
+
+def test_delete_module_block_raises_on_missing_block() -> None:
+    with pytest.raises(ValueError, match="no block with labels"):
+        hcl_roundtrip.delete_module_block(_BASE_FIXTURE, module_name="alerts")
 
 
 def test_read_module_block_attrs_returns_defined_attrs() -> None:
@@ -247,3 +287,55 @@ def test_update_required_providers_repeat_apply_is_stable() -> None:
         providers={"mongodbatlas": {"version": "~> 3.0"}},
     )
     assert once == twice
+
+
+def test_remove_required_providers_removes_only_target_provider() -> None:
+    fixture = hcl_roundtrip.update_required_providers(
+        _BASE_FIXTURE,
+        providers={"aws": {"source": "hashicorp/aws", "version": "~> 6.0"}},
+    )
+    output = hcl_roundtrip.remove_required_providers(fixture, provider="aws")
+    assert "hashicorp/aws" not in output
+    assert "mongodb/mongodbatlas" in output
+    assert "required_providers {" in output
+
+
+def test_remove_required_providers_removes_section_when_last_provider_deleted() -> None:
+    output = hcl_roundtrip.remove_required_providers(_BASE_FIXTURE, provider="mongodbatlas")
+    assert "required_providers {" not in output
+    assert "terraform {" not in output
+
+
+def test_remove_required_providers_raises_when_provider_missing() -> None:
+    with pytest.raises(ValueError, match="provider aws not found"):
+        hcl_roundtrip.remove_required_providers(_BASE_FIXTURE, provider="aws")
+
+
+def test_delete_required_providers_section_removes_entire_terraform_if_empty() -> None:
+    output = hcl_roundtrip.delete_required_providers_section(_BASE_FIXTURE)
+    assert "required_providers {" not in output
+    assert "terraform {" not in output
+    assert 'provider "random" {}' in output
+
+
+def test_delete_required_providers_section_keeps_terraform_when_other_attrs_exist() -> None:
+    fixture = """terraform {
+  required_version = ">= 1.9"
+  required_providers {
+    mongodbatlas = {
+      source  = "mongodb/mongodbatlas"
+      version = "~> 2.8"
+    }
+  }
+}
+"""
+    output = hcl_roundtrip.delete_required_providers_section(fixture)
+    assert "required_providers {" not in output
+    assert "terraform {" in output
+    assert 'required_version = ">= 1.9"' in output
+
+
+def test_delete_required_providers_section_raises_when_missing() -> None:
+    fixture = '# user-owned\nprovider "random" {}\n'
+    with pytest.raises(ValueError, match="required_providers section not found"):
+        hcl_roundtrip.delete_required_providers_section(fixture)

@@ -148,6 +148,13 @@ def _append_block(original: str, block_dict: dict[str, Any]) -> str:
     return hcl2.reconstruct(tree)
 
 
+def _delete_block(original: str, label_path: Iterable[str]) -> str:
+    tree = hcl2.parses(original, discard_comments=False)
+    index = find_block_index(tree, label_path)
+    tree.body.children.pop(index)
+    return hcl2.reconstruct(tree)
+
+
 def splice_block(original: str, block_dict: dict[str, Any], label_path: Iterable[str]) -> str:
     tree = hcl2.parses(original, discard_comments=False)
     new_block = first_block(hcl2.from_dict(block_dict))
@@ -268,12 +275,20 @@ def add_resource_block(original: str, resource_type: str, resource_name: str, at
     return _append_block(original, _build_resource_block_dict(resource_type, resource_name, attrs))
 
 
+def delete_resource_block(original: str, resource_type: str, resource_name: str) -> str:
+    return _delete_block(original, ("resource", resource_type, resource_name))
+
+
 def add_module_block(original: str, module_name: str, attrs: dict[str, Any]) -> str:
     tree = hcl2.parses(original, discard_comments=False)
     label_path = ("module", module_name)
     if block_exists(tree, label_path):
         raise ValueError(f"block already exists for labels {list(label_path)}")
     return _append_block(original, _build_module_block_dict(module_name, attrs))
+
+
+def delete_module_block(original: str, module_name: str) -> str:
+    return _delete_block(original, ("module", module_name))
 
 
 def update_required_providers(original: str, providers: dict[str, dict[str, Any]]) -> str:
@@ -302,3 +317,46 @@ def update_required_providers(original: str, providers: dict[str, dict[str, Any]
     if block_exists(tree, ("terraform",)):
         return splice_block(original, block_dict, ("terraform",))
     return _append_block(original, block_dict)
+
+
+def remove_required_providers(original: str, provider: str) -> str:
+    doc = hcl2.loads(original)
+    terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc))
+    if terraform_attrs is None:
+        raise ValueError(f"provider {provider} not found")
+
+    required_providers = terraform_attrs.get("required_providers")
+    if not isinstance(required_providers, list) or not required_providers:
+        raise ValueError(f"provider {provider} not found")
+
+    provider_block = _ensure_block_dict(copy.deepcopy(required_providers[0]))
+    if provider not in provider_block:
+        raise ValueError(f"provider {provider} not found")
+
+    provider_block.pop(provider)
+    marker_only_block = list(provider_block.keys()) == [_BLOCK_MARKER]
+    if marker_only_block:
+        return delete_required_providers_section(original)
+
+    terraform_attrs.pop(_BLOCK_MARKER, None)
+    terraform_attrs["required_providers"] = [provider_block]
+    block_dict = _build_terraform_block_dict(terraform_attrs)
+    return splice_block(original, block_dict, ("terraform",))
+
+
+def delete_required_providers_section(original: str) -> str:
+    doc = hcl2.loads(original)
+    terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc))
+    if terraform_attrs is None:
+        raise ValueError("required_providers section not found")
+
+    terraform_attrs.pop(_BLOCK_MARKER, None)
+    if "required_providers" not in terraform_attrs:
+        raise ValueError("required_providers section not found")
+
+    terraform_attrs.pop("required_providers")
+    if not terraform_attrs:
+        return _delete_block(original, ("terraform",))
+
+    block_dict = _build_terraform_block_dict(terraform_attrs)
+    return splice_block(original, block_dict, ("terraform",))
