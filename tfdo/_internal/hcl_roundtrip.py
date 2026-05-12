@@ -1,0 +1,233 @@
+from __future__ import annotations
+
+import copy
+from collections.abc import Callable, Iterable
+from typing import Any
+
+import hcl2
+from hcl2.rules.base import BlockRule, StartRule
+from hcl2.rules.literal_rules import IdentifierRule
+from hcl2.rules.strings import StringRule
+
+_BLOCK_MARKER = "__is_block__"
+
+
+def _label_to_str(label: Any) -> str:
+    if isinstance(label, IdentifierRule):
+        return label.serialize()
+    if isinstance(label, StringRule):
+        raw = label.serialize()
+        if isinstance(raw, str) and len(raw) >= 2 and raw[0] == '"' and raw[-1] == '"':
+            return raw[1:-1]
+        return str(raw)
+    return str(label.serialize())
+
+
+def _strip_wrapping_quotes(value: str) -> str:
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+        return value[1:-1]
+    return value
+
+
+def _quoted_label(value: str) -> str:
+    return f'"{_strip_wrapping_quotes(value)}"'
+
+
+def _is_hcl_string(value: str) -> bool:
+    return len(value) >= 2 and value[0] == '"' and value[-1] == '"'
+
+
+def _is_hcl_expression(value: str) -> bool:
+    if value.startswith("${") and value.endswith("}"):
+        return True
+    if "." in value and " " not in value and "/" not in value:
+        return True
+    return False
+
+
+def _to_hcl_string(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    if _is_hcl_string(value) or _is_hcl_expression(value):
+        return value
+    return f'"{value}"'
+
+
+def block_labels(block: BlockRule) -> list[str]:
+    return [_label_to_str(label) for label in block.labels]
+
+
+def find_block_index(tree: StartRule, label_path: Iterable[str]) -> int:
+    target = list(label_path)
+    for index, child in enumerate(tree.body.children):
+        if isinstance(child, BlockRule) and block_labels(child) == target:
+            return index
+    raise ValueError(f"no block with labels {target} found")
+
+
+def block_exists(tree: StartRule, label_path: Iterable[str]) -> bool:
+    try:
+        find_block_index(tree, label_path)
+    except ValueError:
+        return False
+    return True
+
+
+def first_block(tree: StartRule) -> BlockRule:
+    for child in tree.body.children:
+        if isinstance(child, BlockRule):
+            return child
+    raise ValueError("no block found in tree")
+
+
+def _append_block(original: str, block_dict: dict[str, Any]) -> str:
+    tree = hcl2.parses(original, discard_comments=False)
+    new_block = first_block(hcl2.from_dict(block_dict))
+    tree.body.children.append(new_block)
+    return hcl2.reconstruct(tree)
+
+
+def splice_block(original: str, block_dict: dict[str, Any], label_path: Iterable[str]) -> str:
+    tree = hcl2.parses(original, discard_comments=False)
+    new_block = first_block(hcl2.from_dict(block_dict))
+    tree.body.children[find_block_index(tree, label_path)] = new_block
+    return hcl2.reconstruct(tree)
+
+
+def _find_resource_attrs(doc: dict[str, Any], resource_type: str, resource_name: str) -> dict[str, Any]:
+    resources = doc.get("resource")
+    if not isinstance(resources, list):
+        raise ValueError("document has no resource list")
+
+    for block in resources:
+        if not isinstance(block, dict):
+            continue
+        for block_resource_type, by_name in block.items():
+            if _strip_wrapping_quotes(str(block_resource_type)) != resource_type:
+                continue
+            if not isinstance(by_name, dict):
+                continue
+            for block_resource_name, attrs in by_name.items():
+                if _strip_wrapping_quotes(str(block_resource_name)) != resource_name:
+                    continue
+                if isinstance(attrs, dict):
+                    return attrs
+
+    raise ValueError(f"resource {resource_type}.{resource_name} not found")
+
+
+def _find_module_attrs(doc: dict[str, Any], module_name: str) -> dict[str, Any]:
+    modules = doc.get("module")
+    if not isinstance(modules, list):
+        raise ValueError(f"module {module_name} not found")
+
+    for block in modules:
+        if not isinstance(block, dict):
+            continue
+        for block_module_name, attrs in block.items():
+            if _strip_wrapping_quotes(str(block_module_name)) != module_name:
+                continue
+            if isinstance(attrs, dict):
+                return attrs
+
+    raise ValueError(f"module {module_name} not found")
+
+
+def _build_resource_block_dict(resource_type: str, resource_name: str, attrs: dict[str, Any]) -> dict[str, Any]:
+    attrs_with_marker = {_BLOCK_MARKER: True, **attrs}
+    return {"resource": [{_quoted_label(resource_type): {_quoted_label(resource_name): attrs_with_marker}}]}
+
+
+def _build_module_block_dict(module_name: str, attrs: dict[str, Any]) -> dict[str, Any]:
+    attrs_with_marker = {_BLOCK_MARKER: True, **attrs}
+    return {"module": [{_quoted_label(module_name): attrs_with_marker}]}
+
+
+def _find_terraform_attrs(doc: dict[str, Any]) -> dict[str, Any] | None:
+    terraform = doc.get("terraform")
+    if not isinstance(terraform, list) or not terraform:
+        return None
+    first = terraform[0]
+    if not isinstance(first, dict):
+        return None
+    return first
+
+
+def _build_terraform_block_dict(attrs: dict[str, Any]) -> dict[str, Any]:
+    return {"terraform": [{_BLOCK_MARKER: True, **attrs}]}
+
+
+def _ensure_block_dict(block_data: Any) -> dict[str, Any]:
+    if isinstance(block_data, dict):
+        return block_data
+    return {_BLOCK_MARKER: True}
+
+
+def read_resource_block_attrs(original: str, resource_type: str, resource_name: str) -> dict[str, Any]:
+    doc = hcl2.loads(original)
+    attrs = copy.deepcopy(_find_resource_attrs(doc, resource_type, resource_name))
+    attrs.pop(_BLOCK_MARKER, None)
+    return attrs
+
+
+def read_module_block_attrs(original: str, module_name: str) -> dict[str, Any]:
+    doc = hcl2.loads(original)
+    attrs = copy.deepcopy(_find_module_attrs(doc, module_name))
+    attrs.pop(_BLOCK_MARKER, None)
+    return attrs
+
+
+def update_resource_block(
+    original: str,
+    resource_type: str,
+    resource_name: str,
+    mutation: Callable[[dict[str, Any]], None],
+) -> str:
+    attrs = read_resource_block_attrs(original, resource_type, resource_name)
+    mutation(attrs)
+    block_dict = _build_resource_block_dict(resource_type, resource_name, attrs)
+    return splice_block(original, block_dict, ("resource", resource_type, resource_name))
+
+
+def add_resource_block(original: str, resource_type: str, resource_name: str, attrs: dict[str, Any]) -> str:
+    tree = hcl2.parses(original, discard_comments=False)
+    label_path = ("resource", resource_type, resource_name)
+    if block_exists(tree, label_path):
+        raise ValueError(f"block already exists for labels {list(label_path)}")
+    return _append_block(original, _build_resource_block_dict(resource_type, resource_name, attrs))
+
+
+def add_module_block(original: str, module_name: str, attrs: dict[str, Any]) -> str:
+    tree = hcl2.parses(original, discard_comments=False)
+    label_path = ("module", module_name)
+    if block_exists(tree, label_path):
+        raise ValueError(f"block already exists for labels {list(label_path)}")
+    return _append_block(original, _build_module_block_dict(module_name, attrs))
+
+
+def update_required_providers(original: str, providers: dict[str, dict[str, Any]]) -> str:
+    doc = hcl2.loads(original)
+    terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc)) or {}
+    terraform_attrs.pop(_BLOCK_MARKER, None)
+
+    required_providers = terraform_attrs.get("required_providers")
+    provider_block: dict[str, Any]
+    if isinstance(required_providers, list) and required_providers:
+        provider_block = _ensure_block_dict(copy.deepcopy(required_providers[0]))
+    else:
+        provider_block = {_BLOCK_MARKER: True}
+
+    for provider_name, patch in providers.items():
+        existing = provider_block.get(provider_name, {})
+        provider_attrs = copy.deepcopy(existing) if isinstance(existing, dict) else {}
+        for key, value in patch.items():
+            provider_attrs[key] = _to_hcl_string(value)
+        provider_block[provider_name] = provider_attrs
+
+    terraform_attrs["required_providers"] = [provider_block]
+    block_dict = _build_terraform_block_dict(terraform_attrs)
+
+    tree = hcl2.parses(original, discard_comments=False)
+    if block_exists(tree, ("terraform",)):
+        return splice_block(original, block_dict, ("terraform",))
+    return _append_block(original, block_dict)
