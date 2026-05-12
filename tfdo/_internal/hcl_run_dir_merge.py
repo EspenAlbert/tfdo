@@ -50,10 +50,10 @@ def _find_versions_file(run_dir: Path, existing: list[HclEntity]) -> Path:
 
 def _build_patch_text(source_file: Path, entities_to_add: list[HclEntity], all_file_entities: list[HclEntity]) -> str:
     """Return source file text with only entities_to_add kept (terraform block stripped)."""
-    deduped_keys = {entity_key(e) for e in entities_to_add}
+    add_keys = {entity_key(e) for e in entities_to_add}
     text = source_file.read_text()
     for entity in all_file_entities:
-        if entity_key(entity) not in deduped_keys:
+        if entity_key(entity) not in add_keys:
             text = _delete_entity(text, entity)
     if any(isinstance(e, TfTerraform) for e in all_file_entities):
         try:
@@ -86,16 +86,14 @@ def merge_run_dir(
         all_file_entities = [e for e in example.entities if e.file_path.name == filename]
         patch = _build_patch_text(source_file, originals_to_add, all_file_entities)
 
+        for edited, original in zip(entities_to_add, originals_to_add):
+            patch = _apply_entity_edit(patch, original, edited)
+
         dest = run_dir / filename
         if dest.exists():
             existing_text = dest.read_text()
             patch = existing_text.rstrip("\n") + "\n\n" + patch.lstrip("\n")
         ensure_parents_write_text(dest, patch)
-
-        text = dest.read_text()
-        for edited, original in zip(entities_to_add, originals_to_add):
-            text = _apply_entity_edit(text, original, edited)
-        ensure_parents_write_text(dest, text)
 
     new_req_provs = _new_required_providers(existing, new_entities)
     if new_req_provs:

@@ -45,6 +45,22 @@ def test_strip_quotes(raw: str, expected: str) -> None:
     assert _strip_quotes(raw) == expected
 
 
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (HclLiteral("single-region-sharded"), "single-region-sharded"),
+        (HclLiteral(42), "42"),
+        (HclLiteral(True), "True"),
+        (HclVarRef("var.project_id"), "${var.project_id}"),
+        (HclAttrRef("module.cluster.id"), "module.cluster.id"),
+    ],
+)
+def test_hcl_value_display_bare_string(value, expected: str) -> None:
+    from tfdo._internal.hcl_example_prompt import _hcl_value_display
+
+    assert _hcl_value_display(value) == expected
+
+
 def test_editable_fields_skips_dict_and_list_attrs() -> None:
     module = TfModuleCall(
         file_path=Path("main.tf"),

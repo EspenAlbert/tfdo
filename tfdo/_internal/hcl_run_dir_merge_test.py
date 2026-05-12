@@ -245,6 +245,35 @@ def test_merge_with_label_rename_writes_renamed_block(tmp_path: Path) -> None:
     assert 'module "cluster2"' in main_out
 
 
+def test_merge_second_label_rename_does_not_duplicate_original(tmp_path: Path) -> None:
+    run_dir = _make_run_dir_from_atlas(tmp_path)
+    random_module = _write_random_example(tmp_path)
+    examples = parse_module_examples(random_module)
+    example = examples[0]
+
+    selection = RunDirSelection(include_resources=set(), include_modules={"cluster"}, include_providers=set())
+    originals = select_entities(example, selection)
+
+    # First rename: cluster → cluster2
+    edited1 = [
+        e.model_copy(update={"name": "cluster2"}) if isinstance(e, TfModuleCall) and e.name == "cluster" else e
+        for e in originals
+    ]
+    merge_run_dir(run_dir, example, edited1, original_entities=originals)
+
+    # Second rename from same source: cluster → cluster3
+    edited2 = [
+        e.model_copy(update={"name": "cluster3"}) if isinstance(e, TfModuleCall) and e.name == "cluster" else e
+        for e in originals
+    ]
+    merge_run_dir(run_dir, example, edited2, original_entities=originals)
+
+    main_out = (run_dir / "main.tf").read_text()
+    assert main_out.count('module "cluster"') == 1
+    assert main_out.count('module "cluster2"') == 1
+    assert main_out.count('module "cluster3"') == 1
+
+
 def test_merge_with_attr_override_writes_literal_value(tmp_path: Path) -> None:
     atlas_module = _write_atlas_example(tmp_path)
     examples = parse_module_examples(atlas_module)

@@ -28,7 +28,7 @@ class EditableField:
 def _hcl_value_display(value: HclValue) -> str:
     match value:
         case HclLiteral(value=v):
-            return repr(v) if isinstance(v, str) else str(v)
+            return v if isinstance(v, str) else str(v)
         case HclVarRef(path=p):
             return f"${{{p}}}"
         case HclAttrRef(path=p):
