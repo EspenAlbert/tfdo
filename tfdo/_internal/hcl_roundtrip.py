@@ -267,6 +267,29 @@ def update_resource_block(
     return splice_block(original, block_dict, ("resource", resource_type, resource_name))
 
 
+def rename_resource_block(original: str, resource_type: str, old_name: str, new_name: str) -> str:
+    attrs = read_resource_block_attrs(original, resource_type, old_name)
+    new_block = _build_resource_block_dict(resource_type, new_name, attrs)
+    return splice_block(original, new_block, ("resource", resource_type, old_name))
+
+
+def update_module_block(
+    original: str,
+    module_name: str,
+    mutation: Callable[[dict[str, Any]], None],
+) -> str:
+    attrs = read_module_block_attrs(original, module_name)
+    mutation(attrs)
+    block_dict = _build_module_block_dict(module_name, attrs)
+    return splice_block(original, block_dict, ("module", module_name))
+
+
+def rename_module_block(original: str, old_name: str, new_name: str) -> str:
+    attrs = read_module_block_attrs(original, old_name)
+    new_block = _build_module_block_dict(new_name, attrs)
+    return splice_block(original, new_block, ("module", old_name))
+
+
 def add_resource_block(original: str, resource_type: str, resource_name: str, attrs: dict[str, Any]) -> str:
     tree = hcl2.parses(original, discard_comments=False)
     label_path = ("resource", resource_type, resource_name)

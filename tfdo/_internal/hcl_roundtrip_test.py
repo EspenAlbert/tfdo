@@ -340,3 +340,50 @@ def test_delete_required_providers_section_raises_when_missing() -> None:
     fixture = '# user-owned\nprovider "random" {}\n'
     with pytest.raises(ValueError, match="required_providers section not found"):
         hcl_roundtrip.delete_required_providers_section(fixture)
+
+
+_MODULE_FIXTURE = """\
+module "cluster" {
+  source     = "../.."
+  name       = var.cluster_name
+  project_id = var.project_id
+}
+
+module "other" {
+  source = "../.."
+  name   = "other"
+}
+"""
+
+
+def test_rename_module_block_changes_label() -> None:
+    output = hcl_roundtrip.rename_module_block(_MODULE_FIXTURE, "cluster", "cluster2")
+    assert 'module "cluster2"' in output
+    assert 'module "cluster"' not in output
+    assert 'module "other"' in output
+
+
+def test_update_module_block_mutates_attrs() -> None:
+    def _set_name(attrs: dict) -> None:
+        attrs["name"] = '"overridden"'
+
+    output = hcl_roundtrip.update_module_block(_MODULE_FIXTURE, "cluster", _set_name)
+    assert '"overridden"' in output
+    assert "var.cluster_name" not in output
+    assert 'module "other"' in output
+
+
+def test_rename_resource_block_changes_label() -> None:
+    fixture = """\
+resource "random_pet" "prefix" {
+  length = 2
+}
+
+resource "random_pet" "suffix" {
+  length = 1
+}
+"""
+    output = hcl_roundtrip.rename_resource_block(fixture, "random_pet", "prefix", "my_prefix")
+    assert 'resource "random_pet" "my_prefix"' in output
+    assert 'resource "random_pet" "prefix"' not in output
+    assert 'resource "random_pet" "suffix"' in output

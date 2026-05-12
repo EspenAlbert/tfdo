@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ask_shell.shell import run_and_wait
 from zero_3rdparty.file_utils import ensure_parents_write_text
@@ -17,12 +18,21 @@ from tfdo._internal.hcl_entity_parser import (
 )
 from tfdo._internal.hcl_entity_selector import entity_key
 from tfdo._internal.hcl_roundtrip import (
+    HclAttrRef,
+    HclExpression,
+    HclLiteral,
+    HclValue,
+    HclVarRef,
     delete_module_block,
     delete_output_block,
     delete_provider_block,
     delete_resource_block,
     delete_variable_block,
     remove_required_providers,
+    rename_module_block,
+    rename_resource_block,
+    update_module_block,
+    update_resource_block,
 )
 
 
@@ -57,16 +67,60 @@ def terraform_fmt(run_dir: Path, binary: str = "terraform") -> None:
     run_and_wait(f"{binary} fmt", cwd=run_dir)
 
 
+def _hcl_value_to_raw(value: HclValue) -> Any:
+    match value:
+        case HclLiteral(value=v):
+            return f'"{v}"' if isinstance(v, str) else v
+        case HclVarRef(path=p) | HclAttrRef(path=p):
+            return f"${{{p}}}"
+        case HclExpression(expression=e):
+            return f"${{{e}}}"
+        case dict():
+            return {k: _hcl_value_to_raw(v) for k, v in value.items()}
+        case list():
+            return [_hcl_value_to_raw(item) for item in value]
+    return value
+
+
+def _apply_entity_edit(text: str, original: HclEntity, edited: HclEntity) -> str:
+    """Apply label rename and attr overrides from original → edited into the HCL text."""
+    if original is edited:
+        return text
+
+    match (original, edited):
+        case (TfModuleCall(name=orig_name, attrs=orig_attrs), TfModuleCall(name=new_name, attrs=new_attrs)):
+            current_name = orig_name
+            if orig_name != new_name:
+                text = rename_module_block(text, orig_name, new_name)
+                current_name = new_name
+            changed = {k: _hcl_value_to_raw(v) for k, v in new_attrs.items() if orig_attrs.get(k) != v}
+            if changed:
+                text = update_module_block(text, current_name, lambda a, c=changed: a.update(c))
+        case (TfResource(type=t, name=orig_name, attrs=orig_attrs), TfResource(name=new_name, attrs=new_attrs)):
+            current_name = orig_name
+            if orig_name != new_name:
+                text = rename_resource_block(text, t, orig_name, new_name)
+                current_name = new_name
+            changed = {k: _hcl_value_to_raw(v) for k, v in new_attrs.items() if orig_attrs.get(k) != v}
+            if changed:
+                text = update_resource_block(text, t, current_name, lambda a, c=changed: a.update(c))
+
+    return text
+
+
 def generate_run_dir(
     example: TfModuleExample,
     selected_entities: list[HclEntity],
     output_dir: Path,
+    original_entities: list[HclEntity] | None = None,
     binary: str = "terraform",
 ) -> None:
-    selected_keys = {entity_key(e) for e in selected_entities}
-    selected_provider_names = {e.name for e in selected_entities if isinstance(e, TfProvider)} | {
-        e.provider_name for e in selected_entities if isinstance(e, TfResource)
+    originals = original_entities if original_entities is not None else selected_entities
+    selected_original_keys = {entity_key(o) for o in originals}
+    selected_provider_names = {e.name for e in originals if isinstance(e, TfProvider)} | {
+        e.provider_name for e in originals if isinstance(e, TfResource)
     }
+    edit_pairs = list(zip(selected_entities, originals))
 
     by_file: dict[Path, list[HclEntity]] = {}
     for entity in example.entities:
@@ -75,9 +129,12 @@ def generate_run_dir(
     for source_file, file_entities in by_file.items():
         text = source_file.read_text()
         for entity in file_entities:
-            if entity_key(entity) not in selected_keys:
+            if entity_key(entity) not in selected_original_keys:
                 text = _delete_entity(text, entity)
         text = _prune_required_providers(text, file_entities, selected_provider_names)
+        for edited, original in edit_pairs:
+            if original.file_path == source_file:
+                text = _apply_entity_edit(text, original, edited)
         dest = output_dir / source_file.name
         ensure_parents_write_text(dest, text)
 

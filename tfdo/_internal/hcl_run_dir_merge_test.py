@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tfdo._internal.hcl_entity_parser import parse_module_examples
+from tfdo._internal.hcl_entity_parser import TfModuleCall, parse_module_examples
 from tfdo._internal.hcl_entity_selector import RunDirSelection, select_entities
+from tfdo._internal.hcl_roundtrip import HclLiteral
 from tfdo._internal.hcl_run_dir_gen import generate_run_dir
 from tfdo._internal.hcl_run_dir_merge import merge_run_dir
 
@@ -218,3 +219,53 @@ def test_merge_into_empty_dir_behaves_like_generate(tmp_path: Path) -> None:
     vars_out = (empty_run_dir / "variables.tf").read_text()
     assert 'module "cluster"' in main_out
     assert 'variable "project_id"' in vars_out
+
+
+def test_merge_with_label_rename_writes_renamed_block(tmp_path: Path) -> None:
+    run_dir = _make_run_dir_from_atlas(tmp_path)
+    random_module = _write_random_example(tmp_path)
+    examples = parse_module_examples(random_module)
+    example = examples[0]
+
+    selection = RunDirSelection(
+        include_resources=set(),
+        include_modules={"cluster"},
+        include_providers=set(),
+    )
+    originals = select_entities(example, selection)
+    edited = [
+        e.model_copy(update={"name": "cluster2"}) if isinstance(e, TfModuleCall) and e.name == "cluster" else e
+        for e in originals
+    ]
+
+    merge_run_dir(run_dir, example, edited, original_entities=originals)
+
+    main_out = (run_dir / "main.tf").read_text()
+    assert 'module "cluster"' in main_out
+    assert 'module "cluster2"' in main_out
+
+
+def test_merge_with_attr_override_writes_literal_value(tmp_path: Path) -> None:
+    atlas_module = _write_atlas_example(tmp_path)
+    examples = parse_module_examples(atlas_module)
+    example = examples[0]
+    selection = RunDirSelection(
+        include_resources=set(),
+        include_modules={"cluster"},
+        include_providers=set(),
+    )
+    originals = select_entities(example, selection)
+    edited = [
+        e.model_copy(update={"attrs": {**e.attrs, "name": HclLiteral("my-hardcoded-name")}})
+        if isinstance(e, TfModuleCall) and e.name == "cluster"
+        else e
+        for e in originals
+    ]
+
+    run_dir = tmp_path / "run_dir"
+    run_dir.mkdir()
+    merge_run_dir(run_dir, example, edited, original_entities=originals)
+
+    main_out = (run_dir / "main.tf").read_text()
+    assert "my-hardcoded-name" in main_out
+    assert "var.cluster_name" not in main_out

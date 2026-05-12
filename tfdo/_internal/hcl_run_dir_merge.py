@@ -15,7 +15,7 @@ from tfdo._internal.hcl_entity_parser import (
 )
 from tfdo._internal.hcl_entity_selector import dedup_new_entities, entity_key
 from tfdo._internal.hcl_roundtrip import delete_terraform_block, update_required_providers
-from tfdo._internal.hcl_run_dir_gen import _delete_entity, terraform_fmt
+from tfdo._internal.hcl_run_dir_gen import _apply_entity_edit, _delete_entity, terraform_fmt
 
 
 def _new_required_providers(existing: list[HclEntity], new_entities: list[HclEntity]) -> list[TfRequiredProvider]:
@@ -67,8 +67,12 @@ def merge_run_dir(
     run_dir: Path,
     example: TfModuleExample,
     new_entities: list[HclEntity],
+    original_entities: list[HclEntity] | None = None,
     binary: str = "terraform",
 ) -> None:
+    originals = original_entities if original_entities is not None else new_entities
+    orig_by_new_key = {entity_key(e): o for e, o in zip(new_entities, originals)}
+
     existing = parse_dir_entities(run_dir)
     deduped = dedup_new_entities(existing, new_entities)
 
@@ -77,15 +81,21 @@ def merge_run_dir(
         by_filename.setdefault(entity.file_path.name, []).append(entity)
 
     for filename, entities_to_add in by_filename.items():
-        source_file = entities_to_add[0].file_path
+        originals_to_add = [orig_by_new_key.get(entity_key(e), e) for e in entities_to_add]
+        source_file = originals_to_add[0].file_path
         all_file_entities = [e for e in example.entities if e.file_path.name == filename]
-        patch = _build_patch_text(source_file, entities_to_add, all_file_entities)
+        patch = _build_patch_text(source_file, originals_to_add, all_file_entities)
 
         dest = run_dir / filename
         if dest.exists():
             existing_text = dest.read_text()
             patch = existing_text.rstrip("\n") + "\n\n" + patch.lstrip("\n")
         ensure_parents_write_text(dest, patch)
+
+        text = dest.read_text()
+        for edited, original in zip(entities_to_add, originals_to_add):
+            text = _apply_entity_edit(text, original, edited)
+        ensure_parents_write_text(dest, text)
 
     new_req_provs = _new_required_providers(existing, new_entities)
     if new_req_provs:
