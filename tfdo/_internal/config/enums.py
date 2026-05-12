@@ -41,3 +41,9 @@ class LifecycleCommand(StrEnum):
 class TagsInject(StrEnum):
     ALWAYS = "always"
     NEVER = "never"
+
+
+class EnvVarLoadMode(StrEnum):
+    auto = "auto"
+    load = "load"
+    skip = "skip"

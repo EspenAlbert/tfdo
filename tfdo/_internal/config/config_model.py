@@ -127,6 +127,7 @@ class TfDoConfig(BaseModel):
     run_dir_discovery: str | None = None
     providers: list[ProviderConstraint] = Field(default_factory=list)
     modules: list[ModuleConstraint] = Field(default_factory=list)
+    env_var_files: list[str] = Field(default_factory=list)
 
 
 def merge_providers(parents: list[TfDoConfig], child: TfDoConfig) -> list[ProviderConstraint]:
@@ -144,3 +145,11 @@ def merge_modules(parents: list[TfDoConfig], child: TfDoConfig) -> list[ModuleCo
         for m in cfg.modules:
             merged[m.source] = m
     return list(merged.values())
+
+
+def merge_env_var_files(parents: list[TfDoConfig], child: TfDoConfig) -> list[str]:
+    """Concatenate env_var_files from root → env → run-dir; later entries win on key collision when loaded."""
+    result: list[str] = []
+    for cfg in [*parents, child]:
+        result.extend(cfg.env_var_files)
+    return result
