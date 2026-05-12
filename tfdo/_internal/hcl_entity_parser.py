@@ -264,6 +264,7 @@ def parse_entities(path: Path) -> list[HclEntity]:
     entities.extend(_parse_providers(doc, path))
     return entities
 
+
 def parse_dir_entities(path: Path) -> list[HclEntity]:
     entities: list[HclEntity] = []
     for file in path.glob("**/*.tf"):
