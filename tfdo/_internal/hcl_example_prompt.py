@@ -61,15 +61,46 @@ def _editable_fields(entity: HclEntity, idx: int) -> list[EditableField]:
     return []
 
 
+_VAR_REF_PREFIXES = ("var.", "local.")
+_ATTR_REF_PREFIXES = ("module.", "resource.", "data.", "path.", "each.", "count.")
+
+
+def _strip_quotes(value: str) -> str:
+    stripped = value.strip()
+    if len(stripped) >= 2 and stripped[0] == '"' and stripped[-1] == '"':
+        return stripped[1:-1]
+    return stripped
+
+
+def _parse_user_hcl_value(raw: str) -> HclValue:
+    """Parse a user-typed string into the appropriate HclValue.
+
+    Rules (checked in order):
+    - "${...}"          → HclExpression
+    - var.* / local.*  → HclVarRef
+    - module.* / …     → HclAttrRef
+    - "quoted"         → HclLiteral with inner value (strips surrounding quotes)
+    - anything else    → HclLiteral as-is
+    """
+    stripped = raw.strip()
+    if stripped.startswith("${") and stripped.endswith("}"):
+        return HclExpression(stripped[2:-1])
+    if any(stripped.startswith(p) for p in _VAR_REF_PREFIXES):
+        return HclVarRef(stripped)
+    if any(stripped.startswith(p) for p in _ATTR_REF_PREFIXES):
+        return HclAttrRef(stripped)
+    return HclLiteral(_strip_quotes(stripped))
+
+
 def _apply_field_edit(entity: HclEntity, field: str, new_value: str) -> HclEntity:
     if field == "label":
-        return entity.model_copy(update={"name": new_value})
-    new_literal: HclValue = HclLiteral(new_value)
+        return entity.model_copy(update={"name": _strip_quotes(new_value)})
+    parsed: HclValue = _parse_user_hcl_value(new_value)
     match entity:
         case TfModuleCall(attrs=attrs):
-            return entity.model_copy(update={"attrs": {**attrs, field: new_literal}})
+            return entity.model_copy(update={"attrs": {**attrs, field: parsed}})
         case TfResource(attrs=attrs):
-            return entity.model_copy(update={"attrs": {**attrs, field: new_literal}})
+            return entity.model_copy(update={"attrs": {**attrs, field: parsed}})
     return entity
 
 
