@@ -48,6 +48,8 @@ def _editable_fields(entity: HclEntity, idx: int) -> list[EditableField]:
             entity_ref = f"module:{n}"
             fields = [EditableField(idx, "label", f"{entity_ref}  [label]", n)]
             for key, value in attrs.items():
+                if isinstance(value, dict | list):
+                    continue
                 cur = _hcl_value_display(value)
                 fields.append(EditableField(idx, key, f"{entity_ref}.{key} = {cur}", cur))
             return fields
@@ -55,6 +57,8 @@ def _editable_fields(entity: HclEntity, idx: int) -> list[EditableField]:
             entity_ref = f"resource:{t}.{n}"
             fields = [EditableField(idx, "label", f"{entity_ref}  [label]", n)]
             for key, value in attrs.items():
+                if isinstance(value, dict | list):
+                    continue
                 cur = _hcl_value_display(value)
                 fields.append(EditableField(idx, key, f"{entity_ref}.{key} = {cur}", cur))
             return fields

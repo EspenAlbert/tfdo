@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from tfdo._internal.hcl_example_prompt import _parse_user_hcl_value, _strip_quotes
+from tfdo._internal.hcl_entity_parser import TfModuleCall
+from tfdo._internal.hcl_example_prompt import _editable_fields, _parse_user_hcl_value, _strip_quotes
 from tfdo._internal.hcl_roundtrip import HclAttrRef, HclExpression, HclLiteral, HclVarRef
 
 
@@ -40,3 +43,21 @@ def test_parse_user_hcl_value(raw: str, expected) -> None:
 )
 def test_strip_quotes(raw: str, expected: str) -> None:
     assert _strip_quotes(raw) == expected
+
+
+def test_editable_fields_skips_dict_and_list_attrs() -> None:
+    module = TfModuleCall(
+        file_path=Path("main.tf"),
+        name="my_module",
+        source="../..",
+        attrs={
+            "name": HclLiteral("my-project"),
+            "tags": {"env": HclLiteral("dev")},
+            "cidrs": [HclLiteral("10.0.0.0/8")],
+        },
+    )
+    fields = _editable_fields(module, idx=0)
+    field_names = {f.field for f in fields}
+    assert "name" in field_names
+    assert "tags" not in field_names
+    assert "cidrs" not in field_names
