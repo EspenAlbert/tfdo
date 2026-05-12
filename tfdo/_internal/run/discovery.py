@@ -105,7 +105,9 @@ def _iter_dirs_at_depth(root: Path, min_depth: int, max_depth: int) -> list[Path
     return results
 
 
-def discover_run_dirs(repo_root: Path, pattern: DiscoveryPattern) -> list[DiscoveredRunDir]:
+def discover_run_dirs(
+    repo_root: Path, pattern: DiscoveryPattern, require_backend: bool = True
+) -> list[DiscoveredRunDir]:
     total_segments = len(pattern.raw.strip("/").split("/"))
     optional_count = len(pattern.optional_selectors)
     min_depth = total_segments - optional_count
@@ -115,7 +117,7 @@ def discover_run_dirs(repo_root: Path, pattern: DiscoveryPattern) -> list[Discov
     for directory in _iter_dirs_at_depth(repo_root, min_depth, max_depth):
         rel = str(directory.relative_to(repo_root))
         selectors = pattern.match(rel)
-        if selectors is not None and has_backend_block(directory):
+        if selectors is not None and (not require_backend or has_backend_block(directory)):
             discovered.append(DiscoveredRunDir(path=directory, relative_path=rel, selectors=selectors))
 
     return sorted(discovered, key=lambda d: d.relative_path)

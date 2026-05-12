@@ -142,10 +142,8 @@ def first_block(tree: StartRule) -> BlockRule:
 
 
 def _append_block(original: str, block_dict: dict[str, Any]) -> str:
-    tree = hcl2.parses(original, discard_comments=False)
-    new_block = first_block(hcl2.from_dict(block_dict))
-    tree.body.children.append(new_block)
-    return hcl2.reconstruct(tree)
+    new_block_text = hcl2.reconstruct(hcl2.from_dict(block_dict))
+    return original.rstrip("\n") + "\n\n" + new_block_text
 
 
 def _delete_block(original: str, label_path: Iterable[str]) -> str:
