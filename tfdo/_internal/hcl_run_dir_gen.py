@@ -115,6 +115,13 @@ def generate_run_dir(
     original_entities: list[HclEntity] | None = None,
     binary: str = "terraform",
 ) -> None:
+    """Write selected entities from an example into output_dir as .tf files.
+
+    Source files are copied with unselected blocks deleted. Pass original_entities
+    when selected_entities carry field edits (label renames, attr overrides): originals
+    are used for source-file block matching, and the diff between each pair is applied
+    as a post-write HCL roundtrip transformation.
+    """
     originals = original_entities if original_entities is not None else selected_entities
     selected_original_keys = {entity_key(o) for o in originals}
     selected_provider_names = {e.name for e in originals if isinstance(e, TfProvider)} | {
