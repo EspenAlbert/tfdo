@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from typing import Any
 
 import hcl2
@@ -10,6 +11,29 @@ from hcl2.rules.literal_rules import IdentifierRule
 from hcl2.rules.strings import StringRule
 
 _BLOCK_MARKER = "__is_block__"
+
+
+@dataclass(frozen=True)
+class HclLiteral:
+    value: Any
+
+
+@dataclass(frozen=True)
+class HclVarRef:
+    path: str
+
+
+@dataclass(frozen=True)
+class HclAttrRef:
+    path: str
+
+
+@dataclass(frozen=True)
+class HclExpression:
+    expression: str
+
+
+type HclValue = HclLiteral | HclVarRef | HclAttrRef | HclExpression | list["HclValue"] | dict[str, "HclValue"]
 
 
 def _label_to_str(label: Any) -> str:
@@ -51,6 +75,43 @@ def _to_hcl_string(value: Any) -> Any:
     if _is_hcl_string(value) or _is_hcl_expression(value):
         return value
     return f'"{value}"'
+
+
+def _is_attr_reference_path(value: str) -> bool:
+    if value.startswith("var."):
+        return False
+    segments = value.split(".")
+    if len(segments) < 2:
+        return False
+    for segment in segments:
+        if not segment:
+            return False
+        if not (segment[0].isalpha() or segment[0] == "_"):
+            return False
+        if not all(char.isalnum() or char == "_" for char in segment):
+            return False
+    return True
+
+
+def _parse_interpolation(value: str) -> HclVarRef | HclAttrRef | HclExpression:
+    expression = value[2:-1].strip()
+    if expression.startswith("var."):
+        return HclVarRef(expression)
+    if _is_attr_reference_path(expression):
+        return HclAttrRef(expression)
+    return HclExpression(expression)
+
+
+def _parse_hcl_value(value: Any) -> HclValue:
+    if isinstance(value, dict):
+        return {key: _parse_hcl_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_parse_hcl_value(item) for item in value]
+    if isinstance(value, str) and _is_hcl_string(value):
+        return HclLiteral(_strip_wrapping_quotes(value))
+    if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+        return _parse_interpolation(value)
+    return HclLiteral(value)
 
 
 def block_labels(block: BlockRule) -> list[str]:
@@ -175,6 +236,16 @@ def read_module_block_attrs(original: str, module_name: str) -> dict[str, Any]:
     attrs = copy.deepcopy(_find_module_attrs(doc, module_name))
     attrs.pop(_BLOCK_MARKER, None)
     return attrs
+
+
+def read_resource_block_values(original: str, resource_type: str, resource_name: str) -> dict[str, HclValue]:
+    attrs = read_resource_block_attrs(original, resource_type, resource_name)
+    return {key: _parse_hcl_value(value) for key, value in attrs.items()}
+
+
+def read_module_block_values(original: str, module_name: str) -> dict[str, HclValue]:
+    attrs = read_module_block_attrs(original, module_name)
+    return {key: _parse_hcl_value(value) for key, value in attrs.items()}
 
 
 def update_resource_block(

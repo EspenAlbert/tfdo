@@ -25,6 +25,18 @@ provider "random" {}
 """
 
 
+def test_read_resource_block_values_returns_hcl_value_models() -> None:
+    values = hcl_roundtrip.read_resource_block_values(
+        _BASE_FIXTURE,
+        resource_type="mongodbatlas_project",
+        resource_name="this",
+    )
+    assert values == {
+        "name": hcl_roundtrip.HclLiteral("Dev Project"),
+        "org_id": hcl_roundtrip.HclVarRef("var.org_id"),
+    }
+
+
 def test_read_resource_block_attrs_returns_defined_attrs() -> None:
     attrs = hcl_roundtrip.read_resource_block_attrs(
         _BASE_FIXTURE,
@@ -151,6 +163,22 @@ def test_read_module_block_attrs_returns_defined_attrs() -> None:
     assert attrs == {
         "source": '"./modules/alerts"',
         "project_id": "${mongodbatlas_project.this.id}",
+    }
+
+
+def test_read_module_block_values_returns_hcl_value_models() -> None:
+    fixture = hcl_roundtrip.add_module_block(
+        _BASE_FIXTURE,
+        module_name="alerts",
+        attrs={
+            "source": '"./modules/alerts"',
+            "project_id": "mongodbatlas_project.this.id",
+        },
+    )
+    values = hcl_roundtrip.read_module_block_values(fixture, module_name="alerts")
+    assert values == {
+        "source": hcl_roundtrip.HclLiteral("./modules/alerts"),
+        "project_id": hcl_roundtrip.HclAttrRef("mongodbatlas_project.this.id"),
     }
 
 def test_read_module_block_attrs_raises_on_missing_block() -> None:
