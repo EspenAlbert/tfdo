@@ -17,6 +17,25 @@ from tfdo._internal.hcl_entity_parser import (
 from tfdo._internal.hcl_roundtrip import HclAttrRef, HclValue, HclVarRef
 
 
+def entity_key(entity: HclEntity) -> tuple:
+    match entity:
+        case TfResource(type=t, name=n):
+            return (type(entity), t, n)
+        case TfModuleCall(name=n) | TfProvider(name=n) | TfVariable(name=n) | TfOutput(name=n):
+            return (type(entity), n)
+        case _:
+            return (type(entity),)
+
+
+def dedup_new_entities(existing: list[HclEntity], candidates: list[HclEntity]) -> list[HclEntity]:
+    existing_keys = {entity_key(e) for e in existing}
+    return [
+        e
+        for e in candidates
+        if not isinstance(e, TfTerraform | TfRequiredProviders) and entity_key(e) not in existing_keys
+    ]
+
+
 class RunDirSelection(Event):
     include_resources: set[tuple[str, str]] = Field(default_factory=set)
     include_modules: set[str] = Field(default_factory=set)

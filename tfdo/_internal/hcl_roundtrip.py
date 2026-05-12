@@ -303,6 +303,10 @@ def delete_provider_block(original: str, provider_name: str) -> str:
     return _delete_block(original, ("provider", provider_name))
 
 
+def delete_terraform_block(original: str) -> str:
+    return _delete_block(original, ("terraform",))
+
+
 def update_required_providers(original: str, providers: dict[str, dict[str, Any]]) -> str:
     doc = hcl2.loads(original)
     terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc)) or {}
