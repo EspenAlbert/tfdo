@@ -19,6 +19,12 @@ class S3Backend(BaseModel):
     region: str | None = None
     dynamodb_table: str | None = None
     encrypt: bool | None = None
+    use_lockfile: bool | None = None
+
+    @model_validator(mode="after")
+    def _default_use_lockfile(self) -> Self:
+        self.use_lockfile = self.use_lockfile or (self.dynamodb_table is None)
+        return self
 
     @property
     def config_flags(self) -> list[str]:
@@ -32,7 +38,23 @@ class S3Backend(BaseModel):
             flags.append(_backend_config_flag("dynamodb_table", self.dynamodb_table))
         if self.encrypt is not None:
             flags.append(_backend_config_flag("encrypt", str(self.encrypt).lower()))
+        if self.use_lockfile is True:
+            flags.append(_backend_config_flag("use_lockfile", "true"))
         return flags
+
+    @property
+    def hcl_config(self) -> dict[str, object]:
+        config: dict[str, object] = {
+            "bucket": f'"{self.bucket}"',
+            "key": f'"{self.key}"',
+        }
+        if self.region:
+            config["region"] = f'"{self.region}"'
+        if self.encrypt is not None:
+            config["encrypt"] = self.encrypt
+        if self.use_lockfile is True:
+            config["use_lockfile"] = self.use_lockfile
+        return config
 
 
 class LocalBackend(BaseModel):

@@ -383,6 +383,48 @@ def remove_required_providers(original: str, provider: str) -> str:
     return splice_block(original, block_dict, ("terraform",))
 
 
+def _build_backend_entry(backend_type: str, config: dict[str, Any]) -> list[dict[str, Any]]:
+    return [{_quoted_label(backend_type): {_BLOCK_MARKER: True, **config}}]
+
+
+def add_backend_block(original: str, backend_type: str, config: dict[str, Any]) -> str:
+    doc = hcl2.loads(original)
+    terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc)) or {}
+    terraform_attrs.pop(_BLOCK_MARKER, None)
+    if "backend" in terraform_attrs:
+        raise ValueError("backend block already exists")
+    terraform_attrs["backend"] = _build_backend_entry(backend_type, config)
+    block_dict = _build_terraform_block_dict(terraform_attrs)
+    tree = hcl2.parses(original, discard_comments=False)
+    if block_exists(tree, ("terraform",)):
+        return splice_block(original, block_dict, ("terraform",))
+    return _append_block(original, block_dict)
+
+
+def update_backend_block(original: str, backend_type: str, config: dict[str, Any]) -> str:
+    doc = hcl2.loads(original)
+    terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc))
+    if terraform_attrs is None or "backend" not in terraform_attrs:
+        raise ValueError("no backend block found")
+    terraform_attrs.pop(_BLOCK_MARKER, None)
+    terraform_attrs["backend"] = _build_backend_entry(backend_type, config)
+    block_dict = _build_terraform_block_dict(terraform_attrs)
+    return splice_block(original, block_dict, ("terraform",))
+
+
+def remove_backend_block(original: str) -> str:
+    doc = hcl2.loads(original)
+    terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc))
+    if terraform_attrs is None or "backend" not in terraform_attrs:
+        raise ValueError("no backend block found")
+    terraform_attrs.pop(_BLOCK_MARKER, None)
+    terraform_attrs.pop("backend")
+    if not terraform_attrs:
+        return _delete_block(original, ("terraform",))
+    block_dict = _build_terraform_block_dict(terraform_attrs)
+    return splice_block(original, block_dict, ("terraform",))
+
+
 def delete_required_providers_section(original: str) -> str:
     doc = hcl2.loads(original)
     terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc))

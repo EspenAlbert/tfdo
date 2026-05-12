@@ -387,3 +387,96 @@ resource "random_pet" "suffix" {
     assert 'resource "random_pet" "my_prefix"' in output
     assert 'resource "random_pet" "prefix"' not in output
     assert 'resource "random_pet" "suffix"' in output
+
+
+_VERSIONS_FIXTURE = """\
+terraform {
+  required_providers {
+    mongodbatlas = {
+      source  = "mongodb/mongodbatlas"
+      version = "~> 2.8"
+    }
+  }
+  required_version = ">= 1.10"
+}
+
+# user comment preserved
+provider "mongodbatlas" {}
+"""
+
+_BACKEND_ATTRS: dict[str, object] = {
+    "bucket": '"my-org-tf-state"',
+    "key": '"envs/dev/cluster/terraform.tfstate"',
+    "region": '"us-east-1"',
+    "encrypt": True,
+    "use_lockfile": True,
+}
+
+
+def test_add_backend_block_injects_into_existing_terraform_block() -> None:
+    output = hcl_roundtrip.add_backend_block(_VERSIONS_FIXTURE, "s3", _BACKEND_ATTRS)
+    assert 'backend "s3" {' in output
+    assert "my-org-tf-state" in output
+    assert "required_providers {" in output
+    assert 'required_version = ">= 1.10"' in output
+    assert "# user comment preserved" in output
+
+
+def test_add_backend_block_creates_terraform_block_when_absent() -> None:
+    fixture = '# user-owned\nprovider "random" {}\n'
+    output = hcl_roundtrip.add_backend_block(fixture, "s3", _BACKEND_ATTRS)
+    assert "terraform {" in output
+    assert 'backend "s3" {' in output
+    assert "# user-owned" in output
+
+
+def test_add_backend_block_raises_if_backend_already_exists() -> None:
+    with_backend = hcl_roundtrip.add_backend_block(_VERSIONS_FIXTURE, "s3", _BACKEND_ATTRS)
+    with pytest.raises(ValueError, match="backend block already exists"):
+        hcl_roundtrip.add_backend_block(with_backend, "s3", _BACKEND_ATTRS)
+
+
+def test_update_backend_block_replaces_config_and_preserves_other_content() -> None:
+    with_backend = hcl_roundtrip.add_backend_block(_VERSIONS_FIXTURE, "s3", _BACKEND_ATTRS)
+    new_attrs = {**_BACKEND_ATTRS, "bucket": '"new-bucket"'}
+    output = hcl_roundtrip.update_backend_block(with_backend, "s3", new_attrs)
+    assert "new-bucket" in output
+    assert "my-org-tf-state" not in output
+    assert "required_providers {" in output
+    assert "# user comment preserved" in output
+
+
+def test_update_backend_block_raises_when_no_backend_exists() -> None:
+    with pytest.raises(ValueError, match="no backend block found"):
+        hcl_roundtrip.update_backend_block(_VERSIONS_FIXTURE, "s3", _BACKEND_ATTRS)
+
+
+def test_remove_backend_block_keeps_other_terraform_content() -> None:
+    with_backend = hcl_roundtrip.add_backend_block(_VERSIONS_FIXTURE, "s3", _BACKEND_ATTRS)
+    output = hcl_roundtrip.remove_backend_block(with_backend)
+    assert 'backend "s3" {' not in output
+    assert "required_providers {" in output
+    assert "# user comment preserved" in output
+
+
+def test_remove_backend_block_removes_terraform_block_when_empty() -> None:
+    fixture = 'terraform {\n  backend "s3" {\n    bucket = "b"\n  }\n}\n'
+    output = hcl_roundtrip.remove_backend_block(fixture)
+    assert "terraform {" not in output
+    assert 'backend "s3"' not in output
+
+
+def test_remove_backend_block_raises_when_missing() -> None:
+    with pytest.raises(ValueError, match="no backend block found"):
+        hcl_roundtrip.remove_backend_block(_VERSIONS_FIXTURE)
+
+
+def test_backend_round_trip_add_update_remove_is_stable() -> None:
+    after_add = hcl_roundtrip.add_backend_block(_VERSIONS_FIXTURE, "s3", _BACKEND_ATTRS)
+    new_attrs = {**_BACKEND_ATTRS, "bucket": '"updated-bucket"'}
+    after_update = hcl_roundtrip.update_backend_block(after_add, "s3", new_attrs)
+    after_remove = hcl_roundtrip.remove_backend_block(after_update)
+    assert "updated-bucket" not in after_remove
+    assert 'backend "s3"' not in after_remove
+    assert "required_providers {" in after_remove
+    assert "# user comment preserved" in after_remove

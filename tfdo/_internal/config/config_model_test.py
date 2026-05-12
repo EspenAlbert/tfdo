@@ -61,6 +61,40 @@ def test_s3_config_flags_encrypt_omitted_by_default():
     assert not any("encrypt" in f for f in b.config_flags)
 
 
+def test_s3_use_lockfile_defaults_true_when_no_dynamodb_table():
+    b = S3Backend(bucket="b", key="k")
+    assert b.use_lockfile is True
+    assert "-backend-config=use_lockfile=true" in b.config_flags
+
+
+def test_s3_use_lockfile_false_when_dynamodb_table_set():
+    b = S3Backend(bucket="b", key="k", dynamodb_table="locks")
+    assert not b.use_lockfile
+    assert not any("use_lockfile" in f for f in b.config_flags)
+
+
+def test_s3_use_lockfile_explicit_true_overrides_dynamodb_table():
+    b = S3Backend(bucket="b", key="k", dynamodb_table="locks", use_lockfile=True)
+    assert b.use_lockfile is True
+
+
+def test_s3_hcl_config_includes_set_fields():
+    b = S3Backend(bucket="my-bucket", key="state/terraform.tfstate", region="us-east-1", encrypt=True)
+    cfg = b.hcl_config
+    assert cfg["bucket"] == '"my-bucket"'
+    assert cfg["region"] == '"us-east-1"'
+    assert cfg["encrypt"] is True
+    assert cfg["use_lockfile"] is True
+
+
+def test_s3_hcl_config_omits_use_lockfile_when_dynamodb_table_set():
+    b = S3Backend(bucket="b", key="k", dynamodb_table="locks")
+    cfg = b.hcl_config
+    assert "region" not in cfg
+    assert "encrypt" not in cfg
+    assert "use_lockfile" not in cfg
+
+
 def test_local_config_flags():
     b = LocalBackend(path="/tmp/state")
     assert b.config_flags == ["-backend-config=path=/tmp/state"]
