@@ -88,12 +88,12 @@ def _parse_user_hcl_value(raw: str) -> HclValue:
     """
     stripped = raw.strip()
     if stripped.startswith("${") and stripped.endswith("}"):
-        return HclExpression(stripped[2:-1])
+        return HclExpression(expression=stripped[2:-1])
     if any(stripped.startswith(p) for p in _VAR_REF_PREFIXES):
-        return HclVarRef(stripped)
+        return HclVarRef(path=stripped)
     if any(stripped.startswith(p) for p in _ATTR_REF_PREFIXES):
-        return HclAttrRef(stripped)
-    return HclLiteral(_strip_quotes(stripped))
+        return HclAttrRef(path=stripped)
+    return HclLiteral(value=_strip_quotes(stripped))
 
 
 def _apply_field_edit(entity: HclEntity, field: str, new_value: str) -> HclEntity:

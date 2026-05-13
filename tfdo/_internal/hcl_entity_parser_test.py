@@ -92,9 +92,9 @@ def test_parse_variables_returns_variable_entities(tmp_path: Path) -> None:
     assert len(variables) == 2
 
     org_id = next(v for v in variables if v.name == "org_id")
-    assert org_id.type == HclLiteral("string")
+    assert org_id.type == HclLiteral(value="string")
     assert org_id.description == "Atlas organization ID"
-    assert org_id.default == HclLiteral("abc-123")
+    assert org_id.default == HclLiteral(value="abc-123")
     assert not org_id.sensitive
 
     token = next(v for v in variables if v.name == "sensitive_token")
@@ -108,11 +108,11 @@ def test_parse_outputs_returns_output_entities(tmp_path: Path) -> None:
     assert len(outputs) == 2
 
     project_id_out = next(o for o in outputs if o.name == "project_id")
-    assert project_id_out.value == HclAttrRef("mongodbatlas_project.this.id")
+    assert project_id_out.value == HclAttrRef(path="mongodbatlas_project.this.id")
     assert project_id_out.description == "The project ID"
 
     org_ref_out = next(o for o in outputs if o.name == "org_ref")
-    assert org_ref_out.value == HclVarRef("var.org_id")
+    assert org_ref_out.value == HclVarRef(path="var.org_id")
 
 
 def test_parse_resources_returns_resource_entities(tmp_path: Path) -> None:
@@ -123,8 +123,8 @@ def test_parse_resources_returns_resource_entities(tmp_path: Path) -> None:
     res = resources[0]
     assert res.type == "mongodbatlas_project"
     assert res.name == "this"
-    assert res.attrs["name"] == HclLiteral("Dev Project")
-    assert res.attrs["org_id"] == HclVarRef("var.org_id")
+    assert res.attrs["name"] == HclLiteral(value="Dev Project")
+    assert res.attrs["org_id"] == HclVarRef(path="var.org_id")
 
 
 def test_parse_module_calls_returns_module_call_entities(tmp_path: Path) -> None:
@@ -136,7 +136,7 @@ def test_parse_module_calls_returns_module_call_entities(tmp_path: Path) -> None
     assert mod.name == "alerts"
     assert mod.source == "./modules/alerts"
     assert mod.version == "1.2.0"
-    assert mod.attrs["project_id"] == HclAttrRef("mongodbatlas_project.this.id")
+    assert mod.attrs["project_id"] == HclAttrRef(path="mongodbatlas_project.this.id")
 
 
 def test_parse_required_providers_returns_provider_entries(tmp_path: Path) -> None:
@@ -174,7 +174,7 @@ def test_parse_provider_returns_provider_entities(tmp_path: Path) -> None:
 
     aws_prov = next(p for p in providers if p.name == "aws")
     assert aws_prov.alias == "east"
-    assert aws_prov.attrs["region"] == HclLiteral("us-east-1")
+    assert aws_prov.attrs["region"] == HclLiteral(value="us-east-1")
 
 
 def test_parse_entities_returns_all_entity_types(tmp_path: Path) -> None:

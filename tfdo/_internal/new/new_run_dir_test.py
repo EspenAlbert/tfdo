@@ -46,7 +46,7 @@ def test_tf_var_promotion_writes_variable_and_tfvars(mock_resolve, mock_fmt, tmp
     cfg = ModuleRunDirConfig(
         source="ns/project/mongodbatlas",
         label="project",
-        attrs={"org_id": HclVarRef("var.org_id")},
+        attrs={"org_id": HclVarRef(path="var.org_id")},
         tf_var_promotions=[promotion],
     )
     result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
@@ -68,7 +68,7 @@ def test_literal_attr_in_main_tf_no_variables_file(mock_resolve, mock_fmt, tmp_p
     cfg = ModuleRunDirConfig(
         source="ns/project/mongodbatlas",
         label="project",
-        attrs={"name": HclLiteral("tfdo-demo")},
+        attrs={"name": HclLiteral(value="tfdo-demo")},
     )
     result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
 

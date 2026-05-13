@@ -135,7 +135,7 @@ def _parse_outputs(doc: dict[str, Any], file_path: Path) -> list[TfOutput]:
                 TfOutput(
                     file_path=file_path,
                     name=name,
-                    value=_parse_hcl_value(raw_value) if raw_value is not None else HclLiteral(None),
+                    value=_parse_hcl_value(raw_value) if raw_value is not None else HclLiteral(value=None),
                     description=attrs.get("description"),
                     sensitive=bool(attrs.get("sensitive", False)),
                 )

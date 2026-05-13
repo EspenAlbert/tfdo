@@ -2,34 +2,30 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
 from typing import Any
 
 import hcl2
 from hcl2.rules.base import BlockRule, StartRule
 from hcl2.rules.literal_rules import IdentifierRule
 from hcl2.rules.strings import StringRule
+from pydantic import BaseModel
 
 _BLOCK_MARKER = "__is_block__"
 
 
-@dataclass(frozen=True)
-class HclLiteral:
+class HclLiteral(BaseModel, frozen=True):
     value: Any
 
 
-@dataclass(frozen=True)
-class HclVarRef:
+class HclVarRef(BaseModel, frozen=True):
     path: str
 
 
-@dataclass(frozen=True)
-class HclAttrRef:
+class HclAttrRef(BaseModel, frozen=True):
     path: str
 
 
-@dataclass(frozen=True)
-class HclExpression:
+class HclExpression(BaseModel, frozen=True):
     expression: str
 
 
@@ -96,10 +92,10 @@ def _is_attr_reference_path(value: str) -> bool:
 def _parse_interpolation(value: str) -> HclVarRef | HclAttrRef | HclExpression:
     expression = value[2:-1].strip()
     if expression.startswith("var."):
-        return HclVarRef(expression)
+        return HclVarRef(path=expression)
     if _is_attr_reference_path(expression):
-        return HclAttrRef(expression)
-    return HclExpression(expression)
+        return HclAttrRef(path=expression)
+    return HclExpression(expression=expression)
 
 
 def _parse_hcl_value(value: Any) -> HclValue:
@@ -108,10 +104,10 @@ def _parse_hcl_value(value: Any) -> HclValue:
     if isinstance(value, list):
         return [_parse_hcl_value(item) for item in value]
     if isinstance(value, str) and _is_hcl_string(value):
-        return HclLiteral(_strip_wrapping_quotes(value))
+        return HclLiteral(value=_strip_wrapping_quotes(value))
     if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
         return _parse_interpolation(value)
-    return HclLiteral(value)
+    return HclLiteral(value=value)
 
 
 def block_labels(block: BlockRule) -> list[str]:

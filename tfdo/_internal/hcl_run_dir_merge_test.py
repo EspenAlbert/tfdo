@@ -285,7 +285,7 @@ def test_merge_with_attr_override_writes_literal_value(tmp_path: Path) -> None:
     )
     originals = select_entities(example, selection)
     edited = [
-        e.model_copy(update={"attrs": {**e.attrs, "name": HclLiteral("my-hardcoded-name")}})
+        e.model_copy(update={"attrs": {**e.attrs, "name": HclLiteral(value="my-hardcoded-name")}})
         if isinstance(e, TfModuleCall) and e.name == "cluster"
         else e
         for e in originals

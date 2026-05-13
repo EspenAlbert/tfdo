@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal.config.config_model import TfDoConfig
@@ -24,16 +24,12 @@ class DstEnvExistsError(ValueError): ...
 
 
 class ModuleCallEdit(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     run_dir: str
     module_name: str
     attrs: dict[str, HclValue] = Field(default_factory=dict)
 
 
 class ResourceEdit(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     run_dir: str
     resource_type: str
     resource_name: str

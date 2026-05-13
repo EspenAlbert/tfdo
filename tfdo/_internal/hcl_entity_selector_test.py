@@ -45,9 +45,9 @@ def dev_cluster_example() -> TfModuleExample:
                 type="random_pet",
                 name="generated_name",
                 attrs={
-                    "prefix": HclVarRef("var.name_prefix"),
-                    "length": HclLiteral(2),
-                    "keepers": {"prefix": HclVarRef("var.name_prefix")},
+                    "prefix": HclVarRef(path="var.name_prefix"),
+                    "length": HclLiteral(value=2),
+                    "keepers": {"prefix": HclVarRef(path="var.name_prefix")},
                 },
             ),
             TfModuleCall(
@@ -55,12 +55,12 @@ def dev_cluster_example() -> TfModuleExample:
                 name="cluster",
                 source="../..",
                 attrs={
-                    "name": HclAttrRef("random_pet.generated_name.id"),
-                    "project_id": HclVarRef("var.project_id"),
-                    "tags": HclVarRef("var.tags"),
+                    "name": HclAttrRef(path="random_pet.generated_name.id"),
+                    "project_id": HclVarRef(path="var.project_id"),
+                    "tags": HclVarRef(path="var.tags"),
                 },
             ),
-            TfOutput(file_path=_FAKE_PATH, name="cluster", value=HclAttrRef("module.cluster")),
+            TfOutput(file_path=_FAKE_PATH, name="cluster", value=HclAttrRef(path="module.cluster")),
         ]
     )
 
@@ -114,8 +114,8 @@ def test_collect_var_refs_from_nested_dict_and_list() -> None:
             type="aws_s3_bucket",
             name="this",
             attrs={
-                "tags": {"env": HclVarRef("var.env"), "name": HclLiteral("foo")},
-                "regions": [HclVarRef("var.region"), HclLiteral("us-east-1")],
+                "tags": {"env": HclVarRef(path="var.env"), "name": HclLiteral(value="foo")},
+                "regions": [HclVarRef(path="var.region"), HclLiteral(value="us-east-1")],
             },
         )
     ]

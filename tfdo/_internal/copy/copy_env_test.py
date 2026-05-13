@@ -83,7 +83,7 @@ def test_module_call_edit_rewrites_attr(mock_fmt, tmp_path: Path) -> None:
     edit = ModuleCallEdit(
         run_dir="atlas-project",
         module_name="atlas_project",
-        attrs={"name": HclLiteral("tfdo-demo-prod")},
+        attrs={"name": HclLiteral(value="tfdo-demo-prod")},
     )
     result = copy_env(_input(tmp_path, ["atlas-project"], edits=[edit]))
 
@@ -99,7 +99,7 @@ def test_resource_edit_rewrites_attr(mock_fmt, tmp_path: Path) -> None:
         run_dir="atlas-project",
         resource_type="mongodbatlas_project",
         resource_name="this",
-        attrs={"name": HclLiteral("tfdo-demo-prod")},
+        attrs={"name": HclLiteral(value="tfdo-demo-prod")},
     )
     result = copy_env(_input(tmp_path, ["atlas-project"], edits=[edit]))
 
@@ -130,7 +130,7 @@ def test_fmt_called_only_on_edited_run_dirs(mock_fmt, tmp_path: Path) -> None:
     edit = ModuleCallEdit(
         run_dir="run-a",
         module_name="atlas_project",
-        attrs={"name": HclLiteral("prod-name")},
+        attrs={"name": HclLiteral(value="prod-name")},
     )
     result = copy_env(_input(tmp_path, ["run-a", "run-b"], edits=[edit]))
 

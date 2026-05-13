@@ -88,7 +88,7 @@ def _build_module_config(
         selected_names: list[str] = (
             select_list_multiple_choices("Select attributes:", attr_choices, default=[]) if attr_choices else []
         )
-        raw_attrs = {name: HclLiteral("") for name in selected_names}
+        raw_attrs = {name: HclLiteral(value="") for name in selected_names}
     else:
         example = next(e for e in examples if e.name == choice)
         raw_attrs = {}
@@ -111,16 +111,16 @@ def _build_module_config(
         if attr_name in auth_var_names:
             default_val = text(f"Default value for '{attr_name}'", default=current_display)
             promotions.append(AttrPromotion(attr_name=attr_name, tf_var_name=attr_name, default_value=default_val))
-            final_attrs[attr_name] = HclVarRef(f"var.{attr_name}")
+            final_attrs[attr_name] = HclVarRef(path=f"var.{attr_name}")
         else:
             how = select_list(f"Set '{attr_name}' as:", ["literal", "tf_var"])
             if how == "tf_var":
                 default_val = text(f"Default value for var.{attr_name}", default=current_display)
                 promotions.append(AttrPromotion(attr_name=attr_name, tf_var_name=attr_name, default_value=default_val))
-                final_attrs[attr_name] = HclVarRef(f"var.{attr_name}")
+                final_attrs[attr_name] = HclVarRef(path=f"var.{attr_name}")
             else:
                 literal_val = text(f"{attr_name}", default=current_display)
-                final_attrs[attr_name] = HclLiteral(literal_val)
+                final_attrs[attr_name] = HclLiteral(value=literal_val)
 
     output_names = module_outputs(mpath)
     default_set = {n for n in output_names if n == "id" or n.endswith("_id")}

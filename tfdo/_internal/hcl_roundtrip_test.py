@@ -32,8 +32,8 @@ def test_read_resource_block_values_returns_hcl_value_models() -> None:
         resource_name="this",
     )
     assert values == {
-        "name": hcl_roundtrip.HclLiteral("Dev Project"),
-        "org_id": hcl_roundtrip.HclVarRef("var.org_id"),
+        "name": hcl_roundtrip.HclLiteral(value="Dev Project"),
+        "org_id": hcl_roundtrip.HclVarRef(path="var.org_id"),
     }
 
 
@@ -217,8 +217,8 @@ def test_read_module_block_values_returns_hcl_value_models() -> None:
     )
     values = hcl_roundtrip.read_module_block_values(fixture, module_name="alerts")
     assert values == {
-        "source": hcl_roundtrip.HclLiteral("./modules/alerts"),
-        "project_id": hcl_roundtrip.HclAttrRef("mongodbatlas_project.this.id"),
+        "source": hcl_roundtrip.HclLiteral(value="./modules/alerts"),
+        "project_id": hcl_roundtrip.HclAttrRef(path="mongodbatlas_project.this.id"),
     }
 
 
