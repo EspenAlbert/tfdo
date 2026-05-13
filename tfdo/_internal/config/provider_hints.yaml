@@ -1,0 +1,27 @@
+mongodbatlas:
+  source: mongodb/mongodbatlas
+  auth_bundles:
+    - name: api_key
+      secrets:
+        - MONGODB_ATLAS_PUBLIC_KEY
+        - MONGODB_ATLAS_PRIVATE_KEY
+    - name: service_account
+      secrets:
+        - MONGODB_ATLAS_CLIENT_ID
+        - MONGODB_ATLAS_CLIENT_SECRET
+  auth_variables:
+    - env: MONGODB_ATLAS_ORG_ID
+      tf_var: org_id
+  variable_options:
+    - env: MONGODB_ATLAS_ORG_ID
+      tf_var: org_id
+    - env: MONGODB_ATLAS_PROJECT_ID
+      tf_var: project_id
+
+aws:
+  source: hashicorp/aws
+  auth_bundles:
+    - name: env_creds
+      secrets:
+        - AWS_ACCESS_KEY_ID
+        - AWS_SECRET_ACCESS_KEY

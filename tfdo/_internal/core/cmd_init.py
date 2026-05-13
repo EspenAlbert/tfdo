@@ -9,7 +9,7 @@ from tfdo._internal.typer_app import app, get_settings
 logger = logging.getLogger(__name__)
 
 
-@app.command("init")
+@app.command("tf-init")
 @app.command("i")
 def init_cmd(
     ctx: typer.Context,

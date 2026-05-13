@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field, model_validator
 from tfdo._internal.check.models import CheckResult as RunDirProviderResult
 from tfdo._internal.settings import TfDoSettings
 
+_TF_PLUGIN_CACHE_DIR_KEY = "TF_PLUGIN_CACHE_DIR"
+
 
 class InitMode(StrEnum):
     AUTO = "auto"
@@ -26,6 +28,16 @@ class InitInput(TfDoBaseInput):
     backend_args: list[str] = Field(default_factory=list)
     extra_args: list[str] = Field(default_factory=list)
     env: dict[str, str] | None = None
+
+    @model_validator(mode="after")
+    def _inject_plugin_cache(self) -> Self:
+        env = dict(self.env or {})
+        if _TF_PLUGIN_CACHE_DIR_KEY not in env:
+            cache_dir = self.settings.cache_root / "tf_plugins"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            env[_TF_PLUGIN_CACHE_DIR_KEY] = str(cache_dir)
+        self.env = env
+        return self
 
 
 class LifecycleInput(TfDoBaseInput):

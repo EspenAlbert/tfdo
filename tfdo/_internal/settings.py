@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import StrEnum
+from importlib.resources import files as _importlib_files
 from pathlib import Path
 from typing import ClassVar
 
@@ -57,6 +58,24 @@ class TfDoSettings(StaticSettings):
 
     log_level: str = Field(default="INFO", description="Log level for tfdo")
     passthrough: bool = Field(default=False, description="Disable parsed output, pass raw ANSI from terraform")
+
+    ENV_NAME_BACKENDS_DIRS: ClassVar[str] = f"{ENV_PREFIX}BACKENDS_DIRS"
+    backends_dirs_raw: str | None = Field(default=None, alias=ENV_NAME_BACKENDS_DIRS)
+
+    ENV_NAME_PROVIDER_HINTS_PATH: ClassVar[str] = f"{ENV_PREFIX}PROVIDER_HINTS_PATH"
+    provider_hints_path: Path | None = Field(default=None, alias=ENV_NAME_PROVIDER_HINTS_PATH)
+
+    @property
+    def backends_dirs(self) -> list[Path]:
+        if not self.backends_dirs_raw:
+            return []
+        return [Path(p.strip()) for p in self.backends_dirs_raw.split(":") if p.strip()]
+
+    @property
+    def resolved_provider_hints_path(self) -> Path:
+        if self.provider_hints_path is not None:
+            return self.provider_hints_path
+        return Path(str(_importlib_files("tfdo._internal.config").joinpath("provider_hints.yaml")))
 
     @property
     def is_interactive(self) -> bool:
