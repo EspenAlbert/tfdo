@@ -7,6 +7,7 @@ from typing import ClassVar, Self
 
 from pydantic import BaseModel, Field, model_validator
 
+from tfdo._internal.check.models import CheckResult as RunDirProviderResult
 from tfdo._internal.settings import TfDoSettings
 
 
@@ -73,6 +74,7 @@ class CheckInput(TfDoBaseInput):
     include_patterns: list[str] = Field(default_factory=list)
     exclude_patterns: list[str] = Field(default_factory=list)
     tflint: bool = False
+    skip_check_providers: bool = False
 
 
 class InitResult(BaseModel):
@@ -165,11 +167,13 @@ class DirCheckResult(BaseModel):
     fmt_files: list[str] = []
     validation_errors: list[str] = []
     tflint_issues: list[TflintIssue] = []
+    provider_result: RunDirProviderResult | None = None
     skipped: bool = False
 
     @property
     def has_issues(self) -> bool:
-        return bool(self.fmt_files) or bool(self.validation_errors) or bool(self.tflint_issues)
+        provider_fail = self.provider_result is not None and not self.provider_result.is_ok
+        return bool(self.fmt_files) or bool(self.validation_errors) or bool(self.tflint_issues) or provider_fail
 
     def __lt__(self, other: Self) -> bool:
         if not isinstance(other, DirCheckResult):
@@ -197,6 +201,10 @@ class CheckResult(BaseModel):
     @property
     def total_tflint_issues(self) -> list[TflintIssue]:
         return [i for d in self.dir_results for i in d.tflint_issues]
+
+    @property
+    def total_provider_failures(self) -> int:
+        return sum(1 for d in self.dir_results if d.provider_result is not None and not d.provider_result.is_ok)
 
     @property
     def directories_checked(self) -> int:

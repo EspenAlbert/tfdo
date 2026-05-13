@@ -22,7 +22,6 @@ EXPECTED_COMMANDS = {
     "d",
     "check",
     "c",
-    "check-providers",
     "info",
     "inspect",
     "schema",

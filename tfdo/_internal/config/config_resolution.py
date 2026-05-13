@@ -101,3 +101,19 @@ def resolve_tflint(
     if user_config.check and user_config.check.tflint:
         return True
     return False
+
+
+def resolve_skip_check_providers(
+    cli_value: bool | None,
+    settings: TfDoSettings,
+    layers: list[ConfigLayer],
+) -> bool:
+    if cli_value is not None:
+        return cli_value
+    for layer in layers:
+        if layer.config.check and layer.config.check.skip_check_providers:
+            return True
+    user_config = load_user_config(settings)
+    if user_config.check and user_config.check.skip_check_providers:
+        return True
+    return False

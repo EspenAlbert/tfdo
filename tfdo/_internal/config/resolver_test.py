@@ -38,7 +38,6 @@ def test_negative_case_empty_run_dir(fixture_root: Path, settings: TfDoSettings,
 
     result = resolve_run_dir(
         fixture_root,
-        "dev",
         "envs/dev/empty",
         settings=settings,
         os_env={ENV_VARS_DIRS_KEY: "nonexistent", "TFDO_ENV_VARS_LOAD": "skip"},
@@ -55,7 +54,6 @@ def test_force_inject_from_run_dir_tfdo_yaml(fixture_root: Path, settings: TfDoS
 
     result = resolve_run_dir(
         fixture_root,
-        "dev",
         "envs/dev/forced",
         settings=settings,
         os_env={ENV_VARS_DIRS_KEY: "nonexistent", "TFDO_ENV_VARS_LOAD": "skip"},
@@ -81,7 +79,6 @@ def test_classification_flags(fixture_root: Path, settings: TfDoSettings) -> Non
 
     result = resolve_run_dir(
         fixture_root,
-        "dev",
         "envs/dev/classified",
         settings=settings,
         os_env={ENV_VARS_DIRS_KEY: "nonexistent", "TFDO_ENV_VARS_LOAD": "skip"},
@@ -112,7 +109,6 @@ def test_env_override_constraint(fixture_root: Path, settings: TfDoSettings) -> 
 
     result = resolve_run_dir(
         fixture_root,
-        "prod",
         "envs/prod/overridden",
         settings=settings,
         os_env={ENV_VARS_DIRS_KEY: "nonexistent", "TFDO_ENV_VARS_LOAD": "skip"},

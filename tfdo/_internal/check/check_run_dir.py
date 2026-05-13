@@ -63,7 +63,6 @@ def check_resolved(resolved: ResolvedRunDirConfig, os_env: Mapping[str, str]) ->
 
 def check_run_dir(
     fixture_path: Path,
-    env: str,
     run_dir_relative_path: str,
     os_env: Mapping[str, str] | None = None,
     settings: TfDoSettings | None = None,
@@ -71,7 +70,6 @@ def check_run_dir(
     _os_env: Mapping[str, str] = os_env if os_env is not None else os.environ
     resolved = resolve_run_dir(
         fixture_path,
-        env,
         run_dir_relative_path,
         settings=settings,
         os_env=_os_env,

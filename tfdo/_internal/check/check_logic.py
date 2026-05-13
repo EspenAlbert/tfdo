@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 from pathlib import Path
 from typing import NamedTuple
@@ -8,6 +9,8 @@ from typing import NamedTuple
 from ask_shell._internal.run_pool import run_pool
 from ask_shell.shell import run_and_wait
 
+from tfdo._internal.check.check_run_dir import check_run_dir
+from tfdo._internal.check.models import CheckResult as RunDirProviderResult
 from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
 from tfdo._internal.core.tf_files import TERRAFORM_DIR, find_tf_directories
@@ -56,6 +59,7 @@ class _DirRunResult(NamedTuple):
     validation_errors: list[str]
     tflint_issues: list[TflintIssue]
     skipped: bool
+    provider_result: RunDirProviderResult | None = None
 
 
 def _run_fmt(resolved_binary: str, cwd: Path, fix: bool, diff: bool) -> _FmtResult:
@@ -110,13 +114,29 @@ def _check_directory(
     init_mode: InitMode,
     settings: TfDoSettings,
     run_tflint: bool = False,
+    check_providers: bool = False,
+    os_env: dict[str, str] | None = None,
 ) -> _DirRunResult:
     fmt = _run_fmt(resolved_binary, tf_dir, fix, diff)
     if not _ensure_initialized(tf_dir, init_mode, settings):
         return _DirRunResult(fmt=fmt, validation_errors=[], tflint_issues=[], skipped=True)
     errors = _run_validate(resolved_binary, tf_dir)
     tflint_issues = _run_tflint(tf_dir) if run_tflint else []
-    return _DirRunResult(fmt=fmt, validation_errors=errors, tflint_issues=tflint_issues, skipped=False)
+    provider_result: RunDirProviderResult | None = None
+    if check_providers:
+        work_dir = settings.work_dir
+        try:
+            rel = str(tf_dir.relative_to(work_dir))
+        except ValueError:
+            rel = str(tf_dir)
+        provider_result = check_run_dir(work_dir, rel, os_env or os.environ, settings)
+    return _DirRunResult(
+        fmt=fmt,
+        validation_errors=errors,
+        tflint_issues=tflint_issues,
+        skipped=False,
+        provider_result=provider_result,
+    )
 
 
 def check(input_model: CheckInput) -> CheckResult:
@@ -128,6 +148,8 @@ def check(input_model: CheckInput) -> CheckResult:
         logger.warning("tflint requested but not found on PATH, skipping")
         run_tflint = False
 
+    check_providers = not input_model.skip_check_providers
+    os_env = dict(os.environ)
     tf_dirs = find_tf_directories(
         settings.work_dir,
         include_patterns=input_model.include_patterns or None,
@@ -150,6 +172,8 @@ def check(input_model: CheckInput) -> CheckResult:
                 input_model.init_mode,
                 settings,
                 run_tflint,
+                check_providers,
+                os_env,
             )
             for tf_dir in tf_dirs
         }
@@ -162,6 +186,7 @@ def check(input_model: CheckInput) -> CheckResult:
             fmt_files=run_result.fmt.files,
             validation_errors=run_result.validation_errors,
             tflint_issues=run_result.tflint_issues,
+            provider_result=run_result.provider_result,
             skipped=run_result.skipped,
         )
         for tf_dir, run_result in run_results.items()
@@ -170,6 +195,7 @@ def check(input_model: CheckInput) -> CheckResult:
     has_fmt_issues = any(d.fmt_files for d in dir_results) and not input_model.fix
     has_errors = any(d.validation_errors for d in dir_results)
     has_tflint = any(d.tflint_issues for d in dir_results)
-    exit_code = 1 if has_fmt_issues or has_errors or has_tflint else 0
+    has_provider_failures = any(d.provider_result is not None and not d.provider_result.is_ok for d in dir_results)
+    exit_code = 1 if has_fmt_issues or has_errors or has_tflint or has_provider_failures else 0
 
     return CheckResult(exit_code=exit_code, dir_results=dir_results)

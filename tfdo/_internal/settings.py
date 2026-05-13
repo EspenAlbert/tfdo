@@ -88,6 +88,7 @@ class TfDoSettings(StaticSettings):
 
 class CheckConfig(BaseModel):
     tflint: bool = False
+    skip_check_providers: bool = False
 
 
 class TfDoUserConfig(BaseModel):

@@ -62,7 +62,7 @@ def test_declaration_case_a_unknown_provider(tmp_path: Path) -> None:
         root / "envs" / "dev" / "run" / "versions.tf",
         "terraform {\n  required_providers {\n    random = {}\n  }\n}\n",
     )
-    result = check_run_dir(root, "dev", "envs/dev/run", {**_SKIP_ENV}, _settings(tmp_path))
+    result = check_run_dir(root, "envs/dev/run", {**_SKIP_ENV}, _settings(tmp_path))
     assert not result.is_ok
     p = result.providers[0]
     assert p.declaration.case == DeclarationCase.no_hints_no_declaration
@@ -74,7 +74,7 @@ def test_declaration_case_b_force_injected_no_hints(tmp_path: Path) -> None:
     root = tmp_path / "fixture"
     _base_fixture(root)
     _write(root / "envs" / "dev" / "forced" / "tfdo.yaml", "providers:\n  - name: random\n")
-    result = check_run_dir(root, "dev", "envs/dev/forced", {**_SKIP_ENV}, _settings(tmp_path))
+    result = check_run_dir(root, "envs/dev/forced", {**_SKIP_ENV}, _settings(tmp_path))
     assert result.is_ok
     p = result.providers[0]
     assert p.declaration.case == DeclarationCase.force_injected_no_hints
@@ -90,7 +90,7 @@ def test_declaration_case_c_parent_declaration_no_hints(tmp_path: Path) -> None:
         root / "envs" / "dev" / "run" / "versions.tf",
         "terraform {\n  required_providers {\n    acme-cloud = {}\n  }\n}\n",
     )
-    result = check_run_dir(root, "dev", "envs/dev/run", {**_SKIP_ENV}, _settings(tmp_path))
+    result = check_run_dir(root, "envs/dev/run", {**_SKIP_ENV}, _settings(tmp_path))
     assert not result.is_ok
     p = result.providers[0]
     assert p.declaration.case == DeclarationCase.parent_constraint_no_hints
@@ -117,7 +117,7 @@ def test_declaration_case_d_hints_exist_not_declared(tmp_path: Path) -> None:
         root / "envs" / "dev" / "run" / "main.tf",
         'module "atlas" {\n  source = "../../../shared_modules/atlas"\n}\n',
     )
-    result = check_run_dir(root, "dev", "envs/dev/run", {**_SKIP_ENV}, _settings(tmp_path))
+    result = check_run_dir(root, "envs/dev/run", {**_SKIP_ENV}, _settings(tmp_path))
     assert not result.is_ok
     p = result.providers[0]
     assert p.declaration.case == DeclarationCase.undeclared_with_hints

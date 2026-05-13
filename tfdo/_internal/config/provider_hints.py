@@ -105,6 +105,8 @@ def _validate_provider_hints(provider: str, hints: ProviderHints) -> None:
 
 
 def load_provider_hints(path: Path) -> dict[str, ProviderHints]:
+    if not path.is_file():
+        return {}
     raw: dict[str, object] = yaml.safe_load(path.read_text()) or {}
     registry: dict[str, ProviderHints] = {}
     for provider, data in raw.items():

@@ -108,9 +108,27 @@ def _providers_from_module(call: TfModuleCall, run_dir: Path, settings: TfDoSett
     return names
 
 
+def _load_intermediate_configs(root: Path, run_dir: Path) -> tuple[list[TfDoConfig], TfDoConfig]:
+    """Walk from root down to run_dir, loading tfdo.yaml at each intermediate level.
+
+    Returns (parent_cfgs, run_dir_cfg) where parent_cfgs covers root and every
+    directory between root and run_dir (exclusive of run_dir itself).
+    """
+    try:
+        parts = run_dir.relative_to(root).parts
+    except ValueError:
+        return [_load_cfg(root)], _load_cfg(run_dir)
+
+    parent_cfgs: list[TfDoConfig] = [_load_cfg(root)]
+    current = root
+    for part in parts[:-1]:
+        current = current / part
+        parent_cfgs.append(_load_cfg(current))
+    return parent_cfgs, _load_cfg(run_dir)
+
+
 def resolve_run_dir(
     fixture_path: Path,
-    env: str,
     run_dir_relative_path: str,
     *,
     settings: TfDoSettings | None = None,
@@ -119,17 +137,15 @@ def resolve_run_dir(
     _os_env: Mapping[str, str] = os_env if os_env is not None else os.environ
     _settings = settings or TfDoSettings()
 
-    root_cfg = _load_cfg(fixture_path)
-    env_cfg = _load_cfg(fixture_path / "envs" / env)
     run_dir = fixture_path / run_dir_relative_path
-    run_dir_cfg = _load_cfg(run_dir)
+    parent_cfgs, run_dir_cfg = _load_intermediate_configs(fixture_path, run_dir)
 
     hints_registry = load_provider_hints(fixture_path / "provider_hints.yaml")
 
-    provider_pool = {p.name: p for p in merge_providers([root_cfg, env_cfg], run_dir_cfg)}
-    module_pool = {m.source: m for m in merge_modules([root_cfg, env_cfg], run_dir_cfg)}
+    provider_pool = {p.name: p for p in merge_providers(parent_cfgs, run_dir_cfg)}
+    module_pool = {m.source: m for m in merge_modules(parent_cfgs, run_dir_cfg)}
 
-    all_env_files = merge_env_var_files([root_cfg, env_cfg], run_dir_cfg)
+    all_env_files = merge_env_var_files(parent_cfgs, run_dir_cfg)
     loaded = load_env_vars(TfDoConfig(env_var_files=all_env_files), _settings, _os_env)
 
     entities = parse_dir_entities(run_dir)
@@ -152,7 +168,7 @@ def resolve_run_dir(
     force_inject = {p.name for p in run_dir_cfg.providers}
 
     tfdo_yaml_names: set[str] = set()
-    for cfg in [root_cfg, env_cfg, run_dir_cfg]:
+    for cfg in [*parent_cfgs, run_dir_cfg]:
         tfdo_yaml_names.update(p.name for p in cfg.providers)
 
     all_names = hcl_names | module_provider_names | force_inject
