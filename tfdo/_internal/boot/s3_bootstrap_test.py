@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tfdo._internal.init import s3_bootstrap
-from tfdo._internal.init.s3_bootstrap import check_tf_version, provision_s3_bucket
+from tfdo._internal.boot import s3_bootstrap
+from tfdo._internal.boot.s3_bootstrap import check_tf_version, provision_s3_bucket
 
 _MODULE = s3_bootstrap.__name__
 

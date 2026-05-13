@@ -143,7 +143,7 @@ def test_init_cmd_via_cli(tmp_path: Path):
 
     run = _mock_run(exit_code=0, attempt=1)
     with patch(_patch_run, return_value=run):
-        result = runner.invoke(app, ["--work-dir", str(tmp_path), "tf-init"])
+        result = runner.invoke(app, ["--work-dir", str(tmp_path), "init"])
     assert result.exit_code == 0
 
 

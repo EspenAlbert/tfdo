@@ -5,15 +5,15 @@ import logging
 import typer
 from ask_shell._internal.interactive import ChoiceTyped, select_list, select_list_multiple_choices, text
 
+from tfdo._internal.boot.boot_repo import TfdoBootInput, boot_repo, scan_backend_names
 from tfdo._internal.config.provider_hints import load_provider_hints
-from tfdo._internal.init.init_repo import TfdoInitInput, init_repo, scan_backend_names
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
 
 
-@app.command("init")
-def init_cmd(ctx: typer.Context) -> None:
+@app.command("boot")
+def boot_cmd(ctx: typer.Context) -> None:
     """Bootstrap a new tfdo-managed Terraform repo."""
     settings = get_settings(ctx)
     backend_choice = "skip"
@@ -41,8 +41,8 @@ def init_cmd(ctx: typer.Context) -> None:
                 default=[],
             )
 
-    result = init_repo(
-        TfdoInitInput(
+    result = boot_repo(
+        TfdoBootInput(
             settings=settings,
             backend_choice=backend_choice,
             bucket=bucket,

@@ -17,14 +17,14 @@ from tfdo._internal.run.run_context import RunDirContext
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_KEY_TEMPLATE = "{path}/terraform.tfstate"
+DEFAULT_KEY_TEMPLATE = "{repo_owner}/{repo_name}/{path}/terraform.tfstate"
 _BACKEND_TF_FILENAME = "backend.tf"
 
 
 class NewBackendInput(TfDoBaseInput):
     bucket: str
     region: str
-    key: str = _DEFAULT_KEY_TEMPLATE
+    key: str = DEFAULT_KEY_TEMPLATE
     encrypt: bool = True
 
 
