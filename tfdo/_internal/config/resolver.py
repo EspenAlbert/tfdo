@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from tfdo._internal.cache import module_cache
 from tfdo._internal.config.config_file import load_config
 from tfdo._internal.config.config_model import (
     ProviderConstraint,
@@ -17,19 +18,15 @@ from tfdo._internal.config.config_model import (
 )
 from tfdo._internal.config.env_var_loader import LoadResult, load_env_vars
 from tfdo._internal.config.provider_hints import ProviderHints, load_provider_hints
-from tfdo._internal.core import executor
 from tfdo._internal.hcl_entity_parser import (
     TfModuleCall,
     TfRequiredProviders,
     parse_dir_entities,
 )
-from tfdo._internal.models import InitInput
 from tfdo._internal.settings import TfDoSettings
 
 _LOCAL_PREFIXES = ("./", "../", "/")
 _REGISTRY_RE = re.compile(r"^[^/]+/[^/]+/[^/]+$")
-
-_init_cache: set[Path] = set()
 
 
 class UnsupportedModuleSourceError(ValueError):
@@ -73,39 +70,25 @@ def _load_cfg(dir_path: Path) -> TfDoConfig:
     return load_config(dir_path) or TfDoConfig()
 
 
-def _run_init(run_dir: Path, settings: TfDoSettings) -> None:
-    resolved = run_dir.resolve()
-    if resolved in _init_cache:
-        return
-    result = executor.init(
-        InitInput(
-            settings=settings.with_work_dir(resolved),
-            extra_args=["-input=false", "-no-color"],
-        )
-    )
-    if result.exit_code != 0:
-        raise RuntimeError(f"terraform init failed in {resolved}: {result.stderr}")
-    _init_cache.add(resolved)
-
-
 def _providers_from_module(call: TfModuleCall, run_dir: Path, settings: TfDoSettings) -> list[str]:
     source = call.source
     if _is_local(source):
         module_path = (run_dir / source).resolve()
     elif _is_registry(source):
-        modules_dir = run_dir / ".terraform" / "modules" / call.name
-        if not modules_dir.exists():
-            _run_init(run_dir, settings)
-        module_path = modules_dir
+        version = call.version or module_cache.UNRESOLVED
+        module_path = module_cache.lookup(settings.cache_root, source, version)
+        if module_path is None:
+            module_path = module_cache.populate(settings.cache_root, source, version, settings)
     else:
         raise UnsupportedModuleSourceError(source)
     if not module_path.exists():
         return []
-    names: list[str] = []
-    for entity in parse_dir_entities(module_path):
-        if isinstance(entity, TfRequiredProviders):
-            names.extend(p.name for p in entity.providers)
-    return names
+    return [
+        p.name
+        for entity in parse_dir_entities(module_path)
+        if isinstance(entity, TfRequiredProviders)
+        for p in entity.providers
+    ]
 
 
 def _load_intermediate_configs(root: Path, run_dir: Path) -> tuple[list[TfDoConfig], TfDoConfig]:

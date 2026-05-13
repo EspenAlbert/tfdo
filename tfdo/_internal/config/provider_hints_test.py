@@ -82,7 +82,7 @@ def test_load_provider_hints_from_yaml(tmp_path: Path):
         "mongodbatlas": {
             "auth_bundles": [{"name": "api_keys", "secrets": ["ATLAS_ID", "ATLAS_SECRET"]}],
             "auth_variables": [{"env": "ATLAS_ORG_ID", "tf_var": "org_id"}],
-            "modules": [{"path": "terraform-mongodbatlas-modules/cluster", "alias": "cluster"}],
+            "modules": [{"source": "terraform-mongodbatlas-modules/cluster", "alias": "cluster"}],
         },
         "aws": {
             "auth_bundles": [
@@ -154,9 +154,9 @@ def test_closest_bundle_returns_none_when_no_bundles():
 def test_provider_hints_modules_field():
     hints = ProviderHints(
         modules=[
-            ModuleHint(path="terraform-mongodbatlas-modules/cluster", alias="cluster"),
-            ModuleHint(path="terraform-mongodbatlas-modules/project", alias="project"),
+            ModuleHint(source="terraform-mongodbatlas-modules/cluster", alias="cluster"),
+            ModuleHint(source="terraform-mongodbatlas-modules/project", alias="project"),
         ]
     )
     assert hints.modules[0].alias == "cluster"
-    assert hints.modules[1].path == "terraform-mongodbatlas-modules/project"
+    assert hints.modules[1].source == "terraform-mongodbatlas-modules/project"

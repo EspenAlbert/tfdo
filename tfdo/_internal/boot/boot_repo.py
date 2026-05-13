@@ -96,7 +96,7 @@ def select_modules(providers: list[str], hints_registry: dict[str, ProviderHints
             ChoiceTyped(name=h.alias, value=h, checked=True) for h in hints.modules
         ]
         selected: list[ModuleHint] = select_list_multiple_choices(f"{provider} modules", choices, default=[])
-        result.extend(ModuleConstraint(source=h.path) for h in selected)
+        result.extend(ModuleConstraint(source=h.source) for h in selected)
     return result
 
 

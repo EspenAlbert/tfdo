@@ -30,7 +30,7 @@ class VariableMapping(BaseModel):
 
 
 class ModuleHint(BaseModel):
-    path: str
+    source: str
     alias: str
 
 

@@ -109,7 +109,7 @@ def test_modules_written_to_yaml_and_cache_populated(tmp_path: Path) -> None:
 def test_modules_prompt_fires_when_provider_has_modules(tmp_path: Path) -> None:
     hints_path = _write_hints(
         tmp_path,
-        {"mongodbatlas": {"modules": [{"path": "tf-modules/project", "alias": "project"}]}},
+        {"mongodbatlas": {"modules": [{"source": "tf-modules/project", "alias": "project"}]}},
     )
     settings = TfDoSettings.for_testing(
         tmp_path, work_dir=tmp_path, interactive=InteractiveMode.ALWAYS, provider_hints_path=hints_path
