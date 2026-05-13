@@ -128,6 +128,29 @@ def test_get_provider_hints_raises_on_missing_provider():
         get_provider_hints(registry, "aws")
 
 
+def test_closest_bundle_returns_bundle_with_fewest_missing():
+    env = {"ATLAS_CLIENT_ID": "x"}
+    result = _ATLAS_HINTS.closest_bundle(env)
+    assert result is not None
+    bundle, missing = result
+    assert bundle.name == "api_keys"
+    assert missing == ["ATLAS_CLIENT_SECRET"]
+
+
+def test_closest_bundle_multi_bundle_picks_least_missing():
+    env = {"AWS_ACCESS_KEY_ID": "x", "AWS_SECRET_ACCESS_KEY": "y"}
+    result = _AWS_HINTS.closest_bundle(env)
+    assert result is not None
+    bundle, missing = result
+    assert bundle.name == "access_keys"
+    assert missing == []
+
+
+def test_closest_bundle_returns_none_when_no_bundles():
+    hints = ProviderHints()
+    assert hints.closest_bundle({}) is None
+
+
 def test_provider_hints_modules_field():
     hints = ProviderHints(
         modules=[

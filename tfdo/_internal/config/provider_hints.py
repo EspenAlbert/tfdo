@@ -64,6 +64,11 @@ class AuthBundle(BaseModel):
         return all(k in env for k in reqs.all_keys)
 
 
+class ClosestBundle(NamedTuple):
+    bundle: AuthBundle
+    missing_keys: list[str]
+
+
 class ProviderHints(BaseModel):
     source: str | None = None
     auth_bundles: list[AuthBundle] = Field(default_factory=list)
@@ -78,6 +83,18 @@ class ProviderHints(BaseModel):
     def satisfied_bundles(self, env: Mapping[str, str]) -> list[AuthBundle]:
         by_name = self._bundles_by_name()
         return [b for b in self.auth_bundles if b.is_satisfied(env, by_name)]
+
+    def closest_bundle(self, env: Mapping[str, str]) -> ClosestBundle | None:
+        if not self.auth_bundles:
+            return None
+        by_name = self._bundles_by_name()
+        best: ClosestBundle | None = None
+        for bundle in self.auth_bundles:
+            reqs = bundle.effective_requirements(by_name)
+            missing = [k for k in reqs.all_keys if k not in env]
+            if best is None or len(missing) < len(best.missing_keys):
+                best = ClosestBundle(bundle=bundle, missing_keys=missing)
+        return best
 
 
 def _validate_provider_hints(provider: str, hints: ProviderHints) -> None:
