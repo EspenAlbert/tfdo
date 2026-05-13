@@ -7,7 +7,10 @@ from typing import Any, NamedTuple
 from pydantic import BaseModel, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
-from tfdo._internal.config.config_model import TfDoConfig
+from tfdo._internal import hcl_roundtrip
+from tfdo._internal.config import backend_resolution
+from tfdo._internal.config.config_file import load_config
+from tfdo._internal.config.config_model import BackendConfig, LocalBackend, S3Backend, TfDoConfig
 from tfdo._internal.config.resolver import ResolvedProvider, resolve_run_dir
 from tfdo._internal.hcl_entity_parser import TfOutput, TfVariable, parse_dir_entities
 from tfdo._internal.hcl_roundtrip import (
@@ -20,6 +23,7 @@ from tfdo._internal.hcl_roundtrip import (
 )
 from tfdo._internal.hcl_run_dir_gen import terraform_fmt
 from tfdo._internal.models import TfDoBaseInput
+from tfdo._internal.run.run_context import RunDirContext
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +109,42 @@ def _render_tfvars(promotions: list[AttrPromotion]) -> str:
     return "\n".join(f'{p.attr_name} = "{p.default_value}"' for p in promotions)
 
 
+def _find_backend(work_dir: Path, run_dir: Path) -> BackendConfig | None:
+    """Walk work_dir → env dir, returning the most specific backend (child wins)."""
+    try:
+        rel_parts = run_dir.parent.relative_to(work_dir).parts
+    except ValueError:
+        return None
+    dirs = [work_dir] + [work_dir.joinpath(*rel_parts[: i + 1]) for i in range(len(rel_parts))]
+    backend: BackendConfig | None = None
+    for d in dirs:
+        cfg = load_config(d)
+        if cfg and cfg.backend is not None:
+            backend = cfg.backend
+    return backend
+
+
+_BACKEND_TF = "backend.tf"
+
+
+def _write_backend_tf(run_dir: Path, relative: str, backend: BackendConfig) -> Path:
+    ctx = RunDirContext(name=relative.rsplit("/", 1)[-1], path=relative, repo_owner="", repo_name="")
+    match backend:
+        case S3Backend(key=key):
+            resolved_key = backend_resolution.resolve_placeholders(key, ctx)
+            resolved = backend.model_copy(update={"key": resolved_key})
+            hcl_type, hcl_config = "s3", resolved.hcl_config
+        case LocalBackend(path=p):
+            resolved_path = backend_resolution.resolve_placeholders(p, ctx)
+            hcl_type, hcl_config = "local", {"path": f'"{resolved_path}"'}
+        case _:
+            raise ValueError(f"unsupported backend type: {type(backend)}")
+    backend_tf = run_dir / _BACKEND_TF
+    original = backend_tf.read_text() if backend_tf.is_file() else ""
+    ensure_parents_write_text(backend_tf, hcl_roundtrip.add_backend_block(original, hcl_type, hcl_config))
+    return backend_tf
+
+
 def _provider_attrs(rp: ResolvedProvider) -> dict[str, Any]:
     attrs: dict[str, Any] = {}
     if rp.source is not None:
@@ -120,7 +160,8 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
     env_name = input_model.env_name
     run_dir_name = input_model.run_dir_name
 
-    run_dir = work_dir / "envs" / env_name / run_dir_name
+    relative = input_model.config.run_dir_relative(env_name, run_dir_name)
+    run_dir = work_dir / relative
     try:
         run_dir.mkdir(parents=True, exist_ok=False)
     except FileExistsError:
@@ -151,12 +192,16 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
         ensure_parents_write_text(outputs_path, "\n\n".join(output_blocks))
         written.append(outputs_path)
 
-    resolved = resolve_run_dir(work_dir, f"envs/{env_name}/{run_dir_name}", settings=settings)
+    resolved = resolve_run_dir(work_dir, relative, settings=settings)
     if resolved.required_providers:
         providers_dict = {rp.name: _provider_attrs(rp) for rp in resolved.required_providers}
         versions_path = run_dir / "versions.tf"
         ensure_parents_write_text(versions_path, update_required_providers("", providers_dict))
         written.append(versions_path)
+
+    backend = _find_backend(work_dir, run_dir)
+    if backend:
+        written.append(_write_backend_tf(run_dir, relative, backend))
 
     terraform_fmt(run_dir, settings.binary)
 

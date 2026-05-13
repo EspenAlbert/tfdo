@@ -58,8 +58,8 @@ def _backend_tf_for_run_dir(run_dir: Path, rel_path: str, backend: S3Backend) ->
 
 def write_backend_tf_files(repo_root: Path, backend: S3Backend) -> list[Path]:
     root_config = load_config(repo_root)
-    if root_config is None or not root_config.run_dir_discovery:
-        logger.warning("no run_dir_discovery pattern in tfdo.yaml; skipping backend.tf generation")
+    if root_config is None:
+        logger.warning("no tfdo.yaml found; skipping backend.tf generation")
         return []
 
     pattern = parse_discovery_pattern(root_config.run_dir_discovery)

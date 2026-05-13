@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
 from tfdo._internal.config.enums import BackendType, HookOnError, LifecycleEvent, TagsInject
 from tfdo._internal.settings import CheckConfig
+
+DEFAULT_DISCOVERY_PATTERN = "envs/{env}/{run_dir}"
+_SELECTOR_RE = re.compile(r"\{(\w+)\}")
 
 
 def _backend_config_flag(key: str, value: str) -> str:
@@ -124,10 +129,25 @@ class TfDoConfig(BaseModel):
     dependencies: list[DependencyRef] = Field(default_factory=list)
     var_files: list[str] = Field(default_factory=list)
 
-    run_dir_discovery: str | None = None
+    run_dir_discovery: str = DEFAULT_DISCOVERY_PATTERN
     providers: list[ProviderConstraint] = Field(default_factory=list)
     modules: list[ModuleConstraint] = Field(default_factory=list)
     env_var_files: list[str] = Field(default_factory=list)
+
+    def run_dir_relative(self, env_name: str, run_dir_name: str) -> str:
+        selectors = _SELECTOR_RE.findall(self.run_dir_discovery)
+        result = self.run_dir_discovery
+        # First placeholder → env, last placeholder → run-dir name
+        if selectors:
+            result = result.replace(f"{{{selectors[0]}}}", env_name)
+        if len(selectors) >= 2:
+            result = result.replace(f"{{{selectors[-1]}}}", run_dir_name)
+        return result
+
+    def env_base_dir(self, work_dir: Path) -> Path:
+        # Take everything before the first placeholder, e.g. "envs/{env}/{run_dir}" → "envs"
+        literal_prefix = self.run_dir_discovery.strip("/").split("{")[0].rstrip("/")
+        return work_dir / literal_prefix if literal_prefix else work_dir
 
 
 def merge_providers(parents: list[TfDoConfig], child: TfDoConfig) -> list[ProviderConstraint]:

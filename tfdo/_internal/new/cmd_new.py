@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import typer
 from ask_shell._internal.interactive import ChoiceTyped, select_list, select_list_multiple_choices, text
@@ -47,9 +48,9 @@ def backend_cmd(
         logger.info(f"  {f}")
 
 
-def _select_env(work_dir, is_interactive: bool) -> str:
-    envs_dir = work_dir / "envs"
-    env_dirs = sorted(envs_dir.glob("*/")) if envs_dir.is_dir() else []
+def _select_env(work_dir: Path, config: TfDoConfig, is_interactive: bool) -> str:
+    env_base = config.env_base_dir(work_dir)
+    env_dirs = sorted(env_base.glob("*/")) if env_base.is_dir() else []
     if not is_interactive:
         raise ValueError("run-dir command requires interactive mode")
     if not env_dirs:
@@ -57,7 +58,7 @@ def _select_env(work_dir, is_interactive: bool) -> str:
         if create == "no":
             raise typer.Exit(1)
         env_name = text("Env name")
-        (work_dir / "envs" / env_name).mkdir(parents=True, exist_ok=True)
+        (env_base / env_name).mkdir(parents=True, exist_ok=True)
         return env_name
     return select_list("Select env:", [d.name for d in env_dirs])
 
@@ -144,7 +145,7 @@ def run_dir_cmd(ctx: typer.Context) -> None:
     work_dir = settings.work_dir
     config = load_config(work_dir) or TfDoConfig()
 
-    env_name = _select_env(work_dir, settings.is_interactive)
+    env_name = _select_env(work_dir, config, settings.is_interactive)
     run_dir_name = text("Run-dir name")
 
     hints_registry = load_provider_hints(settings.resolved_provider_hints_path)

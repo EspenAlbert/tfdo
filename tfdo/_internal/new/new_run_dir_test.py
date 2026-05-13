@@ -118,3 +118,39 @@ def test_resolver_result_lands_in_versions_tf(mock_resolve, mock_fmt, tmp_path: 
 def test_no_terraform_dir_under_run_dir(mock_resolve, mock_fmt, tmp_path: Path) -> None:
     result = new_run_dir(_input(tmp_path))
     assert not (result.run_dir / ".terraform").exists()
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_backend_tf_written_when_root_config_has_backend(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    import yaml
+
+    (tmp_path / "tfdo.yaml").write_text(
+        yaml.dump(
+            {"backend": {"type": "s3", "bucket": "my-bucket", "key": "{path}/terraform.tfstate", "region": "us-east-1"}}
+        )
+    )
+    result = new_run_dir(_input(tmp_path))
+
+    backend_tf = result.run_dir / "backend.tf"
+    assert backend_tf.is_file()
+    content = backend_tf.read_text()
+    assert "my-bucket" in content
+    assert "envs/dev/cluster/terraform.tfstate" in content
+    assert backend_tf in result.written_paths
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_custom_discovery_pattern_respected(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    config = TfDoConfig(run_dir_discovery="infra/{environment}/{service}")
+    inp = NewRunDirInput(
+        settings=_settings(tmp_path),
+        config=config,
+        env_name="prod",
+        run_dir_name="atlas",
+    )
+    result = new_run_dir(inp)
+
+    assert result.run_dir == tmp_path / "infra" / "prod" / "atlas"
+    mock_resolve.assert_called_once_with(tmp_path, "infra/prod/atlas", settings=inp.settings)
