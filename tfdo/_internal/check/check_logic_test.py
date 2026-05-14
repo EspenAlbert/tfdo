@@ -23,6 +23,7 @@ from tfdo._internal.models import (
     InitMode,
     TflintIssue,
     TflintOutput,
+    TflintPos,
     TflintRange,
     TflintRule,
     ValidateDiagnostic,
@@ -147,6 +148,47 @@ def test_validate_output_model():
     assert VALID_OUTPUT.error_summaries == []
     assert INVALID_OUTPUT.error_summaries == ["Missing required argument", "Unsupported block type"]
     assert ValidateOutput().error_summaries == []
+
+
+def test_validate_diagnostic_display_includes_detail_and_range():
+    d = ValidateDiagnostic(
+        severity="error",
+        summary="Missing required argument",
+        detail='The argument "instance_size" is required, but no definition was found.',
+        source_range=TflintRange(filename="cluster.tf", start=TflintPos(line=12, column=3)),
+    )
+    assert "Missing required argument" in d.display
+    assert "instance_size" in d.display
+    assert "cluster.tf:12:3" in d.display
+
+
+def test_validate_diagnostic_parses_range_from_json_key():
+    raw = {
+        "severity": "error",
+        "summary": "Missing required argument",
+        "detail": 'The argument "foo" is required.',
+        "range": {"filename": "a.tf", "start": {"line": 2, "column": 1}},
+    }
+    d = ValidateDiagnostic.model_validate(raw)
+    assert d.source_range is not None
+    assert d.source_range.filename == "a.tf"
+    assert "foo" in d.display
+    assert "a.tf:2:1" in d.display
+
+
+def test_validate_output_error_summaries_use_full_display():
+    output = ValidateOutput(
+        valid=False,
+        diagnostics=[
+            ValidateDiagnostic(
+                severity="error",
+                summary="Missing required argument",
+                detail='The argument "x" is required.',
+                source_range=TflintRange(filename="main.tf", start=TflintPos(line=5)),
+            ),
+        ],
+    )
+    assert output.error_summaries == ['Missing required argument: The argument "x" is required. (main.tf:5)']
 
 
 # --- integration tests ---

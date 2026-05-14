@@ -12,13 +12,17 @@ from ask_shell.shell import run_and_wait
 
 from tfdo._internal.check.check_run_dir import check_run_dir
 from tfdo._internal.check.models import CheckResult as RunDirProviderResult
+from tfdo._internal.config import backend_resolution
 from tfdo._internal.config.config_file import (
+    load_config_layers,
     load_optional_env_vars_from_files,
     resolve_var_file_paths,
 )
+from tfdo._internal.config.config_resolution import resolve_config
 from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
 from tfdo._internal.core.tf_files import TERRAFORM_DIR, find_tf_directories
+from tfdo._internal.git_utils import parse_git_remote
 from tfdo._internal.hcl_compat import hcl2_load
 from tfdo._internal.models import (
     CheckInput,
@@ -30,7 +34,8 @@ from tfdo._internal.models import (
     TflintOutput,
     ValidateOutput,
 )
-from tfdo._internal.settings import TfDoSettings
+from tfdo._internal.run.run_context import RunDirContext
+from tfdo._internal.settings import TfDoSettings, load_user_config
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +72,7 @@ class _DirRunResult(NamedTuple):
     missing_tfvars: list[str]
     skipped: bool
     provider_result: RunDirProviderResult | None = None
+    backend_drift: bool = False
 
 
 def _run_fmt(resolved_binary: str, cwd: Path, fix: bool, diff: bool) -> _FmtResult:
@@ -209,6 +215,34 @@ def _check_directory(
     )
 
 
+def _check_backend_drift(tf_dir: Path, settings: TfDoSettings, fix: bool) -> bool:
+    """Check if backend.tf is out of sync with the resolved backend config.
+
+    Returns True if drift was detected (and fixed when fix=True).
+    """
+    work_dir = settings.work_dir
+    rel = str(tf_dir.relative_to(work_dir))
+    layers = load_config_layers(tf_dir)
+    user_config = load_user_config(settings)
+    cfg = resolve_config(layers, user_config, settings)
+    if cfg.backend is None:
+        return False
+    remote = parse_git_remote(work_dir)
+    owner = remote.org if remote else "unknown"
+    repo_name = remote.repo if remote else work_dir.name
+    name = rel.rsplit("/", 1)[-1]
+    ctx = RunDirContext(
+        name=name,
+        path=rel,
+        repo_owner=owner,
+        repo_name=repo_name,
+        tags=cfg.tags,
+    )
+    if fix:
+        return backend_resolution.ensure_backend_tf(tf_dir, cfg.backend, ctx)
+    return backend_resolution.has_backend_drift(tf_dir, cfg.backend, ctx)
+
+
 def check(input_model: CheckInput) -> CheckResult:
     settings = input_model.settings
     resolved_binary = binary.resolve_binary(settings)
@@ -250,6 +284,14 @@ def check(input_model: CheckInput) -> CheckResult:
         for tf_dir, future in futures.items():
             run_results[tf_dir] = future.result()
 
+    backend_drift: dict[Path, bool] = {}
+    for tf_dir in tf_dirs:
+        try:
+            backend_drift[tf_dir] = _check_backend_drift(tf_dir, settings, input_model.fix)
+        except Exception as exc:
+            logger.warning(f"backend drift check failed for {tf_dir}: {exc}")
+            backend_drift[tf_dir] = False
+
     dir_results = [
         DirCheckResult(
             directory=tf_dir,
@@ -259,6 +301,7 @@ def check(input_model: CheckInput) -> CheckResult:
             missing_tfvars=run_result.missing_tfvars,
             provider_result=run_result.provider_result,
             skipped=run_result.skipped,
+            backend_drift=backend_drift.get(tf_dir, False) and not input_model.fix,
         )
         for tf_dir, run_result in run_results.items()
     ]
@@ -268,6 +311,11 @@ def check(input_model: CheckInput) -> CheckResult:
     has_tflint = any(d.tflint_issues for d in dir_results)
     has_missing_tfvars = any(d.missing_tfvars for d in dir_results)
     has_provider_failures = any(d.provider_result is not None and not d.provider_result.is_ok for d in dir_results)
-    exit_code = 1 if has_fmt_issues or has_errors or has_tflint or has_missing_tfvars or has_provider_failures else 0
+    has_backend_drift = any(d.backend_drift for d in dir_results)
+    exit_code = (
+        1
+        if has_fmt_issues or has_errors or has_tflint or has_missing_tfvars or has_provider_failures or has_backend_drift
+        else 0
+    )
 
     return CheckResult(exit_code=exit_code, dir_results=dir_results)
