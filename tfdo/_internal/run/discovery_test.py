@@ -5,13 +5,13 @@ from pathlib import Path
 import pytest
 
 from tfdo._internal.config.config_resolution import ResolvedConfig
+from tfdo._internal.config.discovery_pattern import parse_discovery_pattern
 from tfdo._internal.config.enums import TagsInject
 from tfdo._internal.run.discovery import (
     DiscoveredRunDir,
     build_run_dir_contexts,
     discover_run_dirs,
     has_backend_block,
-    parse_discovery_pattern,
 )
 from tfdo._internal.settings import CheckConfig
 

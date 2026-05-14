@@ -143,7 +143,7 @@ def test_backend_tf_written_when_root_config_has_backend(mock_resolve, mock_fmt,
 @patch(f"{_module.__name__}.terraform_fmt")
 @patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
 def test_custom_discovery_pattern_respected(mock_resolve, mock_fmt, tmp_path: Path) -> None:
-    config = TfDoConfig(run_dir_discovery="infra/{environment}/{service}")
+    config = TfDoConfig(run_dir_discovery="infra/{env}/{service}")
     inp = NewRunDirInput(
         settings=_settings(tmp_path),
         config=config,

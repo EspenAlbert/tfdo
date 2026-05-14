@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from zero_3rdparty.sections import CommentConfig, replace_sections
 
-from tfdo._internal.config.config_model import TfDoConfig
+from tfdo._internal.config.config_model import ENV_SELECTOR_NAME, TfDoConfig
 from tfdo._internal.models import TfDoBaseInput
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,6 @@ def _render_target(target_name: str, selectors: dict[str, str]) -> str:
 def _discover_targets(config: TfDoConfig, work_dir: Path) -> list[tuple[str, dict[str, str]]]:
     """Return (target_name, selectors) pairs from env/run-dir directory layout."""
     selector_names = config.selector_names
-    env_selector = selector_names[0] if selector_names else "env"
     run_dir_selector = selector_names[1] if len(selector_names) >= 2 else None
 
     targets: list[tuple[str, dict[str, str]]] = []
@@ -52,10 +51,10 @@ def _discover_targets(config: TfDoConfig, work_dir: Path) -> list[tuple[str, dic
             if run_dir_paths:
                 for rd_path in run_dir_paths:
                     target_name = f"{env_name}-{rd_path.name}"
-                    selectors = {env_selector: env_name, run_dir_selector: rd_path.name}
+                    selectors = {ENV_SELECTOR_NAME: env_name, run_dir_selector: rd_path.name}
                     targets.append((target_name, selectors))
                 continue
-        targets.append((env_name, {env_selector: env_name}))
+        targets.append((env_name, {ENV_SELECTOR_NAME: env_name}))
     return targets
 
 

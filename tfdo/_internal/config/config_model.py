@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
+from tfdo._internal.config.discovery_pattern import (
+    DiscoveryPattern,
+    iter_dirs_at_depth,
+    parse_discovery_pattern,
+)
 from tfdo._internal.config.enums import BackendType, HookOnError, LifecycleEvent, TagsInject
 from tfdo._internal.settings import CheckConfig
 
 DEFAULT_DISCOVERY_PATTERN = "envs/{env}/{run_dir}"
-_SELECTOR_RE = re.compile(r"\{(\w+)\}")
+ENV_SELECTOR_NAME = "env"
 
 
 def _backend_config_flag(key: str, value: str) -> str:
@@ -134,9 +138,23 @@ class TfDoConfig(BaseModel):
     modules: list[ModuleConstraint] = Field(default_factory=list)
     env_var_files: list[str] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def _validate_discovery_pattern(self) -> Self:
+        pattern = parse_discovery_pattern(self.run_dir_discovery)
+        names = pattern.selector_names
+        if not names or names[0] != ENV_SELECTOR_NAME:
+            raise ValueError(
+                f"run_dir_discovery must have '{{{ENV_SELECTOR_NAME}}}' as the first selector, "
+                f"got: {self.run_dir_discovery!r}"
+            )
+        return self
+
+    def parsed_pattern(self) -> DiscoveryPattern:
+        return parse_discovery_pattern(self.run_dir_discovery)
+
     @property
     def selector_names(self) -> list[str]:
-        return _SELECTOR_RE.findall(self.run_dir_discovery)
+        return self.parsed_pattern().selector_names
 
     def run_dir_relative(self, env_name: str, run_dir_name: str) -> str:
         selectors = self.selector_names
@@ -153,17 +171,34 @@ class TfDoConfig(BaseModel):
         literal_prefix = self.run_dir_discovery.strip("/").split("{")[0].rstrip("/")
         return work_dir / literal_prefix if literal_prefix else work_dir
 
+    def _matched_dirs(self, work_dir: Path) -> list[tuple[Path, dict[str, str]]]:
+        """Walk work_dir for directories matching the discovery pattern."""
+        pattern = self.parsed_pattern()
+        total_segments = len(self.run_dir_discovery.strip("/").split("/"))
+        optional_count = len(pattern.optional_selectors)
+        results: list[tuple[Path, dict[str, str]]] = []
+        for directory in iter_dirs_at_depth(work_dir, total_segments - optional_count, total_segments):
+            rel = str(directory.relative_to(work_dir))
+            if (selectors := pattern.match(rel)) is not None:
+                results.append((directory, selectors))
+        return results
+
     def envs(self, work_dir: Path) -> list[Path]:
         base = self.env_base_dir(work_dir)
         return sorted(d for d in base.iterdir() if d.is_dir()) if base.is_dir() else []
 
     def run_dirs(self, work_dir: Path, env_name: str | None = None) -> list[Path]:
-        if len(self.selector_names) < 2:
-            return [self.env_base_dir(work_dir) / env_name] if env_name else self.envs(work_dir)
+        names = self.selector_names
+        if not names:
+            return []
+        first_sel = names[0]
+        if len(names) < 2:
+            if env_name:
+                return [p for p, sel in self._matched_dirs(work_dir) if sel.get(first_sel) == env_name]
+            return [p for p, _ in self._matched_dirs(work_dir)]
         if env_name is not None:
-            env_dir = self.env_base_dir(work_dir) / env_name
-            return sorted(d for d in env_dir.iterdir() if d.is_dir()) if env_dir.is_dir() else []
-        return [rd for env_path in self.envs(work_dir) for rd in self.run_dirs(work_dir, env_path.name)]
+            return sorted(p for p, sel in self._matched_dirs(work_dir) if sel.get(first_sel) == env_name)
+        return sorted(p for p, _ in self._matched_dirs(work_dir))
 
 
 def merge_providers(parents: list[TfDoConfig], child: TfDoConfig) -> list[ProviderConstraint]:

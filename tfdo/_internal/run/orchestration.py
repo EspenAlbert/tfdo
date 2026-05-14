@@ -14,6 +14,7 @@ from zero_3rdparty.file_utils import find_repo_root
 from tfdo._internal.config import backend_resolution, config_resolution
 from tfdo._internal.config.config_file import load_config_layers
 from tfdo._internal.config.config_resolution import ResolvedConfig
+from tfdo._internal.config.discovery_pattern import parse_discovery_pattern
 from tfdo._internal.config.enums import LifecycleCommand, LifecycleEvent
 from tfdo._internal.core import executor
 from tfdo._internal.hooks import execution as hook_execution
@@ -27,7 +28,6 @@ from tfdo._internal.run.discovery import (
     DiscoveredRunDir,
     build_run_dir_contexts,
     discover_run_dirs,
-    parse_discovery_pattern,
 )
 from tfdo._internal.run.filtering import TagFilter
 from tfdo._internal.run.run_context import RunDirContext

@@ -214,3 +214,21 @@ def test_module_constraint_round_trip():
 def test_module_constraint_rejects_local_source(source: str):
     with pytest.raises(ValidationError, match="local module source not allowed"):
         ModuleConstraint(source=source)
+
+
+@pytest.mark.parametrize(
+    "pattern",
+    [
+        "infra/{region}/{service}",
+        "{team}?/{app}",
+        "modules/{module_name}",
+    ],
+)
+def test_discovery_pattern_rejects_missing_env_selector(pattern: str):
+    with pytest.raises(ValidationError, match="first selector"):
+        TfDoConfig(run_dir_discovery=pattern)
+
+
+def test_discovery_pattern_accepts_env_first():
+    cfg = TfDoConfig(run_dir_discovery="infra/{env}/{service}")
+    assert cfg.selector_names == ["env", "service"]
