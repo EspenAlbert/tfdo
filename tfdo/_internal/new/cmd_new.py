@@ -30,6 +30,7 @@ from tfdo._internal.new.new_run_dir import (
     NewRunDirInput,
     _module_required_attrs,
     module_outputs,
+    module_variable_sources,
     new_run_dir,
 )
 from tfdo._internal.typer_app import app, get_settings
@@ -215,6 +216,7 @@ def _build_module_config(
         tf_var_promotions=promotions,
         exposed_outputs=exposed,
         preserved_module_hcl=preserved_hcl,
+        variable_sources=module_variable_sources(mpath),
     )
     return _ModuleBuildResult(config, mpath)
 

@@ -43,6 +43,7 @@ class ModuleRunDirConfig(BaseModel):
     tf_var_promotions: list[AttrPromotion] = Field(default_factory=list)
     exposed_outputs: list[str] = Field(default_factory=list)
     preserved_module_hcl: str | None = None
+    variable_sources: dict[str, str] = Field(default_factory=dict)
 
 
 class NewRunDirInput(TfDoBaseInput):
@@ -61,6 +62,19 @@ class NewRunDirResult(BaseModel):
 class ModuleAttrs(NamedTuple):
     required: list[str]
     optional: list[str]
+
+
+def module_variable_sources(module_path: Path) -> dict[str, str]:
+    """Read variable block source text verbatim from a module's .tf files."""
+    sources: dict[str, str] = {}
+    for entity in parse_dir_entities(module_path, recursive=False):
+        if not isinstance(entity, TfVariable):
+            continue
+        text = entity.file_path.read_text()
+        block = hcl_roundtrip.slice_top_level_block_source(text, ("variable", entity.name))
+        if block is not None:
+            sources[entity.name] = block.rstrip("\n")
+    return sources
 
 
 def _module_required_attrs(module_path: Path) -> ModuleAttrs:
@@ -201,6 +215,47 @@ def _main_tf_module_blocks(module_configs: list[ModuleRunDirConfig]) -> list[str
     return blocks
 
 
+class _VarBlocksResult(NamedTuple):
+    var_blocks: list[str]
+    user_promotions: list[AttrPromotion]
+
+
+def _collect_variable_blocks(
+    module_configs: list[ModuleRunDirConfig],
+    dependencies: list[DependencyRef],
+) -> _VarBlocksResult:
+    all_promotions = [p for m in module_configs for p in m.tf_var_promotions]
+    dep_var_names_set = {v for dep in dependencies for v in dep.outputs.values()}
+    dep_only_vars = sorted(n for n in dep_var_names_set if n not in {p.tf_var_name for p in all_promotions})
+    user_promotions = [p for p in all_promotions if p.tf_var_name not in dep_var_names_set]
+    dep_promotions = [p for p in all_promotions if p.tf_var_name in dep_var_names_set]
+
+    covered_var_names = {p.tf_var_name for p in all_promotions} | dep_var_names_set
+    passthrough_var_names = sorted(
+        {
+            val.path.removeprefix("var.")
+            for m in module_configs
+            for val in m.attrs.values()
+            if isinstance(val, HclVarRef) and val.path.startswith("var.")
+        }
+        - covered_var_names
+    )
+
+    all_var_sources: dict[str, str] = {}
+    for m in module_configs:
+        for name, src in m.variable_sources.items():
+            all_var_sources.setdefault(name, src)
+
+    var_blocks: list[str] = []
+    if all_promotions or dep_only_vars or passthrough_var_names:
+        var_blocks = [_render_variable(p.tf_var_name, p.default_value) for p in user_promotions]
+        var_blocks.extend(_render_variable(p.tf_var_name, None) for p in dep_promotions)
+        var_blocks.extend(_render_variable(name, None) for name in dep_only_vars)
+        var_blocks.extend(all_var_sources.get(name, _render_variable(name, None)) for name in passthrough_var_names)
+
+    return _VarBlocksResult(var_blocks, user_promotions)
+
+
 def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
     settings = input_model.settings
     work_dir = settings.work_dir
@@ -220,33 +275,13 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
     ensure_parents_write_text(main_path, "\n\n".join(_main_tf_module_blocks(input_model.module_configs)))
     written.append(main_path)
 
-    all_promotions = [p for m in input_model.module_configs for p in m.tf_var_promotions]
-    dep_var_names_set = {v for dep in input_model.dependencies for v in dep.outputs.values()}
-    dep_only_vars = sorted(n for n in dep_var_names_set if n not in {p.tf_var_name for p in all_promotions})
-    user_promotions = [p for p in all_promotions if p.tf_var_name not in dep_var_names_set]
-    dep_promotions = [p for p in all_promotions if p.tf_var_name in dep_var_names_set]
-
-    covered_var_names = {p.tf_var_name for p in all_promotions} | dep_var_names_set
-    passthrough_var_names = sorted(
-        {
-            val.path.removeprefix("var.")
-            for m in input_model.module_configs
-            for val in m.attrs.values()
-            if isinstance(val, HclVarRef) and val.path.startswith("var.")
-        }
-        - covered_var_names
-    )
-
-    if all_promotions or dep_only_vars or passthrough_var_names:
-        var_blocks = [_render_variable(p.tf_var_name, p.default_value) for p in user_promotions]
-        var_blocks.extend(_render_variable(p.tf_var_name, None) for p in dep_promotions)
-        var_blocks.extend(_render_variable(name, None) for name in dep_only_vars)
-        var_blocks.extend(_render_variable(name, None) for name in passthrough_var_names)
+    var_result = _collect_variable_blocks(input_model.module_configs, input_model.dependencies)
+    if var_result.var_blocks:
         variables_path = run_dir / "variables.tf"
-        ensure_parents_write_text(variables_path, "\n\n".join(var_blocks))
+        ensure_parents_write_text(variables_path, "\n\n".join(var_result.var_blocks))
         written.append(variables_path)
 
-    tfvars_content = _render_tfvars(user_promotions)
+    tfvars_content = _render_tfvars(var_result.user_promotions)
     if tfvars_content:
         tfvars_path = run_dir / "terraform.tfvars"
         ensure_parents_write_text(tfvars_path, tfvars_content)

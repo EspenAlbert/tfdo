@@ -14,6 +14,7 @@ from tfdo._internal.new.new_run_dir import (
     AttrPromotion,
     ModuleRunDirConfig,
     NewRunDirInput,
+    module_variable_sources,
     new_run_dir,
 )
 from tfdo._internal.settings import TfDoSettings
@@ -385,3 +386,36 @@ def test_passthrough_var_ref_generates_variable_block(mock_resolve, mock_fmt, tm
     assert 'variable "project_id"' in variables_tf
     assert 'variable "tags"' in variables_tf
     assert variables_tf.count('variable "tags"') == 1
+
+
+def test_module_variable_sources_reads_verbatim_blocks(tmp_path: Path) -> None:
+    (tmp_path / "variables.tf").write_text(
+        'variable "tags" {\n  type        = map(string)\n  default     = {}\n  description = "Resource tags"\n}\n\n'
+        'variable "name" {\n  type = string\n}\n'
+    )
+    sources = module_variable_sources(tmp_path)
+    assert "tags" in sources
+    assert "map(string)" in sources["tags"]
+    assert "Resource tags" in sources["tags"]
+    assert "name" in sources
+    assert "type = string" in sources["name"]
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_passthrough_var_uses_verbatim_source_from_module(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    tags_source = (
+        'variable "tags" {\n  type        = map(string)\n  default     = {}\n  description = "Resource tags"\n}'
+    )
+    cfg = ModuleRunDirConfig(
+        source="ns/cluster/mongodbatlas",
+        label="cluster",
+        attrs={"tags": HclVarRef(path="var.tags")},
+        variable_sources={"tags": tags_source},
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert "map(string)" in variables_tf
+    assert "Resource tags" in variables_tf
+    assert 'variable "tags"' in variables_tf
