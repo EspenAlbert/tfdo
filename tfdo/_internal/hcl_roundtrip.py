@@ -312,6 +312,32 @@ def patch_module_block_attributes(original: str, module_name: str, attributes: d
     return hcl2.reconstruct(tree)
 
 
+_TMP_DUMPS_KEY = "__tmp__"
+_TMP_DUMPS_PREFIX = f"{_TMP_DUMPS_KEY} = "
+
+
+def module_attr_raw_to_patch_rhs(raw: Any) -> str:
+    """Turn loader-shaped Terraform values into HCL source for :func:`patch_module_block_attributes`."""
+
+    if isinstance(raw, str):
+        if len(raw) >= 4 and raw.startswith("${") and raw.endswith("}"):
+            return raw[2:-1].strip()
+        return raw
+    if isinstance(raw, bool):
+        return "true" if raw else "false"
+    if isinstance(raw, int | float):
+        return str(raw)
+    dumped = hcl2.dumps({_TMP_DUMPS_KEY: raw}).strip()
+    lines = dumped.split("\n")
+    if not lines[0].startswith(_TMP_DUMPS_PREFIX):
+        msg = f"unexpected hcl2.dumps output for patch rhs: {dumped!r}"
+        raise ValueError(msg)
+    first_rhs = lines[0][len(_TMP_DUMPS_PREFIX) :].lstrip()
+    if len(lines) == 1:
+        return first_rhs
+    return "\n".join([first_rhs] + lines[1:])
+
+
 def rename_module_block(original: str, old_name: str, new_name: str) -> str:
     attrs = read_module_block_attrs(original, old_name)
     new_block = _build_module_block_dict(new_name, attrs)

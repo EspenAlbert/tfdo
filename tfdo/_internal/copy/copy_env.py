@@ -10,7 +10,7 @@ from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.hcl_roundtrip import HclValue, update_module_block, update_resource_block
-from tfdo._internal.hcl_run_dir_gen import _hcl_value_to_raw, terraform_fmt
+from tfdo._internal.hcl_run_dir_gen import hcl_value_to_attr_raw, terraform_fmt
 from tfdo._internal.models import TfDoBaseInput
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class CopyEnvResult(BaseModel):
 
 
 def _to_raw_attrs(attrs: dict[str, HclValue]) -> dict[str, Any]:
-    return {k: _hcl_value_to_raw(v) for k, v in attrs.items()}
+    return {k: hcl_value_to_attr_raw(v) for k, v in attrs.items()}
 
 
 def _apply_edit_to_file(text: str, edit: ModuleCallEdit | ResourceEdit) -> str:

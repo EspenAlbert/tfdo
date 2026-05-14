@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Any, NamedTuple
 
+import hcl2
 import yaml
+from hcl2.rules.base import BlockRule
 from pydantic import BaseModel, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
@@ -22,7 +25,7 @@ from tfdo._internal.hcl_roundtrip import (
     HclVarRef,
     update_required_providers,
 )
-from tfdo._internal.hcl_run_dir_gen import terraform_fmt
+from tfdo._internal.hcl_run_dir_gen import hcl_value_to_attr_raw, terraform_fmt
 from tfdo._internal.models import TfDoBaseInput
 from tfdo._internal.run.run_context import RunDirContext
 
@@ -35,6 +38,9 @@ class AttrPromotion(BaseModel):
     default_value: str | None = None
 
 
+_MODULE_HEADER = re.compile(r'^(?P<prefix>\s*module\s+")(?P<label>[^"]+)(?P<suffix>")')
+
+
 class ModuleRunDirConfig(BaseModel):
     source: str
     label: str
@@ -42,6 +48,7 @@ class ModuleRunDirConfig(BaseModel):
     attrs: dict[str, HclValue] = Field(default_factory=dict)
     tf_var_promotions: list[AttrPromotion] = Field(default_factory=list)
     exposed_outputs: list[str] = Field(default_factory=list)
+    preserved_module_hcl: str | None = None
 
 
 class NewRunDirInput(TfDoBaseInput):
@@ -172,6 +179,68 @@ def _provider_attrs(rp: ResolvedProvider) -> dict[str, Any]:
     return attrs
 
 
+def _extract_module_block_text(full_text: str, module_label: str) -> str | None:
+    tree = hcl2.parses(full_text, discard_comments=False)
+    for child in tree.body.children:
+        if isinstance(child, BlockRule) and hcl_roundtrip.block_labels(child) == ["module", module_label]:
+            m = child._meta
+            lines = full_text.splitlines(keepends=True)
+            return "".join(lines[m.line - 1 : m.end_line])
+    return None
+
+
+def _rename_module_block_label(block_hcl: str, new_label: str) -> str:
+    lines = block_hcl.splitlines(keepends=True)
+    if not lines:
+        return block_hcl
+    m = _MODULE_HEADER.match(lines[0])
+    if not m:
+        raise ValueError(f"could not parse module header from preserved block: {lines[0]!r}")
+    lines[0] = f"{m.group('prefix')}{new_label}{m.group('suffix')}{lines[0][m.end() :]}"
+    return "".join(lines)
+
+
+def prepare_preserved_module_hcl(
+    *,
+    full_text: str,
+    example_module_label: str,
+    run_dir_module_label: str,
+    registry_version: str | None,
+) -> str | None:
+    block = _extract_module_block_text(full_text, example_module_label)
+    if block is None:
+        return None
+    if run_dir_module_label != example_module_label:
+        block = _rename_module_block_label(block, run_dir_module_label)
+    if registry_version and "version" not in hcl_roundtrip.read_module_block_attrs(block, run_dir_module_label):
+        return None
+    return block
+
+
+def _module_config_to_patch_map(m: ModuleRunDirConfig) -> dict[str, str]:
+    raw: dict[str, Any] = {"source": f'"{m.source}"'}
+    if m.version:
+        raw["version"] = f'"{m.version}"'
+    for name, val in m.attrs.items():
+        raw[name] = hcl_value_to_attr_raw(val)
+    return {k: hcl_roundtrip.module_attr_raw_to_patch_rhs(v) for k, v in raw.items()}
+
+
+def _render_preserved_module_block(m: ModuleRunDirConfig) -> str:
+    assert m.preserved_module_hcl is not None
+    return hcl_roundtrip.patch_module_block_attributes(m.preserved_module_hcl, m.label, _module_config_to_patch_map(m))
+
+
+def _main_tf_module_blocks(module_configs: list[ModuleRunDirConfig]) -> list[str]:
+    blocks: list[str] = []
+    for m in module_configs:
+        if m.preserved_module_hcl is not None:
+            blocks.append(_render_preserved_module_block(m))
+        else:
+            blocks.append(_render_module_call(m.label, m.source, m.version, m.attrs))
+    return blocks
+
+
 def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
     settings = input_model.settings
     work_dir = settings.work_dir
@@ -187,9 +256,8 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
 
     written: list[Path] = []
 
-    module_blocks = [_render_module_call(m.label, m.source, m.version, m.attrs) for m in input_model.module_configs]
     main_path = run_dir / "main.tf"
-    ensure_parents_write_text(main_path, "\n\n".join(module_blocks))
+    ensure_parents_write_text(main_path, "\n\n".join(_main_tf_module_blocks(input_model.module_configs)))
     written.append(main_path)
 
     all_promotions = [p for m in input_model.module_configs for p in m.tf_var_promotions]

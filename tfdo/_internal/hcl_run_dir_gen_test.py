@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tfdo._internal.hcl_entity_parser import parse_module_examples
+from tfdo._internal.hcl_entity_parser import TfModuleCall, parse_module_examples
 from tfdo._internal.hcl_entity_selector import RunDirSelection, select_entities
-from tfdo._internal.hcl_run_dir_gen import generate_run_dir
+from tfdo._internal.hcl_roundtrip import HclLiteral, HclVarRef
+from tfdo._internal.hcl_run_dir_gen import _apply_entity_edit, generate_run_dir
 
 _MAIN_TF = """\
 resource "random_pet" "generated_name" {
@@ -66,6 +67,26 @@ def _write_example(tmp_path: Path) -> Path:
     (example_dir / "variables.tf").write_text(_VARIABLES_TF)
     (example_dir / "versions.tf").write_text(_VERSIONS_TF)
     return tmp_path
+
+
+def test_apply_entity_edit_preserves_comment_inside_module_block() -> None:
+    text = """module "cluster" {
+  source = "../.."
+  # keep me
+  name       = "old"
+  project_id = var.project_id
+}
+"""
+    orig = TfModuleCall(
+        file_path=Path("main.tf"),
+        name="cluster",
+        source="../..",
+        attrs={"name": HclLiteral(value="old"), "project_id": HclVarRef(path="var.project_id")},
+    )
+    edited = orig.model_copy(update={"attrs": {**orig.attrs, "name": HclLiteral(value="new")}})
+    out = _apply_entity_edit(text, orig, edited)
+    assert "# keep me" in out
+    assert 'name       = "new"' in out or 'name = "new"' in out
 
 
 def test_generate_run_dir_omits_deselected_resource(tmp_path: Path) -> None:

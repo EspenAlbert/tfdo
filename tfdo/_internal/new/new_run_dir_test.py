@@ -82,6 +82,33 @@ def test_literal_attr_in_main_tf_no_variables_file(mock_resolve, mock_fmt, tmp_p
 
 @patch(f"{_module.__name__}.terraform_fmt")
 @patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_preserved_module_hcl_keeps_comments_when_patching_attrs(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    preserved = """module \"cluster\" {
+  source = \"../..\"
+  # sizing note
+  instance_size = \"M10\"
+  project_id = var.project_id
+}
+"""
+    cfg = ModuleRunDirConfig(
+        source="terraform-mongodbatlas-modules/cluster/mongodbatlas",
+        label="cluster",
+        attrs={
+            "instance_size": HclLiteral(value="M20"),
+            "project_id": HclVarRef(path="var.project_id"),
+        },
+        preserved_module_hcl=preserved,
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert "# sizing note" in main_tf
+    assert 'instance_size = "M20"' in main_tf
+    assert "terraform-mongodbatlas-modules/cluster/mongodbatlas" in main_tf
+    assert "var.project_id" in main_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
 def test_version_constraint_written_to_module_call(mock_resolve, mock_fmt, tmp_path: Path) -> None:
     cfg = ModuleRunDirConfig(
         source="terraform-mongodbatlas-modules/cluster/mongodbatlas",

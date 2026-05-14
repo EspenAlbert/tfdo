@@ -28,6 +28,8 @@ from tfdo._internal.hcl_roundtrip import (
     delete_provider_block,
     delete_resource_block,
     delete_variable_block,
+    module_attr_raw_to_patch_rhs,
+    patch_module_block_attributes,
     remove_required_providers,
     rename_module_block,
     rename_resource_block,
@@ -67,7 +69,7 @@ def terraform_fmt(run_dir: Path, binary: str = "terraform") -> None:
     run_and_wait(f"{binary} fmt", cwd=run_dir)
 
 
-def _hcl_value_to_raw(value: HclValue) -> Any:
+def hcl_value_to_attr_raw(value: HclValue) -> Any:
     match value:
         case HclLiteral(value=v):
             return f'"{v}"' if isinstance(v, str) else v
@@ -76,9 +78,9 @@ def _hcl_value_to_raw(value: HclValue) -> Any:
         case HclExpression(expression=e):
             return f"${{{e}}}"
         case dict():
-            return {k: _hcl_value_to_raw(v) for k, v in value.items()}
+            return {k: hcl_value_to_attr_raw(v) for k, v in value.items()}
         case list():
-            return [_hcl_value_to_raw(item) for item in value]
+            return [hcl_value_to_attr_raw(item) for item in value]
     return value
 
 
@@ -93,15 +95,19 @@ def _apply_entity_edit(text: str, original: HclEntity, edited: HclEntity) -> str
             if orig_name != new_name:
                 text = rename_module_block(text, orig_name, new_name)
                 current_name = new_name
-            changed = {k: _hcl_value_to_raw(v) for k, v in new_attrs.items() if orig_attrs.get(k) != v}
+            changed = {k: hcl_value_to_attr_raw(v) for k, v in new_attrs.items() if orig_attrs.get(k) != v}
             if changed:
-                text = update_module_block(text, current_name, lambda a, c=changed: a.update(c))
+                try:
+                    patch_attrs = {k: module_attr_raw_to_patch_rhs(v) for k, v in changed.items()}
+                    text = patch_module_block_attributes(text, current_name, patch_attrs)
+                except ValueError:
+                    text = update_module_block(text, current_name, lambda a, c=changed: a.update(c))
         case (TfResource(type=t, name=orig_name, attrs=orig_attrs), TfResource(name=new_name, attrs=new_attrs)):
             current_name = orig_name
             if orig_name != new_name:
                 text = rename_resource_block(text, t, orig_name, new_name)
                 current_name = new_name
-            changed = {k: _hcl_value_to_raw(v) for k, v in new_attrs.items() if orig_attrs.get(k) != v}
+            changed = {k: hcl_value_to_attr_raw(v) for k, v in new_attrs.items() if orig_attrs.get(k) != v}
             if changed:
                 text = update_resource_block(text, t, current_name, lambda a, c=changed: a.update(c))
 

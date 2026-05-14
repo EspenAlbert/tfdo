@@ -577,6 +577,17 @@ module "cluster" {
 """
 
 
+def test_module_attr_raw_to_patch_rhs_strips_interpolation_wrapper() -> None:
+    assert hcl_roundtrip.module_attr_raw_to_patch_rhs("${var.x}") == "var.x"
+
+
+def test_module_attr_raw_to_patch_rhs_serializes_list_of_objects() -> None:
+    raw = [{"name": '"US_EAST_1"', "node_count": 3}]
+    rhs = hcl_roundtrip.module_attr_raw_to_patch_rhs(raw)
+    assert "US_EAST_1" in rhs
+    assert "node_count" in rhs
+
+
 def test_patch_module_block_attributes_preserves_comments_and_rewrites_source_and_name() -> None:
     output = hcl_roundtrip.patch_module_block_attributes(
         _ATLAS_CLUSTER_MODULE_WITH_COMMENTS_FIXTURE,

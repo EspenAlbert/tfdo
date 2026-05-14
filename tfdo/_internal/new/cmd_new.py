@@ -31,6 +31,7 @@ from tfdo._internal.new.new_run_dir import (
     _module_required_attrs,
     module_outputs,
     new_run_dir,
+    prepare_preserved_module_hcl,
 )
 from tfdo._internal.typer_app import app, get_settings
 
@@ -86,7 +87,9 @@ class _ModuleBuildResult(NamedTuple):
     module_path: Path
 
 
-def _select_raw_attrs(mpath: Path, alias: str, source: str) -> dict[str, HclValue]:
+def _select_raw_attrs(
+    mpath: Path, alias: str, source: str, registry_version: str | None
+) -> tuple[dict[str, HclValue], str | None]:
     examples = parse_module_examples(mpath)
     choice = select_list(
         f"Configure module '{alias}':",
@@ -100,14 +103,20 @@ def _select_raw_attrs(mpath: Path, alias: str, source: str) -> dict[str, HclValu
         selected_names: list[str] = (
             select_list_multiple_choices("Select attributes:", attr_choices, default=[]) if attr_choices else []
         )
-        return {name: HclLiteral(value="") for name in selected_names}
+        return {name: HclLiteral(value="") for name in selected_names}, None
     example = next(e for e in examples if e.name == choice)
     for entity in example.entities:
         if not isinstance(entity, TfModuleCall):
             continue
         if entity.source == source or entity.source.startswith(_LOCAL_SOURCE_PREFIXES):
-            return dict(entity.attrs)
-    return {}
+            preserved = prepare_preserved_module_hcl(
+                full_text=entity.file_path.read_text(),
+                example_module_label=entity.name,
+                run_dir_module_label=alias,
+                registry_version=registry_version,
+            )
+            return dict(entity.attrs), preserved
+    return {}, None
 
 
 def _build_module_config(
@@ -124,7 +133,7 @@ def _build_module_config(
         mpath = module_cache.populate(settings.cache_root, source, cache_version, settings)
     mpath = module_cache.module_source_dir(mpath)
 
-    raw_attrs = _select_raw_attrs(mpath, alias, source)
+    raw_attrs, preserved_hcl = _select_raw_attrs(mpath, alias, source, constraint)
 
     provider_hints = hints_registry.get(provider_name)
     auth_var_names = {vm.tf_var for vm in provider_hints.auth_variables} if provider_hints else set()
@@ -168,6 +177,7 @@ def _build_module_config(
         attrs=final_attrs,
         tf_var_promotions=promotions,
         exposed_outputs=exposed,
+        preserved_module_hcl=preserved_hcl,
     )
     return _ModuleBuildResult(config, mpath)
 
