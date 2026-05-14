@@ -82,6 +82,12 @@ def _hcl_value_str(value: HclValue) -> str:
             return p
         case HclExpression(expression=e):
             return e
+        case list():
+            items = ", ".join(_hcl_value_str(item) for item in value)
+            return f"[{items}]"
+        case dict():
+            entries = ", ".join(f"{k} = {_hcl_value_str(v)}" for k, v in value.items())
+            return f"{{ {entries} }}"
     return str(value)
 
 
@@ -109,6 +115,16 @@ def _render_output(name: str, module_label: str) -> str:
 
 def _render_tfvars(promotions: list[AttrPromotion]) -> str:
     return "\n".join(f'{p.attr_name} = "{p.default_value}"' for p in promotions)
+
+
+def _render_provider_block(name: str) -> str:
+    return f'provider "{name}" {{}}'
+
+
+def _tf_required_version(tf_version: str) -> str:
+    parts = tf_version.split(".")
+    major_minor = ".".join(parts[:2])
+    return f">= {major_minor}"
 
 
 def _find_backend(work_dir: Path, run_dir: Path) -> BackendConfig | None:
@@ -201,11 +217,21 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
         written.append(outputs_path)
 
     resolved = resolve_run_dir(work_dir, relative, settings=settings)
-    if resolved.required_providers:
+    tf_version = input_model.config.tf_version
+    req_version = _tf_required_version(tf_version) if tf_version else None
+    if resolved.required_providers or req_version:
         providers_dict = {rp.name: _provider_attrs(rp) for rp in resolved.required_providers}
         versions_path = run_dir / "versions.tf"
-        ensure_parents_write_text(versions_path, update_required_providers("", providers_dict))
+        ensure_parents_write_text(
+            versions_path, update_required_providers("", providers_dict, required_version=req_version)
+        )
         written.append(versions_path)
+
+    if resolved.required_providers:
+        provider_blocks = [_render_provider_block(rp.name) for rp in resolved.required_providers]
+        providers_path = run_dir / "providers.tf"
+        ensure_parents_write_text(providers_path, "\n\n".join(provider_blocks) + "\n")
+        written.append(providers_path)
 
     backend = _find_backend(work_dir, run_dir)
     if backend:
