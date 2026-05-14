@@ -394,6 +394,10 @@ def _render_manual_workflow(env_names: list[str], config: TfDoConfig) -> dict[st
         )
     # Empty optional inputs produce empty strings; build the command conditionally
     run_cmd = "just ${{ github.event.inputs.env }} ${{ github.event.inputs.action }}"
+    run_cmd += (
+        " ${{ (github.event.inputs.action == 'apply' || github.event.inputs.action == 'destroy') "
+        "&& '--auto-approve' || '' }}"
+    )
     run_cmd += " ${{ github.event.inputs.run_dir && format('--app {0}', github.event.inputs.run_dir) || '' }}"
     run_cmd += " ${{ github.event.inputs.extra_args }}"
     steps.append(f"      - run: {run_cmd}")
