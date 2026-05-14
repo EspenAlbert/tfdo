@@ -16,6 +16,7 @@ _BLOCK_MARKER = "__is_block__"
 _COMMENT_KEYS = ("__comments__", "__inline_comments__")
 _HCL_PATCH_FRAGMENT_BLOCK = "zzz_tfdo_hcl_patch_fragment"
 _MODULE_BLOCK_HEADER_LINE = re.compile(r'^(?P<prefix>\s*module\s+")(?P<label>[^"]+)(?P<suffix>")')
+_SOURCE_ATTR_LINE = re.compile(r"^(?P<indent>\s*)source\s*=")
 
 
 class HclLiteral(BaseModel, frozen=True):
@@ -169,6 +170,17 @@ def rename_module_block_label_line(block_hcl: str, new_label: str) -> str:
     return "".join(lines)
 
 
+def _insert_version_after_source(block_hcl: str, version: str) -> str:
+    """Insert a ``version`` attribute line right after the ``source`` line."""
+    lines = block_hcl.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if m := _SOURCE_ATTR_LINE.match(line):
+            version_line = f'{m.group("indent")}version = "{version}"\n'
+            lines.insert(i + 1, version_line)
+            return "".join(lines)
+    raise ValueError("no source attribute found in preserved block")
+
+
 def prepare_preserved_module_hcl(
     *,
     full_text: str,
@@ -176,7 +188,7 @@ def prepare_preserved_module_hcl(
     run_dir_module_label: str,
     registry_version: str | None,
 ) -> str | None:
-    """Slice example ``module`` source; optionally rename label; drop when version pin cannot be patched in."""
+    """Slice example ``module`` source; optionally rename label; insert ``version`` when needed."""
 
     block = slice_top_level_block_source(full_text, ("module", example_module_label))
     if block is None:
@@ -184,7 +196,7 @@ def prepare_preserved_module_hcl(
     if run_dir_module_label != example_module_label:
         block = rename_module_block_label_line(block, run_dir_module_label)
     if registry_version and "version" not in read_module_block_attrs(block, run_dir_module_label):
-        return None
+        block = _insert_version_after_source(block, registry_version)
     return block
 
 

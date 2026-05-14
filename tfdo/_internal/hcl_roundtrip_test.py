@@ -52,17 +52,20 @@ def test_rename_module_block_label_line_rewrites_first_line_only() -> None:
     assert 'module "old"' not in got
 
 
-def test_prepare_preserved_module_hcl_renames_and_requires_version_slot_when_registry_version_set() -> None:
+def test_prepare_preserved_module_hcl_inserts_version_when_missing() -> None:
     full = """module "ex" {\n  source = "../.."\n}\n"""
-    assert (
-        hcl_roundtrip.prepare_preserved_module_hcl(
-            full_text=full,
-            example_module_label="ex",
-            run_dir_module_label="ex",
-            registry_version="1.0.0",
-        )
-        is None
+    got = hcl_roundtrip.prepare_preserved_module_hcl(
+        full_text=full,
+        example_module_label="ex",
+        run_dir_module_label="ex",
+        registry_version="1.0.0",
     )
+    assert got is not None
+    assert 'version = "1.0.0"' in got
+    assert got.index("source") < got.index("version")
+
+
+def test_prepare_preserved_module_hcl_renames_and_keeps_existing_version() -> None:
     full_v = """module "ex" {\n  source = "../.."\n  version = "0.1.0"\n}\n"""
     got = hcl_roundtrip.prepare_preserved_module_hcl(
         full_text=full_v,
@@ -72,6 +75,19 @@ def test_prepare_preserved_module_hcl_renames_and_requires_version_slot_when_reg
     )
     assert got is not None
     assert 'module "prod"' in got
+
+
+def test_prepare_preserved_module_hcl_preserves_comments_with_version_insert() -> None:
+    got = hcl_roundtrip.prepare_preserved_module_hcl(
+        full_text=_ATLAS_CLUSTER_MODULE_WITH_COMMENTS_FIXTURE,
+        example_module_label="cluster",
+        run_dir_module_label="cluster",
+        registry_version="0.3.1",
+    )
+    assert got is not None
+    assert 'version = "0.3.1"' in got
+    assert "# Disable default production values" in got
+    assert "# use manual instance_size to avoid any accidental cost" in got
 
 
 def test_read_resource_block_values_returns_hcl_value_models() -> None:
