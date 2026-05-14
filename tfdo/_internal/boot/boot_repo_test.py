@@ -75,6 +75,50 @@ def test_create_new_backend_calls_provision_once(tmp_path: Path) -> None:
     assert raw["backend"]["bucket"] == "my-bucket"
 
 
+def test_create_new_backend_saves_to_user_backends_dir(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    with (
+        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
+        patch(f"{_MODULE}.provision_s3_bucket"),
+    ):
+        boot_repo(
+            TfdoBootInput(
+                settings=settings,
+                backend_choice="create-new",
+                bucket="my-bucket",
+                region="eu-west-1",
+            )
+        )
+
+    backend_file = settings.backends_dirs[0] / "my-bucket.yaml"
+    assert backend_file.is_file()
+    saved = yaml.safe_load(backend_file.read_text())
+    assert saved["bucket"] == "my-bucket"
+    assert saved["region"] == "eu-west-1"
+    assert saved["type"] == "s3"
+
+
+def test_saved_backend_appears_in_scan_backend_names(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    with (
+        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
+        patch(f"{_MODULE}.provision_s3_bucket"),
+    ):
+        boot_repo(
+            TfdoBootInput(
+                settings=settings,
+                backend_choice="create-new",
+                bucket="demo-bucket",
+                region="us-east-1",
+            )
+        )
+
+    from tfdo._internal.boot.boot_repo import scan_backend_names
+
+    names = scan_backend_names(settings.backends_dirs)
+    assert "demo-bucket" in names
+
+
 def test_provider_with_no_modules_skips_prompt(tmp_path: Path) -> None:
     hints_path = _write_hints(tmp_path, {"aws": {"source": "hashicorp/aws"}})
     settings = TfDoSettings.for_testing(

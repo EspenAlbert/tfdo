@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 ENV_PREFIX = "TFDO_"
 USER_CONFIG_FILENAME = "config.yaml"
 SCHEMA_CACHE_SUBDIR = "schemas"
+BACKENDS_SUBDIR = "backends"
 ENV_VARS_SUBDIR = "env_vars"
 
 
@@ -73,9 +74,9 @@ class TfDoSettings(StaticSettings):
 
     @property
     def backends_dirs(self) -> list[Path]:
-        if not self.backends_dirs_raw:
-            return []
-        return [Path(p.strip()) for p in self.backends_dirs_raw.split(":") if p.strip()]
+        if self.backends_dirs_raw:
+            return [Path(p.strip()) for p in self.backends_dirs_raw.split(":") if p.strip()]
+        return [self.static_root / BACKENDS_SUBDIR]
 
     @property
     def resolved_provider_hints_path(self) -> Path:

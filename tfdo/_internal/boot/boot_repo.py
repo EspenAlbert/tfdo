@@ -80,6 +80,16 @@ def _load_existing_backend(backends_dirs: list[Path], name: str) -> BackendYaml:
     raise ValueError(f"Backend '{name}' not found in: {backends_dirs}")
 
 
+def _save_backend_to_user_dir(settings: TfDoSettings, bucket: str, backend: S3Backend) -> None:
+    """Persist the backend as a named YAML file so future boots can reference it."""
+    backends_dir = settings.backends_dirs[0] if settings.backends_dirs else None
+    if backends_dir is None:
+        return
+    backend_data = backend.model_dump(mode="json", exclude_none=True)
+    ensure_parents_write_text(backends_dir / f"{bucket}.yaml", yaml.dump(backend_data, default_flow_style=False))
+    logger.info(f"saved backend '{bucket}' to {backends_dir}")
+
+
 def scan_backend_names(backends_dirs: list[Path]) -> list[str]:
     names = []
     for d in backends_dirs:
@@ -185,6 +195,7 @@ def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
             provision_s3_bucket(input_model.bucket, input_model.region)
             backend = S3Backend(bucket=input_model.bucket, region=input_model.region, key=DEFAULT_KEY_TEMPLATE)
             raw["backend"] = backend.model_dump(mode="json", exclude_none=True)
+            _save_backend_to_user_dir(settings, input_model.bucket, backend)
         case backend_name:
             raw["backend"] = _load_existing_backend(settings.backends_dirs, backend_name).model_dump()
 
