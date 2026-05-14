@@ -134,8 +134,12 @@ class TfDoConfig(BaseModel):
     modules: list[ModuleConstraint] = Field(default_factory=list)
     env_var_files: list[str] = Field(default_factory=list)
 
+    @property
+    def selector_names(self) -> list[str]:
+        return _SELECTOR_RE.findall(self.run_dir_discovery)
+
     def run_dir_relative(self, env_name: str, run_dir_name: str) -> str:
-        selectors = _SELECTOR_RE.findall(self.run_dir_discovery)
+        selectors = self.selector_names
         result = self.run_dir_discovery
         # First placeholder → env, last placeholder → run-dir name
         if selectors:
@@ -148,6 +152,18 @@ class TfDoConfig(BaseModel):
         # Take everything before the first placeholder, e.g. "envs/{env}/{run_dir}" → "envs"
         literal_prefix = self.run_dir_discovery.strip("/").split("{")[0].rstrip("/")
         return work_dir / literal_prefix if literal_prefix else work_dir
+
+    def envs(self, work_dir: Path) -> list[Path]:
+        base = self.env_base_dir(work_dir)
+        return sorted(d for d in base.iterdir() if d.is_dir()) if base.is_dir() else []
+
+    def run_dirs(self, work_dir: Path, env_name: str | None = None) -> list[Path]:
+        if len(self.selector_names) < 2:
+            return [self.env_base_dir(work_dir) / env_name] if env_name else self.envs(work_dir)
+        if env_name is not None:
+            env_dir = self.env_base_dir(work_dir) / env_name
+            return sorted(d for d in env_dir.iterdir() if d.is_dir()) if env_dir.is_dir() else []
+        return [rd for env_path in self.envs(work_dir) for rd in self.run_dirs(work_dir, env_path.name)]
 
 
 def merge_providers(parents: list[TfDoConfig], child: TfDoConfig) -> list[ProviderConstraint]:

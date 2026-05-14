@@ -49,8 +49,7 @@ def backend_cmd(
 
 
 def _select_env(work_dir: Path, config: TfDoConfig, is_interactive: bool) -> str:
-    env_base = config.env_base_dir(work_dir)
-    env_dirs = sorted(env_base.glob("*/")) if env_base.is_dir() else []
+    env_dirs = config.envs(work_dir)
     if not is_interactive:
         raise ValueError("run-dir command requires interactive mode")
     if not env_dirs:
@@ -58,7 +57,7 @@ def _select_env(work_dir: Path, config: TfDoConfig, is_interactive: bool) -> str
         if create == "no":
             raise typer.Exit(1)
         env_name = text("Env name")
-        (env_base / env_name).mkdir(parents=True, exist_ok=True)
+        (config.env_base_dir(work_dir) / env_name).mkdir(parents=True, exist_ok=True)
         return env_name
     return select_list("Select env:", [d.name for d in env_dirs])
 

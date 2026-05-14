@@ -4,6 +4,8 @@ import typer
 from pydantic import BaseModel, Field
 
 from tfdo._internal import cmd_options
+from tfdo._internal.config.config_file import load_config
+from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.models import InitMode
 from tfdo._internal.run import orchestration, run_options
 from tfdo._internal.run.orchestration import FailureMode, LifecycleCommand, RunOrchestrationInput
@@ -56,11 +58,14 @@ def run_callback(
     dry_run: bool = run_options.dry_run_option(),
 ) -> None:
     parent_settings = get_settings(ctx)
+    config = load_config(parent_settings.work_dir) or TfDoConfig()
     selector_filters: dict[str, str] = {}
     if env:
         selector_filters["env"] = env
     if app_name:
-        selector_filters["app"] = app_name
+        names = config.selector_names
+        app_selector = names[1] if len(names) >= 2 else "app"
+        selector_filters[app_selector] = app_name
     if team:
         selector_filters["team"] = team
     ctx.obj = RunContext(

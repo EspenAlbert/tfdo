@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -17,57 +16,59 @@ SECTION_ID = "ci-targets"
 JUSTFILE_COMMENT_CONFIG = CommentConfig("#")
 JUSTFILE_NAME = "justfile"
 
-_VERBS = ("plan", "apply", "destroy", "init")
-
-
-class SyncTargetGroup(StrEnum):
-    PLAN = "plan"
-    APPLY = "apply"
-    DESTROY = "destroy"
-    INIT = "init"
-
 
 class SyncJustfileInput(TfDoBaseInput):
     config: TfDoConfig = Field(default_factory=TfDoConfig)
-    selected_groups: list[SyncTargetGroup] = Field(default_factory=lambda: list(SyncTargetGroup))
 
 
 class SyncJustfileResult(BaseModel):
     justfile_path: Path
-    env_names: list[str]
-    selected_groups: list[SyncTargetGroup]
+    target_names: list[str]
     section_updated: bool
 
 
-def _discover_env_names(config: TfDoConfig, work_dir: Path) -> list[str]:
-    env_base = config.env_base_dir(work_dir)
-    if not env_base.is_dir():
-        return []
-    return sorted(d.name for d in env_base.iterdir() if d.is_dir())
+def _selector_flag(name: str, value: str) -> str:
+    if name == "env":
+        return f"--env {value}"
+    return f"--app {value}"
 
 
-def _render_target(verb: str) -> str:
-    lines: list[str] = [
-        f"{verb}-env env:",
-        f"    tfdo run --env {{{{env}}}} {verb}",
-    ]
-    return "\n".join(lines)
+def _render_target(target_name: str, selectors: dict[str, str]) -> str:
+    flags = " ".join(_selector_flag(k, v) for k, v in selectors.items())
+    return f'{target_name} cmd *args:\n    tfdo run {flags} {{{{cmd}}}} "$@"'
 
 
-def _render_section(selected: list[SyncTargetGroup]) -> str:
-    parts: list[str] = []
-    for group in SyncTargetGroup:
-        if group in selected:
-            parts.append(_render_target(group))
-    return "\n\n".join(parts)
+def _discover_targets(config: TfDoConfig, work_dir: Path) -> list[tuple[str, dict[str, str]]]:
+    """Return (target_name, selectors) pairs from env/run-dir directory layout."""
+    selector_names = config.selector_names
+    env_selector = selector_names[0] if selector_names else "env"
+    run_dir_selector = selector_names[1] if len(selector_names) >= 2 else None
+
+    targets: list[tuple[str, dict[str, str]]] = []
+    for env_path in config.envs(work_dir):
+        env_name = env_path.name
+        if run_dir_selector is not None:
+            run_dir_paths = config.run_dirs(work_dir, env_name)
+            if run_dir_paths:
+                for rd_path in run_dir_paths:
+                    target_name = f"{env_name}-{rd_path.name}"
+                    selectors = {env_selector: env_name, run_dir_selector: rd_path.name}
+                    targets.append((target_name, selectors))
+                continue
+        targets.append((env_name, {env_selector: env_name}))
+    return targets
+
+
+def _render_section(targets: list[tuple[str, dict[str, str]]]) -> str:
+    return "\n\n".join(_render_target(name, selectors) for name, selectors in targets)
 
 
 def sync_justfile(input_model: SyncJustfileInput) -> SyncJustfileResult:
     work_dir = input_model.settings.work_dir
     justfile_path = work_dir / JUSTFILE_NAME
 
-    env_names = _discover_env_names(input_model.config, work_dir)
-    section_content = _render_section(input_model.selected_groups)
+    targets = _discover_targets(input_model.config, work_dir)
+    section_content = _render_section(targets)
 
     existing = justfile_path.read_text() if justfile_path.is_file() else ""
     updated = replace_sections(
@@ -83,7 +84,6 @@ def sync_justfile(input_model: SyncJustfileInput) -> SyncJustfileResult:
 
     return SyncJustfileResult(
         justfile_path=justfile_path,
-        env_names=env_names,
-        selected_groups=input_model.selected_groups,
+        target_names=[name for name, _ in targets],
         section_updated=section_updated,
     )
