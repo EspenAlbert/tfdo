@@ -13,6 +13,7 @@ from tfdo._internal.hcl_entity_parser import (
     parse_entities,
 )
 from tfdo._internal.hcl_roundtrip import HclAttrRef, HclLiteral, HclVarRef
+from tfdo._internal.new.new_run_dir import _module_required_attrs
 
 _FULL_FIXTURE = """
 terraform {
@@ -38,6 +39,12 @@ variable "org_id" {
 variable "sensitive_token" {
   type      = string
   sensitive = true
+}
+
+variable "project_owner_id" {
+  type        = string
+  description = "Optional owner, defaults to null."
+  default     = null
 }
 
 output "project_id" {
@@ -89,7 +96,7 @@ def _write_fixture(tmp_path: Path, content: str) -> Path:
 def test_parse_variables_returns_variable_entities(tmp_path: Path) -> None:
     entities = parse_entities(_write_fixture(tmp_path, _FULL_FIXTURE))
     variables = [e for e in entities if isinstance(e, TfVariable)]
-    assert len(variables) == 2
+    assert len(variables) == 3
 
     org_id = next(v for v in variables if v.name == "org_id")
     assert org_id.type == HclLiteral(value="string")
@@ -100,6 +107,10 @@ def test_parse_variables_returns_variable_entities(tmp_path: Path) -> None:
     token = next(v for v in variables if v.name == "sensitive_token")
     assert token.sensitive
     assert token.default is None
+
+    owner = next(v for v in variables if v.name == "project_owner_id")
+    assert owner.default == HclLiteral(value=None)
+    assert owner.description == "Optional owner, defaults to null."
 
 
 def test_parse_outputs_returns_output_entities(tmp_path: Path) -> None:
@@ -198,7 +209,7 @@ def test_parse_entities_returns_all_entity_types_counts(tmp_path: Path) -> None:
         key = type(e).__name__
         counts[key] = counts.get(key, 0) + 1
     assert counts == {
-        "TfVariable": 2,
+        "TfVariable": 3,
         "TfOutput": 2,
         "TfResource": 1,
         "TfModuleCall": 1,
@@ -227,3 +238,26 @@ def test_entity_file_path_points_to_source_file(tmp_path: Path) -> None:
     entities = parse_entities(tf_file)
     for entity in entities:
         assert entity.file_path == tf_file
+
+
+def test_null_default_variable_is_optional(tmp_path: Path) -> None:
+    (tmp_path / "main.tf").write_text(
+        """
+variable "required_var" {
+  type = string
+}
+
+variable "null_default_var" {
+  type    = string
+  default = null
+}
+
+variable "string_default_var" {
+  type    = string
+  default = "hello"
+}
+"""
+    )
+    attrs = _module_required_attrs(tmp_path)
+    assert attrs.required == ["required_var"]
+    assert attrs.optional == ["null_default_var", "string_default_var"]

@@ -102,6 +102,7 @@ def _parse_variables(doc: dict[str, Any], file_path: Path) -> list[TfVariable]:
             if not isinstance(attrs, dict):
                 attrs = {}
             raw_type = attrs.get("type")
+            has_default = "default" in attrs
             raw_default = attrs.get("default")
             raw_nullable = attrs.get("nullable")
             entities.append(
@@ -110,7 +111,7 @@ def _parse_variables(doc: dict[str, Any], file_path: Path) -> list[TfVariable]:
                     name=name,
                     type=_parse_hcl_value(raw_type) if raw_type is not None else None,
                     description=attrs.get("description"),
-                    default=_parse_hcl_value(raw_default) if raw_default is not None else None,
+                    default=_parse_hcl_value(raw_default) if has_default else None,
                     sensitive=bool(attrs.get("sensitive", False)),
                     nullable=bool(raw_nullable) if raw_nullable is not None else None,
                 )
