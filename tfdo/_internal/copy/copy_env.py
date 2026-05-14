@@ -12,7 +12,6 @@ from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.hcl_roundtrip import HclValue, update_module_block, update_resource_block
 from tfdo._internal.hcl_run_dir_gen import _hcl_value_to_raw, terraform_fmt
 from tfdo._internal.models import TfDoBaseInput
-from tfdo._internal.run.discovery import DiscoveryPattern, discover_run_dirs, parse_discovery_pattern
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +50,6 @@ class CopyEnvResult(BaseModel):
 
 def _to_raw_attrs(attrs: dict[str, HclValue]) -> dict[str, Any]:
     return {k: _hcl_value_to_raw(v) for k, v in attrs.items()}
-
-
-def derive_run_dir_pattern(config: TfDoConfig) -> DiscoveryPattern:
-    last_segment = config.run_dir_discovery.strip("/").rsplit("/", 1)[-1]
-    return parse_discovery_pattern(last_segment)
 
 
 def _apply_edit_to_file(text: str, edit: ModuleCallEdit | ResourceEdit) -> str:
@@ -99,16 +93,14 @@ def copy_env(input_model: CopyEnvInput) -> CopyEnvResult:
 
     dst_dir.mkdir(parents=True)
 
-    pattern = derive_run_dir_pattern(input_model.config)
-    discovered = discover_run_dirs(src_dir, pattern, require_backend=False)
     selected_set = set(input_model.selected_run_dirs)
 
     copied: list[Path] = []
-    for rd in discovered:
-        if rd.relative_path not in selected_set:
+    for rd_path in input_model.config.run_dirs(work_dir, input_model.src_env):
+        if rd_path.name not in selected_set:
             continue
-        dest = dst_dir / rd.relative_path
-        shutil.copytree(rd.path, dest)
+        dest = dst_dir / rd_path.name
+        shutil.copytree(rd_path, dest)
         copied.append(dest)
 
     tfdo_yaml_src = src_dir / "tfdo.yaml"

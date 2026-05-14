@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import typer
 from ask_shell._internal.interactive import ChoiceTyped, select_list_multiple_choices
@@ -14,22 +15,15 @@ from tfdo._internal.copy.copy_env import (
     ResourceEdit,
     SrcEnvNotFoundError,
     copy_env,
-    derive_run_dir_pattern,
 )
 from tfdo._internal.hcl_entity_parser import TfModuleCall, TfResource, parse_dir_entities
 from tfdo._internal.hcl_example_prompt import ask_field_edits
-from tfdo._internal.run.discovery import discover_run_dirs
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
 
 copy_app = typer.Typer(help="Copy tfdo-managed environments")
 app.add_typer(copy_app, name="copy")
-
-
-def _discover_run_dir_names(src_dir, config: TfDoConfig) -> list[str]:
-    pattern = derive_run_dir_pattern(config)
-    return [rd.relative_path for rd in discover_run_dirs(src_dir, pattern, require_backend=False)]
 
 
 def _entity_choices(src_dir, run_dir_name: str) -> list[ChoiceTyped]:
@@ -60,8 +54,10 @@ def _entity_to_edit(run_dir_name: str, original, edited) -> ModuleCallEdit | Res
     return None
 
 
-def _collect_interactive_input(src_dir, config: TfDoConfig) -> tuple[list[str], list[ModuleCallEdit | ResourceEdit]]:
-    run_dir_names = _discover_run_dir_names(src_dir, config)
+def _collect_interactive_input(
+    src_dir: Path, config: TfDoConfig, work_dir: Path
+) -> tuple[list[str], list[ModuleCallEdit | ResourceEdit]]:
+    run_dir_names = [p.name for p in config.run_dirs(work_dir, src_dir.name)]
     all_choices = [ChoiceTyped(name=n, value=n, checked=True) for n in run_dir_names]
     selected: list[str] = select_list_multiple_choices(
         "Select run-dirs to copy:", all_choices, default=[c.value for c in all_choices]
@@ -101,9 +97,9 @@ def env_cmd(
     src_dir = config.env_base_dir(work_dir) / src
 
     if settings.is_interactive:
-        selected_run_dirs, edits = _collect_interactive_input(src_dir, config)
+        selected_run_dirs, edits = _collect_interactive_input(src_dir, config, work_dir)
     else:
-        selected_run_dirs = _discover_run_dir_names(src_dir, config)
+        selected_run_dirs = [p.name for p in config.run_dirs(work_dir, src)]
         edits = []
 
     try:

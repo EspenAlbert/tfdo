@@ -12,7 +12,6 @@ from tfdo._internal.config.backend_resolution import resolve_placeholders
 from tfdo._internal.config.config_file import CONFIG_FILENAME, load_config
 from tfdo._internal.config.config_model import S3Backend
 from tfdo._internal.models import TfDoBaseInput
-from tfdo._internal.run.discovery import DiscoveredRunDir, discover_run_dirs, parse_discovery_pattern
 from tfdo._internal.run.run_context import RunDirContext
 
 logger = logging.getLogger(__name__)
@@ -62,13 +61,12 @@ def write_backend_tf_files(repo_root: Path, backend: S3Backend) -> list[Path]:
         logger.warning("no tfdo.yaml found; skipping backend.tf generation")
         return []
 
-    pattern = parse_discovery_pattern(root_config.run_dir_discovery)
-    run_dirs: list[DiscoveredRunDir] = discover_run_dirs(repo_root, pattern, require_backend=False)
     written: list[Path] = []
-    for rd in run_dirs:
-        _backend_tf_for_run_dir(rd.path, rd.relative_path, backend)
-        written.append(rd.path / _BACKEND_TF_FILENAME)
-        logger.info(f"backend.tf written: {rd.relative_path}")
+    for rd_path in root_config.run_dirs(repo_root):
+        rel_path = str(rd_path.relative_to(repo_root))
+        _backend_tf_for_run_dir(rd_path, rel_path, backend)
+        written.append(rd_path / _BACKEND_TF_FILENAME)
+        logger.info(f"backend.tf written: {rel_path}")
     return written
 
 
