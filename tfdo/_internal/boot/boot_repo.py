@@ -131,7 +131,7 @@ def _config_session(config_path: Path, binary: str) -> Iterator[TfDoConfig]:
     try:
         yield config
     finally:
-        data = config.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+        data = config.model_dump(mode="json", exclude_none=True) # must include defaults otherwise the type discriminator is lost
         ensure_parents_write_text(config_path, model_dump.dump_as_str(data, "yaml"))
 
 

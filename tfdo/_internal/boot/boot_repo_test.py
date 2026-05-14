@@ -9,7 +9,8 @@ import yaml
 from tfdo._internal.boot import boot_repo as _module
 from tfdo._internal.boot.boot_repo import CachedModule, OidcWizardResult, TfdoBootInput, boot_repo, select_modules
 from tfdo._internal.cache import module_cache as _cache_module
-from tfdo._internal.config.config_model import ModuleConstraint, ProviderConstraint
+from tfdo._internal.config.config_file import load_config
+from tfdo._internal.config.config_model import ModuleConstraint, ProviderConstraint, S3Backend
 from tfdo._internal.config.provider_hints import ProviderHints
 from tfdo._internal.models import InitResult
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
@@ -38,6 +39,30 @@ def test_boot_rerun_preserves_existing_config(tmp_path: Path) -> None:
     assert raw["tf_version"] == "1.11.0"
     assert raw["backend"]["bucket"] == "orig"
     assert result.terraform_version == "1.11.0"
+
+
+def test_boot_backend_type_survives_round_trip(tmp_path: Path) -> None:
+    """The 'type' discriminator must be written to tfdo.yaml so load_config can parse it back."""
+    with (
+        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
+        patch(f"{_MODULE}.provision_s3_bucket"),
+    ):
+        boot_repo(
+            TfdoBootInput(
+                settings=_settings(tmp_path),
+                backend_choice="create-new",
+                bucket="round-trip",
+                region="us-east-1",
+            )
+        )
+
+    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
+    assert raw["backend"]["type"] == "s3"
+
+    config = load_config(tmp_path)
+    assert config is not None
+    assert isinstance(config.backend, S3Backend)
+    assert config.backend.bucket == "round-trip"
 
 
 def test_boot_rerun_with_oidc_merges_ci_into_existing(tmp_path: Path) -> None:
