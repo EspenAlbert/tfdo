@@ -23,6 +23,10 @@ def parse_git_remote_url(url: str) -> GitRemote | None:
     return None
 
 
+def is_git_repo(work_dir: Path) -> bool:
+    return (work_dir / ".git").is_dir()
+
+
 def parse_git_remote(work_dir: Path) -> GitRemote | None:
     try:
         run = run_and_wait("git remote get-url origin", cwd=work_dir)

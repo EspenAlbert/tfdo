@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 import typer
-from ask_shell._internal.interactive import select_list
-from ask_shell.shell import run_and_wait
+from ask_shell._internal.interactive import confirm, select_list
+from ask_shell.shell import ShellError, run_and_wait
 
 from tfdo._internal.config.config_file import load_config
 from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.config.provider_hints import ProviderHints, load_provider_hints
+from tfdo._internal.git_utils import is_git_repo
 from tfdo._internal.sync import sync_github as _sync_github_mod
 from tfdo._internal.sync import sync_justfile as _sync_justfile_mod
 from tfdo._internal.sync.sync_github import SyncGithubInput
@@ -17,6 +19,8 @@ from tfdo._internal.sync.sync_justfile import SyncJustfileInput
 from tfdo._internal.typer_app import app, get_settings
 
 logger = logging.getLogger(__name__)
+
+_GH_VISIBILITY_OPTIONS = ["private", "public"]
 
 sync_app = typer.Typer(help="Sync generated repo artifacts (justfile, GitHub workflows)")
 app.add_typer(sync_app, name="sync")
@@ -35,8 +39,27 @@ def justfile_cmd(ctx: typer.Context) -> None:
 
 
 def _detect_owner_repo() -> str:
-    result = run_and_wait("gh repo view --json nameWithOwner -q .nameWithOwner", skip_progress_output=True)
+    try:
+        result = run_and_wait("gh repo view --json nameWithOwner -q .nameWithOwner", skip_progress_output=True)
+    except ShellError:
+        return ""
     return result.stdout_one_line
+
+
+def _ensure_git_repo(work_dir: Path, config: TfDoConfig) -> None:
+    if is_git_repo(work_dir):
+        return
+    if not confirm("No git repository found. Initialize one?", default=True):
+        raise typer.Abort()
+    run_and_wait("git init", cwd=work_dir)
+    logger.info(f"initialized git repo in {work_dir}")
+    if not confirm("Create a GitHub repository?", default=True):
+        return
+    ci = config.ci
+    owner_repo_name = f"{ci.repo_org}/{ci.repo_name}" if ci and ci.repo_org and ci.repo_name else work_dir.name
+    visibility = select_list("Repository visibility", _GH_VISIBILITY_OPTIONS, default=_GH_VISIBILITY_OPTIONS[0])
+    run_and_wait(f"gh repo create {owner_repo_name} --source=. --push --{visibility}", cwd=work_dir)
+    logger.info(f"created GitHub repo: {owner_repo_name} ({visibility})")
 
 
 def _select_bundles(config: TfDoConfig, registry: dict[str, ProviderHints]) -> dict[str, str]:
@@ -68,6 +91,7 @@ def github_cmd(
     config = load_config(settings.work_dir) or TfDoConfig()
     registry = load_provider_hints(settings.resolved_provider_hints_path)
     selected_bundles = _select_bundles(config, registry)
+    _ensure_git_repo(settings.work_dir, config)
     owner_repo = _detect_owner_repo()
 
     env_names = [env] if env else [p.name for p in config.envs(settings.work_dir)]
