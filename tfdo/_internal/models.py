@@ -179,13 +179,20 @@ class DirCheckResult(BaseModel):
     fmt_files: list[str] = []
     validation_errors: list[str] = []
     tflint_issues: list[TflintIssue] = []
+    missing_tfvars: list[str] = []
     provider_result: RunDirProviderResult | None = None
     skipped: bool = False
 
     @property
     def has_issues(self) -> bool:
         provider_fail = self.provider_result is not None and not self.provider_result.is_ok
-        return bool(self.fmt_files) or bool(self.validation_errors) or bool(self.tflint_issues) or provider_fail
+        return (
+            bool(self.fmt_files)
+            or bool(self.validation_errors)
+            or bool(self.tflint_issues)
+            or bool(self.missing_tfvars)
+            or provider_fail
+        )
 
     def __lt__(self, other: Self) -> bool:
         if not isinstance(other, DirCheckResult):

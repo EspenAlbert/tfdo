@@ -12,8 +12,7 @@ from tfdo._internal.config.enums import EnvVarLoadMode
 from tfdo._internal.settings import TfDoSettings
 
 ENV_VARS_LOAD_KEY = "TFDO_ENV_VARS_LOAD"
-ENV_VARS_DIRS_KEY = "TFDO_ENV_VARS_DIRS"
-_ENV_VARS_SUBDIR = "env_vars"
+ENV_VARS_DIRS_KEY = TfDoSettings.ENV_NAME_ENV_VARS_DIRS
 
 
 class EnvVarMissingError(Exception):
@@ -28,13 +27,6 @@ class LoadResult(NamedTuple):
     merged: dict[str, str]
     loaded_paths: list[Path]
     reason: str
-
-
-def _search_dirs(env: Mapping[str, str], settings: TfDoSettings) -> list[Path]:
-    raw = env.get(ENV_VARS_DIRS_KEY)
-    if raw:
-        return [Path(p) for p in raw.split(":")]
-    return [settings.static_root / _ENV_VARS_SUBDIR]
 
 
 def _resolve_file(name: str, dirs: list[Path]) -> Path:
@@ -62,7 +54,7 @@ def load_env_vars(
         return LoadResult(merged={}, loaded_paths=[], reason="skip: CI detected")
 
     files = merge_env_var_files([], config)
-    dirs = _search_dirs(env, settings)
+    dirs = settings.resolve_env_vars_dirs()
     merged: dict[str, str] = {}
     loaded_paths: list[Path] = []
 

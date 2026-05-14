@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 ENV_PREFIX = "TFDO_"
 USER_CONFIG_FILENAME = "config.yaml"
 SCHEMA_CACHE_SUBDIR = "schemas"
+ENV_VARS_SUBDIR = "env_vars"
 
 
 class InteractiveMode(StrEnum):
@@ -65,6 +66,9 @@ class TfDoSettings(StaticSettings):
     ENV_NAME_PROVIDER_HINTS_PATH: ClassVar[str] = f"{ENV_PREFIX}PROVIDER_HINTS_PATH"
     provider_hints_path: Path | None = Field(default=None, alias=ENV_NAME_PROVIDER_HINTS_PATH)
 
+    ENV_NAME_ENV_VARS_DIRS: ClassVar[str] = f"{ENV_PREFIX}ENV_VARS_DIRS"
+    env_vars_dirs_raw: str | None = Field(default=None, alias=ENV_NAME_ENV_VARS_DIRS)
+
     @property
     def backends_dirs(self) -> list[Path]:
         if not self.backends_dirs_raw:
@@ -76,6 +80,17 @@ class TfDoSettings(StaticSettings):
         if self.provider_hints_path is not None:
             return self.provider_hints_path
         return Path(str(_importlib_files("tfdo._internal.config").joinpath("provider_hints.yaml")))
+
+    @property
+    def env_vars_dirs(self) -> list[Path]:
+        if not self.env_vars_dirs_raw:
+            return []
+        return [Path(p.strip()) for p in self.env_vars_dirs_raw.split(":") if p.strip()]
+
+    def resolve_env_vars_dirs(self) -> list[Path]:
+        if self.env_vars_dirs:
+            return self.env_vars_dirs
+        return [self.static_root / ENV_VARS_SUBDIR]
 
     @property
     def is_interactive(self) -> bool:

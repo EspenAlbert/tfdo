@@ -7,7 +7,6 @@ import pytest
 
 from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.config.env_var_loader import (
-    ENV_VARS_DIRS_KEY,
     ENV_VARS_LOAD_KEY,
     EnvVarMissingError,
     load_env_vars,
@@ -106,7 +105,8 @@ def test_custom_dirs_override(tmp_path: Path, settings: TfDoSettings, monkeypatc
     custom_dir.mkdir()
     (custom_dir / "creds.yaml").write_text("CUSTOM_KEY: custom-value\n")
     monkeypatch.delenv("CUSTOM_KEY", raising=False)
+    custom_settings = settings.model_copy(update={"env_vars_dirs_raw": str(custom_dir)})
 
-    result = load_env_vars(_config("creds.yaml"), settings, {ENV_VARS_DIRS_KEY: str(custom_dir)})
+    result = load_env_vars(_config("creds.yaml"), custom_settings, {})
 
     assert result.merged == {"CUSTOM_KEY": "custom-value"}

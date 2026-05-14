@@ -5,9 +5,11 @@ from pathlib import Path
 from typing import NamedTuple
 
 import yaml
+from model_lib.serialize.parse import parse_dict
 from zero_3rdparty.file_utils import find_repo_root
 
 from tfdo._internal.config.config_model import TfDoConfig
+from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
 
@@ -46,3 +48,47 @@ def load_config_layers(work_dir: Path) -> list[ConfigLayer]:
             break
         current = current.parent
     return layers
+
+
+def resolve_var_file_paths(work_dir: Path, include_default_tfvars: bool = True) -> list[Path]:
+    paths: list[Path] = [work_dir / "terraform.tfvars"] if include_default_tfvars else []
+    for layer in reversed(load_config_layers(work_dir)):
+        for var_file in layer.config.var_files:
+            path = Path(var_file)
+            if not path.is_absolute():
+                path = layer.path.parent / path
+            paths.append(path)
+    return list(dict.fromkeys(paths))
+
+
+def resolve_env_var_file_names(work_dir: Path) -> list[str]:
+    env_file_names: list[str] = []
+    for layer in reversed(load_config_layers(work_dir)):
+        env_file_names.extend(layer.config.env_var_files)
+    return env_file_names
+
+
+def load_optional_env_vars_from_files(
+    work_dir: Path,
+    settings: TfDoSettings,
+    *,
+    log: logging.Logger | None = None,
+) -> dict[str, str]:
+    active_log = log or logger
+    env_file_names = resolve_env_var_file_names(work_dir)
+    env_dirs = settings.resolve_env_vars_dirs()
+    loaded: dict[str, str] = {}
+    for env_file_name in env_file_names:
+        env_file_path = next(
+            (directory / env_file_name for directory in env_dirs if (directory / env_file_name).is_file()), None
+        )
+        if env_file_path is None:
+            active_log.warning(f"env-var file not found while checking tfvars: {env_file_name}")
+            continue
+        try:
+            file_values = {key: str(value) for key, value in parse_dict(env_file_path).items()}
+        except Exception as exc:
+            active_log.warning(f"failed to parse env-var file {env_file_path}: {exc}")
+            continue
+        loaded.update(file_values)
+    return loaded

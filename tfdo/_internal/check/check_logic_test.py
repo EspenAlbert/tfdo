@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from ask_shell.shell import ShellRun
 from typer.testing import CliRunner
+from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal import settings as settings_mod
 from tfdo._internal.check import check_logic
@@ -200,6 +201,45 @@ def test_check_validation_errors(tmp_path: Path):
         result = check(CheckInput(settings=settings))
     assert result.exit_code == 1
     assert len(result.total_validation_errors) == 2
+
+
+def test_check_reports_missing_tfvars(tmp_path: Path):
+    ensure_parents_write_text(
+        tmp_path / "variables.tf",
+        'variable "org_id" {}\nvariable "base_url" {}\n',
+    )
+    ensure_parents_write_text(tmp_path / "terraform.tfvars", 'org_id = "org-123"\n')
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings))
+    assert result.exit_code == 1
+    assert result.dir_results[0].missing_tfvars == ["base_url"]
+
+
+def test_check_tfvars_satisfied_by_var_file_and_env_file(tmp_path: Path):
+    ensure_parents_write_text(
+        tmp_path / "variables.tf",
+        'variable "org_id" {}\nvariable "base_url" {}\n',
+    )
+    ensure_parents_write_text(
+        tmp_path / "tfdo.yaml",
+        "var_files:\n  - custom.tfvars\nenv_var_files:\n  - tf-vars.yaml\n",
+    )
+    ensure_parents_write_text(tmp_path / "custom.tfvars", 'org_id = "org-123"\n')
+    settings = _make_settings(tmp_path)
+    env_dir = settings.static_root / "env_vars"
+    env_dir.mkdir(parents=True, exist_ok=True)
+    ensure_parents_write_text(env_dir / "tf-vars.yaml", 'TF_VAR_base_url: "https://example.com"\n')
+    (tmp_path / ".terraform").mkdir()
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings))
+    assert result.exit_code == 0
+    assert result.dir_results[0].missing_tfvars == []
 
 
 def test_check_skips_uninitialized_dir_never_mode(tmp_path: Path):

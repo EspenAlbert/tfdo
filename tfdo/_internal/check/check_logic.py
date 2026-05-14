@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+from collections.abc import Mapping
 from pathlib import Path
 from typing import NamedTuple
 
@@ -11,9 +12,14 @@ from ask_shell.shell import run_and_wait
 
 from tfdo._internal.check.check_run_dir import check_run_dir
 from tfdo._internal.check.models import CheckResult as RunDirProviderResult
+from tfdo._internal.config.config_file import (
+    load_optional_env_vars_from_files,
+    resolve_var_file_paths,
+)
 from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
 from tfdo._internal.core.tf_files import TERRAFORM_DIR, find_tf_directories
+from tfdo._internal.hcl_compat import hcl2_load
 from tfdo._internal.models import (
     CheckInput,
     CheckResult,
@@ -58,6 +64,7 @@ class _DirRunResult(NamedTuple):
     fmt: _FmtResult
     validation_errors: list[str]
     tflint_issues: list[TflintIssue]
+    missing_tfvars: list[str]
     skipped: bool
     provider_result: RunDirProviderResult | None = None
 
@@ -106,6 +113,61 @@ def _ensure_initialized(tf_dir: Path, mode: InitMode, settings: TfDoSettings) ->
     return True
 
 
+def _required_tf_vars(tf_dir: Path) -> set[str]:
+    required: set[str] = set()
+    for tf_file in sorted(tf_dir.glob("*.tf")):
+        try:
+            with tf_file.open() as file_handle:
+                parsed = hcl2_load(file_handle)
+        except Exception as exc:
+            logger.warning(f"failed to parse variables from {tf_file}: {exc}")
+            continue
+        for block in parsed.get("variable", []):
+            if not isinstance(block, dict):
+                continue
+            for name, attrs in block.items():
+                if not isinstance(attrs, dict) or "default" not in attrs:
+                    required.add(name)
+    return required
+
+
+def _tf_var_name(key: str) -> str:
+    return key.removeprefix("TF_VAR_")
+
+
+def _collect_env_tf_vars(tf_dir: Path, settings: TfDoSettings, os_env: Mapping[str, str]) -> set[str]:
+    provided: set[str] = {_tf_var_name(name) for name in os_env if name.startswith("TF_VAR_") and _tf_var_name(name)}
+    loaded_env_vars = load_optional_env_vars_from_files(tf_dir, settings, log=logger)
+    for key in loaded_env_vars:
+        if key.startswith("TF_VAR_"):
+            provided.add(_tf_var_name(key))
+    return provided
+
+
+def _provided_tf_vars(tf_dir: Path, settings: TfDoSettings, os_env: Mapping[str, str]) -> set[str]:
+    provided: set[str] = set()
+    for var_file_path in resolve_var_file_paths(tf_dir):
+        if not var_file_path.is_file():
+            continue
+        try:
+            with var_file_path.open() as file_handle:
+                parsed = hcl2_load(file_handle)
+        except Exception as exc:
+            logger.warning(f"failed to parse tfvars file {var_file_path}: {exc}")
+            continue
+        provided.update(str(key) for key in parsed)
+    provided.update(_collect_env_tf_vars(tf_dir, settings, os_env))
+    return provided
+
+
+def _missing_tf_vars(tf_dir: Path, settings: TfDoSettings, os_env: Mapping[str, str]) -> list[str]:
+    required = _required_tf_vars(tf_dir)
+    if not required:
+        return []
+    provided = _provided_tf_vars(tf_dir, settings, os_env)
+    return sorted(required - provided)
+
+
 def _check_directory(
     tf_dir: Path,
     resolved_binary: str,
@@ -118,8 +180,15 @@ def _check_directory(
     os_env: dict[str, str] | None = None,
 ) -> _DirRunResult:
     fmt = _run_fmt(resolved_binary, tf_dir, fix, diff)
+    missing_tfvars = _missing_tf_vars(tf_dir, settings, os_env or os.environ)
     if not _ensure_initialized(tf_dir, init_mode, settings):
-        return _DirRunResult(fmt=fmt, validation_errors=[], tflint_issues=[], skipped=True)
+        return _DirRunResult(
+            fmt=fmt,
+            validation_errors=[],
+            tflint_issues=[],
+            missing_tfvars=missing_tfvars,
+            skipped=True,
+        )
     errors = _run_validate(resolved_binary, tf_dir)
     tflint_issues = _run_tflint(tf_dir) if run_tflint else []
     provider_result: RunDirProviderResult | None = None
@@ -134,6 +203,7 @@ def _check_directory(
         fmt=fmt,
         validation_errors=errors,
         tflint_issues=tflint_issues,
+        missing_tfvars=missing_tfvars,
         skipped=False,
         provider_result=provider_result,
     )
@@ -186,6 +256,7 @@ def check(input_model: CheckInput) -> CheckResult:
             fmt_files=run_result.fmt.files,
             validation_errors=run_result.validation_errors,
             tflint_issues=run_result.tflint_issues,
+            missing_tfvars=run_result.missing_tfvars,
             provider_result=run_result.provider_result,
             skipped=run_result.skipped,
         )
@@ -195,7 +266,8 @@ def check(input_model: CheckInput) -> CheckResult:
     has_fmt_issues = any(d.fmt_files for d in dir_results) and not input_model.fix
     has_errors = any(d.validation_errors for d in dir_results)
     has_tflint = any(d.tflint_issues for d in dir_results)
+    has_missing_tfvars = any(d.missing_tfvars for d in dir_results)
     has_provider_failures = any(d.provider_result is not None and not d.provider_result.is_ok for d in dir_results)
-    exit_code = 1 if has_fmt_issues or has_errors or has_tflint or has_provider_failures else 0
+    exit_code = 1 if has_fmt_issues or has_errors or has_tflint or has_missing_tfvars or has_provider_failures else 0
 
     return CheckResult(exit_code=exit_code, dir_results=dir_results)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import typer
 
@@ -32,6 +33,8 @@ def _log_dir_issues(dr: DirCheckResult) -> None:
         logger.error(f"    validate: {err}")
     for issue in dr.tflint_issues:
         logger.error(f"    tflint: {issue.display}")
+    if dr.missing_tfvars:
+        logger.error(f"    tfvars: missing {', '.join(dr.missing_tfvars)}")
     if dr.provider_result is not None:
         for p in dr.provider_result.providers:
             _log_provider(p)
@@ -52,6 +55,8 @@ def _log_dir(dr: DirCheckResult) -> None:
         issues.append(f"{len(dr.validation_errors)} validate")
     if dr.tflint_issues:
         issues.append(f"{len(dr.tflint_issues)} tflint")
+    if dr.missing_tfvars:
+        issues.append(f"{len(dr.missing_tfvars)} tfvars")
     if dr.provider_result is not None and not dr.provider_result.is_ok:
         issues.append("providers")
     logger.error(f"  {d}: {', '.join(issues)}")
@@ -64,6 +69,7 @@ def _log_result(result: CheckResult) -> None:
     fmt = len(result.total_fmt_files)
     errors = len(result.total_validation_errors)
     tflint = len(result.total_tflint_issues)
+    tfvars = sum(len(dr.missing_tfvars) for dr in result.dir_results)
     provider_failures = result.total_provider_failures
     skipped = len(result.directories_skipped)
     parts = [f"{result.directories_checked} checked"]
@@ -73,12 +79,26 @@ def _log_result(result: CheckResult) -> None:
         parts.append(f"{errors} validation errors")
     if tflint:
         parts.append(f"{tflint} tflint issues")
+    if tfvars:
+        parts.append(f"{tfvars} missing tfvars")
     if provider_failures:
         parts.append(f"{provider_failures} provider issues")
     if skipped:
         parts.append(f"{skipped} skipped")
     log = logger.error if result.exit_code else logger.info
     log(f"check: {', '.join(parts)}")
+
+
+def _log_next_steps(work_dir: Path) -> None:
+    missing_justfile = not (work_dir / "justfile").is_file()
+    missing_workflows = not (work_dir / ".github" / "workflows").is_dir()
+    if not missing_justfile and not missing_workflows:
+        return
+    logger.info("Next steps:")
+    if missing_justfile:
+        logger.info("  run 'tfdo sync justfile' to generate build targets")
+    if missing_workflows:
+        logger.info("  run 'tfdo sync github' to scaffold CI workflows and sync secrets")
 
 
 @app.command("check")
@@ -110,4 +130,5 @@ def check_cmd(
     )
     result = check_logic.check(input_model)
     _log_result(result)
+    _log_next_steps(settings.work_dir)
     raise typer.Exit(result.exit_code)
