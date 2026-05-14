@@ -27,6 +27,7 @@ class UnknownProviderError(ProviderHintsError):
 class VariableMapping(BaseModel):
     env: str
     tf_var: str
+    provider_attr: str | None = None
 
 
 class ModuleHint(BaseModel):

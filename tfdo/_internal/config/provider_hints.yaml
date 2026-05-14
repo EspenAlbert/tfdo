@@ -17,6 +17,9 @@ mongodbatlas:
       tf_var: org_id
     - env: MONGODB_ATLAS_PROJECT_ID
       tf_var: project_id
+    - env: MONGODB_ATLAS_BASE_URL
+      tf_var: base_url
+      provider_attr: base_url
 
 aws:
   source: hashicorp/aws
