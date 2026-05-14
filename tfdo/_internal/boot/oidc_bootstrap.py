@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from pathlib import Path
 
 from ask_shell.shell import ShellError, run_and_wait
@@ -10,25 +9,11 @@ from ask_shell.shell import ShellError, run_and_wait
 logger = logging.getLogger(__name__)
 
 _GITHUB_ACTIONS_URL = "https://token.actions.githubusercontent.com"
+# GitHub's intermediate CA thumbprint required by the AWS OIDC provider API.
+# AWS validates certificates directly since 2023, so this value is not
+# security-sensitive, but the field remains mandatory. Update if GitHub rotates their CA.
 _GITHUB_THUMBPRINT = "6938fd4d98bab03faadb97b34396831e3780aea1"
 _ENTITY_ALREADY_EXISTS = "EntityAlreadyExists"
-
-_REMOTE_PATTERNS = [
-    re.compile(r"git@github\.com:(?P<org>[^/]+)/(?P<repo>.+?)(?:\.git)?$"),
-    re.compile(r"https://github\.com/(?P<org>[^/]+)/(?P<repo>.+?)(?:\.git)?$"),
-]
-
-
-def parse_github_remote(work_dir: Path) -> tuple[str, str] | None:
-    try:
-        run = run_and_wait("git remote get-url origin", cwd=work_dir)
-    except ShellError:
-        return None
-    url = run.stdout_one_line
-    for pattern in _REMOTE_PATTERNS:
-        if m := pattern.match(url):
-            return m.group("org"), m.group("repo")
-    return None
 
 
 def provision_oidc_provider(account_id: str) -> str:

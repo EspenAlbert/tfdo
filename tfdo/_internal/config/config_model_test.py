@@ -34,7 +34,7 @@ def test_full_config_from_dict():
     assert cfg.tags == {"env": "staging", "team": "infra"}
     assert isinstance(cfg.backend, S3Backend)
     assert cfg.hook_configs[0].lifecycle_events == [LifecycleEvent.PLAN_BEFORE]
-    assert cfg.dependencies[0].outputs
+    assert cfg.dependencies[0].outputs == {}
 
 
 def test_minimal_config():
@@ -119,7 +119,8 @@ def test_hook_config_valid():
 
 def test_dependency_ref_defaults():
     d = DependencyRef(ref="../vpc")
-    assert d.outputs
+    assert d.outputs == {}
+    assert d.outputs_mock == {}
 
 
 def _cfg(*providers: tuple[str, str | None]) -> TfDoConfig:

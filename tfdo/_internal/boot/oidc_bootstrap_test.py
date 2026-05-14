@@ -7,15 +7,16 @@ from unittest.mock import MagicMock, patch
 import pytest
 from ask_shell.shell import ShellError
 
+from tfdo._internal import git_utils
 from tfdo._internal.boot import oidc_bootstrap
 from tfdo._internal.boot.oidc_bootstrap import (
     _ENTITY_ALREADY_EXISTS,
     _GITHUB_ACTIONS_URL,
     _GITHUB_THUMBPRINT,
-    parse_github_remote,
     provision_oidc_provider,
     provision_oidc_role,
 )
+from tfdo._internal.git_utils import GitRemote, parse_git_remote
 
 _MODULE = oidc_bootstrap.__name__
 _ACCOUNT_ID = "123456789012"
@@ -112,13 +113,13 @@ def test_provision_oidc_role_skips_create_when_entity_exists() -> None:
 @pytest.mark.parametrize(
     "url,expected",
     [
-        ("git@github.com:myorg/myrepo.git", ("myorg", "myrepo")),
-        ("https://github.com/myorg/myrepo.git", ("myorg", "myrepo")),
-        ("https://github.com/myorg/myrepo", ("myorg", "myrepo")),
+        ("git@github.com:myorg/myrepo.git", GitRemote("myorg", "myrepo")),
+        ("https://github.com/myorg/myrepo.git", GitRemote("myorg", "myrepo")),
+        ("https://github.com/myorg/myrepo", GitRemote("myorg", "myrepo")),
     ],
 )
-def test_parse_github_remote(url: str, expected: tuple[str, str], tmp_path: Path) -> None:
+def test_parse_git_remote(url: str, expected: GitRemote, tmp_path: Path) -> None:
     run = MagicMock()
     run.stdout_one_line = url
-    with patch(f"{_MODULE}.run_and_wait", return_value=run):
-        assert parse_github_remote(tmp_path) == expected
+    with patch(f"{git_utils.__name__}.run_and_wait", return_value=run):
+        assert parse_git_remote(tmp_path) == expected

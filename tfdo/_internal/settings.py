@@ -29,6 +29,8 @@ class InteractiveMode(StrEnum):
 class TfDoSettings(StaticSettings):
     model_config = ConfigDict(populate_by_name=True)  # type: ignore
 
+    DEP_TFVARS_SUFFIX: ClassVar[str] = ".dep.tfvars.json"
+
     ENV_NAME_BINARY: ClassVar[str] = f"{ENV_PREFIX}BINARY"
     binary: str = Field(
         default="terraform",

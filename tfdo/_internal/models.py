@@ -89,6 +89,17 @@ class CheckInput(TfDoBaseInput):
     skip_check_providers: bool = False
 
 
+class OutputInput(TfDoBaseInput):
+    state: Path | None = None
+    name: str | None = None
+
+
+class OutputResult(BaseModel):
+    exit_code: int
+    outputs: dict[str, object] = Field(default_factory=dict)
+    stderr: str | None = None
+
+
 class InitResult(BaseModel):
     exit_code: int
     attempts_used: int

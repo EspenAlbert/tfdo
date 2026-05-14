@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,12 +11,17 @@ from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
 from tfdo._internal.config.enums import HookOnError, LifecycleEvent, TagsInject
 from tfdo._internal.core import executor
+from tfdo._internal.git_utils import GitRemote
+from tfdo._internal.git_utils import parse_git_remote_url as _parse_git_remote_url
 from tfdo._internal.hooks.models import ExitEvent, HookSource
 from tfdo._internal.hooks.registry import HookRegistry
-from tfdo._internal.models import PlanInput, PlanResult
+from tfdo._internal.models import OutputResult, PlanInput, PlanResult
 from tfdo._internal.run.discovery import DiscoveredRunDir
 from tfdo._internal.run.orchestration import (
+    DEP_TFVARS_SUFFIX,
     DependencyGraph,
+    ExecutionPlan,
+    ExecutionWave,
     FailureMode,
     LifecycleCommand,
     OrchestrationResult,
@@ -27,7 +33,6 @@ from tfdo._internal.run.orchestration import (
     _execute_wave_sequential,
     _fire_on_all_done,
     _include_dependency_targets,
-    _parse_git_remote_url,
     _resolve_ref,
     build_dependency_graph,
     prepare_run_dir,
@@ -386,15 +391,15 @@ def test_before_hook_abort_fires_on_error(tmp_path: Path):
 
 
 def test_parse_git_remote_url_https():
-    assert _parse_git_remote_url("https://github.com/Owner/Repo.git") == ("Owner", "Repo")
+    assert _parse_git_remote_url("https://github.com/Owner/Repo.git") == GitRemote("Owner", "Repo")
 
 
 def test_parse_git_remote_url_ssh():
-    assert _parse_git_remote_url("git@github.com:Owner/Repo.git") == ("Owner", "Repo")
+    assert _parse_git_remote_url("git@github.com:Owner/Repo.git") == GitRemote("Owner", "Repo")
 
 
 def test_parse_git_remote_url_https_no_suffix():
-    assert _parse_git_remote_url("https://github.com/Owner/Repo") == ("Owner", "Repo")
+    assert _parse_git_remote_url("https://github.com/Owner/Repo") == GitRemote("Owner", "Repo")
 
 
 def test_parse_git_remote_url_fallback():
@@ -571,3 +576,159 @@ def test_on_all_done_fires_after_execution(tmp_path: Path):
         run_orchestration(inp)
 
     assert fire_mock.call_count == 1
+
+
+def test_execution_plan_reversed():
+    plan = ExecutionPlan(
+        waves=[
+            ExecutionWave(wave_index=0, run_dirs=["a"]),
+            ExecutionWave(wave_index=1, run_dirs=["b"]),
+            ExecutionWave(wave_index=2, run_dirs=["c"]),
+        ]
+    )
+    rev = plan.reversed()
+    assert [w.run_dirs for w in rev.waves] == [["c"], ["b"], ["a"]]
+    assert [w.wave_index for w in rev.waves] == [0, 1, 2]
+
+
+def test_destroy_reverses_dependency_order(tmp_path: Path):
+    _setup_repo(
+        tmp_path,
+        ["envs/dev/project", "envs/dev/cluster"],
+        "envs/{env}/{app}",
+        configs={"envs/dev/cluster": {"dependencies": [{"ref": "project"}]}},
+    )
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.DESTROY, dry_run=True)
+    result = run_orchestration(inp)
+    dirs = [r.run_dir for r in result.results]
+    assert dirs.index("envs/dev/cluster") < dirs.index("envs/dev/project")
+
+
+def test_output_injection_writes_dep_tfvars(tmp_path: Path):
+    _setup_repo(
+        tmp_path,
+        ["envs/dev/project", "envs/dev/cluster"],
+        "envs/{env}/{app}",
+        configs={
+            "envs/dev/cluster": {
+                "dependencies": [{"ref": "project", "outputs": {"id": "project_id"}}],
+            },
+        },
+    )
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
+
+    executor_module = executor.__name__
+    with (
+        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
+        patch(
+            f"{executor_module}.{executor.output_json.__name__}",
+            return_value=OutputResult(exit_code=0, outputs={"id": "proj-123"}),
+        ),
+    ):
+        result = run_orchestration(inp)
+
+    assert result.exit_code == 0
+    dep_file = tmp_path / "envs" / "dev" / "cluster" / f"project{DEP_TFVARS_SUFFIX}"
+    assert dep_file.exists()
+    content = json.loads(dep_file.read_text())
+    assert content == {"project_id": "proj-123"}
+
+
+def test_output_mock_fallback_on_plan(tmp_path: Path):
+    _setup_repo(
+        tmp_path,
+        ["envs/dev/project", "envs/dev/cluster"],
+        "envs/{env}/{app}",
+        configs={
+            "envs/dev/cluster": {
+                "dependencies": [
+                    {
+                        "ref": "project",
+                        "outputs": {"id": "project_id"},
+                        "outputs_mock": {"id": "mock-proj-id"},
+                    }
+                ],
+            },
+        },
+    )
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
+
+    executor_module = executor.__name__
+    with (
+        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
+        patch(
+            f"{executor_module}.{executor.output_json.__name__}",
+            return_value=OutputResult(exit_code=1, stderr="no state"),
+        ),
+    ):
+        result = run_orchestration(inp)
+
+    assert result.exit_code == 0
+    dep_file = tmp_path / "envs" / "dev" / "cluster" / f"project{DEP_TFVARS_SUFFIX}"
+    assert dep_file.exists()
+    content = json.loads(dep_file.read_text())
+    assert content == {"project_id": "mock-proj-id"}
+
+
+def test_plan_skips_dependent_when_no_outputs_and_no_mock(tmp_path: Path):
+    _setup_repo(
+        tmp_path,
+        ["envs/dev/project", "envs/dev/cluster"],
+        "envs/{env}/{app}",
+        configs={
+            "envs/dev/cluster": {
+                "dependencies": [{"ref": "project", "outputs": {"id": "project_id"}}],
+            },
+        },
+    )
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
+
+    executor_module = executor.__name__
+    with (
+        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
+        patch(
+            f"{executor_module}.{executor.output_json.__name__}",
+            return_value=OutputResult(exit_code=1, stderr="no state"),
+        ),
+    ):
+        result = run_orchestration(inp)
+
+    cluster_result = next(r for r in result.results if r.run_dir == "envs/dev/cluster")
+    assert cluster_result.skipped
+
+
+def test_destroy_injects_pre_collected_outputs(tmp_path: Path):
+    _setup_repo(
+        tmp_path,
+        ["envs/dev/project", "envs/dev/cluster"],
+        "envs/{env}/{app}",
+        configs={
+            "envs/dev/cluster": {
+                "dependencies": [{"ref": "project", "outputs": {"id": "project_id"}}],
+            },
+        },
+    )
+    settings = TfDoSettings(work_dir=tmp_path)
+    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.DESTROY, auto_approve=True, parallel=1)
+
+    executor_module = executor.__name__
+    with (
+        patch(f"{executor_module}.{executor.destroy.__name__}", return_value=PlanResult(exit_code=0)),
+        patch(
+            f"{executor_module}.{executor.output_json.__name__}",
+            return_value=OutputResult(exit_code=0, outputs={"id": "proj-123"}),
+        ),
+    ):
+        result = run_orchestration(inp)
+
+    assert result.exit_code == 0
+    dep_file = tmp_path / "envs" / "dev" / "cluster" / f"project{DEP_TFVARS_SUFFIX}"
+    assert dep_file.exists()
+    content = json.loads(dep_file.read_text())
+    assert content == {"project_id": "proj-123"}
+    dirs = [r.run_dir for r in result.results]
+    assert dirs.index("envs/dev/cluster") < dirs.index("envs/dev/project")

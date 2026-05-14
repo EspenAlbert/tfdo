@@ -98,7 +98,8 @@ class HookConfig(BaseModel):
 
 class DependencyRef(BaseModel):
     ref: str
-    outputs: bool = True
+    outputs: dict[str, str] = Field(default_factory=dict)
+    outputs_mock: dict[str, str] = Field(default_factory=dict)
 
 
 _LOCAL_SOURCE_PREFIXES = ("./", "../", "/")

@@ -10,13 +10,14 @@ from ask_shell.shell import run_and_wait
 from pydantic import BaseModel, ConfigDict, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
-from tfdo._internal.boot.oidc_bootstrap import parse_github_remote, provision_oidc_provider, provision_oidc_role
+from tfdo._internal.boot.oidc_bootstrap import provision_oidc_provider, provision_oidc_role
 from tfdo._internal.boot.s3_bootstrap import check_tf_version, provision_s3_bucket
 from tfdo._internal.cache import module_cache
 from tfdo._internal.cache.module_cache import UNRESOLVED
 from tfdo._internal.config.config_file import CONFIG_FILENAME
 from tfdo._internal.config.config_model import ModuleConstraint, ProviderConstraint, S3Backend
 from tfdo._internal.config.provider_hints import ModuleHint, ProviderHints, load_provider_hints
+from tfdo._internal.git_utils import parse_git_remote
 from tfdo._internal.models import TfDoBaseInput
 from tfdo._internal.new.backend_bootstrap import DEFAULT_KEY_TEMPLATE
 from tfdo._internal.settings import TfDoSettings
@@ -40,6 +41,7 @@ _TFDO_GITIGNORE_LINES = [
     "*.tfstate",
     "*.tfstate.backup",
     ".terraform.tfstate.lock.info",
+    f"*{TfDoSettings.DEP_TFVARS_SUFFIX}",
 ]
 
 
@@ -146,10 +148,9 @@ def _run_oidc_wizard(input_model: TfdoBootInput) -> dict[str, str]:
 
     provision_oidc_provider(account_id)
 
-    remote = parse_github_remote(work_dir)
-    default_org, default_repo = remote or ("", "")
-    org = text("GitHub org", default=default_org)
-    repo = text("GitHub repo", default=default_repo)
+    remote = parse_git_remote(work_dir)
+    org = text("GitHub org", default=remote.org if remote else "")
+    repo = text("GitHub repo", default=remote.repo if remote else "")
 
     envs_dir = work_dir / "envs"
     env_names = sorted(d.name for d in envs_dir.iterdir() if d.is_dir()) if envs_dir.is_dir() else []

@@ -14,13 +14,24 @@ from tfdo._internal.core.executor import (
     _is_checksum_error,
     _is_transient,
     _needs_init,
+    _parse_tf_outputs,
     apply,
     destroy,
     init,
+    output_json,
     plan,
     terraform_init_should_retry,
 )
-from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, InitResult, PlanInput, PlanResult
+from tfdo._internal.models import (
+    ApplyInput,
+    DestroyInput,
+    InitInput,
+    InitMode,
+    InitResult,
+    OutputInput,
+    PlanInput,
+    PlanResult,
+)
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 module_name = init.__module__
@@ -407,3 +418,45 @@ def test_auto_init_uses_backend_args(tmp_path: Path):
     assert result.exit_code == 0
     assert len(init_calls) == 1
     assert init_calls[0].backend_args == backend_args
+
+
+# --- output_json tests ---
+
+
+def test_parse_tf_outputs():
+    raw = {
+        "id": {"value": "abc123", "type": "string"},
+        "name": {"value": "my-project", "type": "string"},
+    }
+    assert _parse_tf_outputs(raw) == {"id": "abc123", "name": "my-project"}
+    assert _parse_tf_outputs({}) == {}
+
+
+def test_output_json_success(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    tf_output = '{"id": {"value": "abc123", "type": "string"}}'
+    run = _mock_run(exit_code=0, stdout=tf_output)
+    run.stdout_one_line = tf_output
+    with patch(_patch_run, return_value=run):
+        result = output_json(OutputInput(settings=settings))
+    assert result.exit_code == 0
+    assert result.outputs == {"id": "abc123"}
+
+
+def test_output_json_failure(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=1, stderr="No state file found")
+    with patch(_patch_run, return_value=run):
+        result = output_json(OutputInput(settings=settings))
+    assert result.exit_code == 1
+
+
+def test_output_json_with_state_path(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    tf_output = '{"id": {"value": "abc123", "type": "string"}}'
+    run = _mock_run(exit_code=0, stdout=tf_output)
+    run.stdout_one_line = tf_output
+    with patch(_patch_run, return_value=run) as mock_raw:
+        output_json(OutputInput(settings=settings, state=Path("custom.tfstate")))
+    cmd = mock_raw.call_args[0][0]
+    assert "-state=custom.tfstate" in cmd
