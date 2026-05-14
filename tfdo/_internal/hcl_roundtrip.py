@@ -324,10 +324,18 @@ def delete_terraform_block(original: str) -> str:
     return _delete_block(original, ("terraform",))
 
 
-def update_required_providers(original: str, providers: dict[str, dict[str, Any]]) -> str:
+def update_required_providers(
+    original: str,
+    providers: dict[str, dict[str, Any]],
+    *,
+    required_version: str | None = None,
+) -> str:
     doc = hcl2.loads(original)
     terraform_attrs = copy.deepcopy(_find_terraform_attrs(doc)) or {}
     terraform_attrs.pop(_BLOCK_MARKER, None)
+
+    if required_version is not None:
+        terraform_attrs["required_version"] = _to_hcl_string(required_version)
 
     required_providers = terraform_attrs.get("required_providers")
     provider_block: dict[str, Any]

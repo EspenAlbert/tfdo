@@ -290,6 +290,36 @@ def test_update_required_providers_repeat_apply_is_stable() -> None:
     assert once == twice
 
 
+def test_update_required_providers_with_required_version() -> None:
+    output = hcl_roundtrip.update_required_providers(
+        "",
+        providers={"mongodbatlas": {"source": "mongodb/mongodbatlas", "version": "~> 2.0"}},
+        required_version=">= 1.12",
+    )
+    assert 'required_version = ">= 1.12"' in output
+    assert "mongodb/mongodbatlas" in output
+    assert "required_providers {" in output
+
+
+def test_update_required_providers_preserves_existing_required_version() -> None:
+    fixture = """terraform {
+  required_providers {
+    mongodbatlas = {
+      source  = "mongodb/mongodbatlas"
+      version = "~> 2.8"
+    }
+  }
+  required_version = ">= 1.10"
+}
+"""
+    output = hcl_roundtrip.update_required_providers(
+        fixture,
+        providers={"aws": {"source": "hashicorp/aws"}},
+    )
+    assert 'required_version = ">= 1.10"' in output
+    assert "hashicorp/aws" in output
+
+
 def test_remove_required_providers_removes_only_target_provider() -> None:
     fixture = hcl_roundtrip.update_required_providers(
         _BASE_FIXTURE,
@@ -480,3 +510,57 @@ def test_backend_round_trip_add_update_remove_is_stable() -> None:
     assert 'backend "s3"' not in after_remove
     assert "required_providers {" in after_remove
     assert "# user comment preserved" in after_remove
+
+
+_COMPLEX_MODULE_FIXTURE = """\
+module "cluster" {
+  source = "../.."
+
+  name         = "single-region"
+  project_id   = var.project_id
+  cluster_type = "SHARDED"
+  regions = [
+    {
+      name          = "US_EAST_1"
+      node_count    = 3
+      provider_name = "AWS"
+      shard_number  = 1
+    }
+  ]
+  tags = var.tags
+}
+
+output "cluster" {
+  value = module.cluster
+}
+"""
+
+
+def test_read_module_block_values_handles_nested_list_of_objects() -> None:
+    values = hcl_roundtrip.read_module_block_values(_COMPLEX_MODULE_FIXTURE, module_name="cluster")
+    assert "regions" in values
+    regions = values["regions"]
+    assert isinstance(regions, list)
+    assert len(regions) == 1
+    region = regions[0]
+    assert isinstance(region, dict)
+    assert region["name"] == hcl_roundtrip.HclLiteral(value="US_EAST_1")
+    assert region["node_count"] == hcl_roundtrip.HclLiteral(value=3)
+
+
+def test_hcl_value_str_roundtrip_nested_list_of_objects() -> None:
+    from tfdo._internal.new.new_run_dir import _hcl_value_str
+
+    values = hcl_roundtrip.read_module_block_values(_COMPLEX_MODULE_FIXTURE, module_name="cluster")
+    rendered_lines = ['module "cluster" {', '  source = "../.."']
+    for name, val in values.items():
+        if name == "source":
+            continue
+        rendered_lines.append(f"  {name} = {_hcl_value_str(val)}")
+    rendered_lines.append("}")
+    rendered = "\n".join(rendered_lines)
+
+    parsed = hcl2.loads(rendered)
+    module_block = next(iter(parsed["module"][0].values()))
+    assert module_block["regions"][0]["name"] == '"US_EAST_1"'
+    assert module_block["regions"][0]["node_count"] == 3
