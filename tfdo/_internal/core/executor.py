@@ -103,6 +103,7 @@ def init(input_model: InitInput) -> InitResult:
         cwd=settings.work_dir,
         env=input_model.env,
         allow_non_zero_exit=True,
+        ansi_content=True,
         skip_binary_check=True,
         retry_initial_wait=5,
         retry_max_wait=60,
@@ -155,6 +156,7 @@ def _run_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, result_cl
             cmd,
             cwd=settings.work_dir,
             allow_non_zero_exit=True,
+            ansi_content=True,
             skip_binary_check=True,
             user_input=settings.is_interactive,
         )
@@ -252,6 +254,7 @@ def output_json(input_model: OutputInput) -> OutputResult:
             cmd,
             cwd=settings.work_dir,
             allow_non_zero_exit=True,
+            ansi_content=True,
             skip_binary_check=True,
         )
         if run.exit_code and run.exit_code != 0:
