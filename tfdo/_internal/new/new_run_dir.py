@@ -97,6 +97,8 @@ def _render_module_call(label: str, source: str, version: str | None, attrs: dic
     if version:
         lines.append(f'  version = "{version}"')
     for name, val in attrs.items():
+        if name.startswith("__"):
+            continue
         lines.append(f"  {name} = {_hcl_value_str(val)}")
     lines.append("}")
     return "\n".join(lines)
@@ -178,6 +180,8 @@ def _module_config_to_patch_map(m: ModuleRunDirConfig) -> dict[str, str]:
     if m.version:
         raw["version"] = f'"{m.version}"'
     for name, val in m.attrs.items():
+        if name.startswith("__"):
+            continue
         raw[name] = hcl_value_to_attr_raw(val)
     return {k: hcl_roundtrip.module_attr_raw_to_patch_rhs(v) for k, v in raw.items()}
 
@@ -222,10 +226,22 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
     user_promotions = [p for p in all_promotions if p.tf_var_name not in dep_var_names_set]
     dep_promotions = [p for p in all_promotions if p.tf_var_name in dep_var_names_set]
 
-    if all_promotions or dep_only_vars:
+    covered_var_names = {p.tf_var_name for p in all_promotions} | dep_var_names_set
+    passthrough_var_names = sorted(
+        {
+            val.path.removeprefix("var.")
+            for m in input_model.module_configs
+            for val in m.attrs.values()
+            if isinstance(val, HclVarRef) and val.path.startswith("var.")
+        }
+        - covered_var_names
+    )
+
+    if all_promotions or dep_only_vars or passthrough_var_names:
         var_blocks = [_render_variable(p.tf_var_name, p.default_value) for p in user_promotions]
         var_blocks.extend(_render_variable(p.tf_var_name, None) for p in dep_promotions)
         var_blocks.extend(_render_variable(name, None) for name in dep_only_vars)
+        var_blocks.extend(_render_variable(name, None) for name in passthrough_var_names)
         variables_path = run_dir / "variables.tf"
         ensure_parents_write_text(variables_path, "\n\n".join(var_blocks))
         written.append(variables_path)

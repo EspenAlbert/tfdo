@@ -13,6 +13,7 @@ from hcl2.rules.strings import StringRule
 from pydantic import BaseModel
 
 _BLOCK_MARKER = "__is_block__"
+_COMMENT_KEYS = ("__comments__", "__inline_comments__")
 _HCL_PATCH_FRAGMENT_BLOCK = "zzz_tfdo_hcl_patch_fragment"
 _MODULE_BLOCK_HEADER_LINE = re.compile(r'^(?P<prefix>\s*module\s+")(?P<label>[^"]+)(?P<suffix>")')
 
@@ -275,18 +276,23 @@ def _ensure_block_dict(block_data: Any) -> dict[str, Any]:
     return {_BLOCK_MARKER: True}
 
 
+def _strip_loader_metadata(attrs: dict[str, Any]) -> dict[str, Any]:
+    attrs.pop(_BLOCK_MARKER, None)
+    for key in _COMMENT_KEYS:
+        attrs.pop(key, None)
+    return attrs
+
+
 def read_resource_block_attrs(original: str, resource_type: str, resource_name: str) -> dict[str, Any]:
     doc = hcl2.loads(original)
     attrs = copy.deepcopy(_find_resource_attrs(doc, resource_type, resource_name))
-    attrs.pop(_BLOCK_MARKER, None)
-    return attrs
+    return _strip_loader_metadata(attrs)
 
 
 def read_module_block_attrs(original: str, module_name: str) -> dict[str, Any]:
     doc = hcl2.loads(original)
     attrs = copy.deepcopy(_find_module_attrs(doc, module_name))
-    attrs.pop(_BLOCK_MARKER, None)
-    return attrs
+    return _strip_loader_metadata(attrs)
 
 
 def read_resource_block_values(original: str, resource_type: str, resource_name: str) -> dict[str, HclValue]:

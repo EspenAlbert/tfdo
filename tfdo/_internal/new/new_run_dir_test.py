@@ -361,3 +361,27 @@ def test_var_ref_attr_renders_as_reference(mock_resolve, mock_fmt, tmp_path: Pat
     main_tf = (result.run_dir / "main.tf").read_text()
     assert "tags = var.tags" in main_tf
     assert '"${var.tags}"' not in main_tf
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "tags"' in variables_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_passthrough_var_ref_generates_variable_block(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    promotion = AttrPromotion(attr_name="project_id", tf_var_name="project_id", default_value=None)
+    cfg = ModuleRunDirConfig(
+        source="ns/cluster/mongodbatlas",
+        label="cluster",
+        attrs={
+            "project_id": HclVarRef(path="var.project_id"),
+            "tags": HclVarRef(path="var.tags"),
+        },
+        tf_var_promotions=[promotion],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "project_id"' in variables_tf
+    assert 'variable "tags"' in variables_tf
+    assert variables_tf.count('variable "tags"') == 1

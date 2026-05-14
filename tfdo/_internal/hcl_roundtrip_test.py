@@ -626,6 +626,14 @@ module "cluster" {
 """
 
 
+def test_read_module_block_values_excludes_comment_keys() -> None:
+    values = hcl_roundtrip.read_module_block_values(_ATLAS_CLUSTER_MODULE_WITH_COMMENTS_FIXTURE, module_name="cluster")
+    assert "__comments__" not in values
+    assert "__inline_comments__" not in values
+    assert "auto_scaling" in values
+    assert "name" in values
+
+
 def test_module_attr_raw_to_patch_rhs_strips_interpolation_wrapper() -> None:
     assert hcl_roundtrip.module_attr_raw_to_patch_rhs("${var.x}") == "var.x"
 
@@ -661,6 +669,7 @@ def test_patch_module_block_attributes_preserves_comments_and_rewrites_source_an
     assert "# https://www.mongodb.com/docs/atlas/cloud-providers-regions/" in output
     assert "# Minimum node count >= 3. Must be an odd number to support elections." in output
     assert "# 2vCPUs and 2GB Ram" in output
+    assert "__comments__" not in output
 
 
 def test_hcl_value_str_roundtrip_nested_list_of_objects() -> None:
