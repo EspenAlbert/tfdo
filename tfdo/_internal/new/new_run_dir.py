@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class AttrPromotion(BaseModel):
     attr_name: str
     tf_var_name: str
-    default_value: str
+    default_value: str | None = None
 
 
 class ModuleRunDirConfig(BaseModel):
@@ -114,7 +114,7 @@ def _render_output(name: str, module_label: str) -> str:
 
 
 def _render_tfvars(promotions: list[AttrPromotion]) -> str:
-    return "\n".join(f'{p.attr_name} = "{p.default_value}"' for p in promotions)
+    return "\n".join(f'{p.attr_name} = "{p.default_value}"' for p in promotions if p.default_value is not None)
 
 
 def _render_provider_block(name: str) -> str:
@@ -206,9 +206,10 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
         ensure_parents_write_text(variables_path, "\n\n".join(var_blocks))
         written.append(variables_path)
 
-    if user_promotions:
+    tfvars_content = _render_tfvars(user_promotions)
+    if tfvars_content:
         tfvars_path = run_dir / "terraform.tfvars"
-        ensure_parents_write_text(tfvars_path, _render_tfvars(user_promotions))
+        ensure_parents_write_text(tfvars_path, tfvars_content)
         written.append(tfvars_path)
 
     output_pairs = [(m.label, name) for m in input_model.module_configs for name in m.exposed_outputs]

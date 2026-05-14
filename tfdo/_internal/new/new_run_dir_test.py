@@ -301,3 +301,36 @@ def test_mixed_promotions_only_user_provided_in_tfvars(mock_resolve, mock_fmt, t
     assert 'variable "region"' in variables_tf
     assert 'default = "US_EAST_1"' in variables_tf
     assert 'variable "project_id"' in variables_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_promotion_no_default_omits_default_and_tfvars(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    promotion = AttrPromotion(attr_name="project_id", tf_var_name="project_id", default_value=None)
+    cfg = ModuleRunDirConfig(
+        source="ns/project/mongodbatlas",
+        label="project",
+        attrs={"project_id": HclVarRef(path="var.project_id")},
+        tf_var_promotions=[promotion],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "project_id"' in variables_tf
+    assert "default" not in variables_tf
+    assert not (result.run_dir / "terraform.tfvars").exists()
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_var_ref_attr_renders_as_reference(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    cfg = ModuleRunDirConfig(
+        source="ns/cluster/mongodbatlas",
+        label="cluster",
+        attrs={"tags": HclVarRef(path="var.tags")},
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert "tags = var.tags" in main_tf
+    assert '"${var.tags}"' not in main_tf

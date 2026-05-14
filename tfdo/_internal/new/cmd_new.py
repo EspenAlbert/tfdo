@@ -5,7 +5,16 @@ from pathlib import Path
 from typing import NamedTuple
 
 import typer
-from ask_shell._internal.interactive import ChoiceTyped, select_list, select_list_multiple_choices, text
+from ask_shell._internal.interactive import (
+    ChoiceTyped,
+    NewHandlerChoice,
+    SelectOptions,
+    confirm,
+    select_list,
+    select_list_choice,
+    select_list_multiple_choices,
+    text,
+)
 
 from tfdo._internal.cache import module_cache
 from tfdo._internal.config.config_file import load_config
@@ -13,7 +22,7 @@ from tfdo._internal.config.config_model import DependencyRef, TfDoConfig
 from tfdo._internal.config.provider_hints import ModuleChoice, available_module_choices, load_provider_hints
 from tfdo._internal.hcl_entity_parser import TfModuleCall, TfOutput, parse_dir_entities, parse_module_examples
 from tfdo._internal.hcl_example_prompt import _hcl_value_display
-from tfdo._internal.hcl_roundtrip import HclLiteral, HclVarRef
+from tfdo._internal.hcl_roundtrip import HclAttrRef, HclLiteral, HclValue, HclVarRef
 from tfdo._internal.new.backend_bootstrap import NewBackendInput, new_backend
 from tfdo._internal.new.new_run_dir import (
     AttrPromotion,
@@ -66,9 +75,39 @@ def _select_env(work_dir: Path, config: TfDoConfig, is_interactive: bool) -> str
 _LOCAL_SOURCE_PREFIXES = ("./", "../", "/")
 
 
+def _ask_default_value(attr_name: str, current_display: str) -> str | None:
+    if confirm(f"Set a default for var.{attr_name}?", default=True):
+        return text(f"Default value for var.{attr_name}", default=current_display)
+    return None
+
+
 class _ModuleBuildResult(NamedTuple):
     config: ModuleRunDirConfig
     module_path: Path
+
+
+def _select_raw_attrs(mpath: Path, alias: str, source: str) -> dict[str, HclValue]:
+    examples = parse_module_examples(mpath)
+    choice = select_list(
+        f"Configure module '{alias}':",
+        ["configure manually"] + [e.name for e in examples],
+    )
+    if choice == "configure manually":
+        module_attrs = _module_required_attrs(mpath)
+        attr_choices: list[ChoiceTyped[str]] = [
+            ChoiceTyped(name=f"required: {n}", value=n, checked=True) for n in module_attrs.required
+        ] + [ChoiceTyped(name=f"optional: {n}", value=n, checked=False) for n in module_attrs.optional]
+        selected_names: list[str] = (
+            select_list_multiple_choices("Select attributes:", attr_choices, default=[]) if attr_choices else []
+        )
+        return {name: HclLiteral(value="") for name in selected_names}
+    example = next(e for e in examples if e.name == choice)
+    for entity in example.entities:
+        if not isinstance(entity, TfModuleCall):
+            continue
+        if entity.source == source or entity.source.startswith(_LOCAL_SOURCE_PREFIXES):
+            return dict(entity.attrs)
+    return {}
 
 
 def _build_module_config(
@@ -85,30 +124,7 @@ def _build_module_config(
         mpath = module_cache.populate(settings.cache_root, source, cache_version, settings)
     mpath = module_cache.module_source_dir(mpath)
 
-    examples = parse_module_examples(mpath)
-    choice = select_list(
-        f"Configure module '{alias}':",
-        ["configure manually"] + [e.name for e in examples],
-    )
-
-    if choice == "configure manually":
-        module_attrs = _module_required_attrs(mpath)
-        attr_choices: list[ChoiceTyped[str]] = [
-            ChoiceTyped(name=f"required: {n}", value=n, checked=True) for n in module_attrs.required
-        ] + [ChoiceTyped(name=f"optional: {n}", value=n, checked=False) for n in module_attrs.optional]
-        selected_names: list[str] = (
-            select_list_multiple_choices("Select attributes:", attr_choices, default=[]) if attr_choices else []
-        )
-        raw_attrs = {name: HclLiteral(value="") for name in selected_names}
-    else:
-        example = next(e for e in examples if e.name == choice)
-        raw_attrs = {}
-        for entity in example.entities:
-            if not isinstance(entity, TfModuleCall):
-                continue
-            if entity.source == source or entity.source.startswith(_LOCAL_SOURCE_PREFIXES):
-                raw_attrs = dict(entity.attrs)
-                break
+    raw_attrs = _select_raw_attrs(mpath, alias, source)
 
     provider_hints = hints_registry.get(provider_name)
     auth_var_names = {vm.tf_var for vm in provider_hints.auth_variables} if provider_hints else set()
@@ -116,24 +132,27 @@ def _build_module_config(
     promotions: list[AttrPromotion] = []
     final_attrs = {}
     for attr_name, current_val in raw_attrs.items():
-        is_complex = isinstance(current_val, dict | list)
-        if is_complex:
+        if isinstance(current_val, dict | list):
             final_attrs[attr_name] = current_val
             continue
         current_display = _hcl_value_display(current_val)
         if attr_name in auth_var_names:
-            default_val = text(f"Default value for '{attr_name}' variable", default=current_display)
+            default_val = _ask_default_value(attr_name, current_display)
+            promotions.append(AttrPromotion(attr_name=attr_name, tf_var_name=attr_name, default_value=default_val))
+            final_attrs[attr_name] = HclVarRef(path=f"var.{attr_name}")
+            continue
+        is_ref = isinstance(current_val, HclVarRef | HclAttrRef)
+        choices = ["var_ref", "tf_var", "literal"] if is_ref else ["literal", "tf_var"]
+        how = select_list(f"Set '{attr_name}' as:", choices)
+        if how == "var_ref":
+            final_attrs[attr_name] = current_val
+        elif how == "tf_var":
+            default_val = _ask_default_value(attr_name, current_display)
             promotions.append(AttrPromotion(attr_name=attr_name, tf_var_name=attr_name, default_value=default_val))
             final_attrs[attr_name] = HclVarRef(path=f"var.{attr_name}")
         else:
-            how = select_list(f"Set '{attr_name}' as:", ["literal", "tf_var"])
-            if how == "tf_var":
-                default_val = text(f"Default value for var.{attr_name}", default=current_display)
-                promotions.append(AttrPromotion(attr_name=attr_name, tf_var_name=attr_name, default_value=default_val))
-                final_attrs[attr_name] = HclVarRef(path=f"var.{attr_name}")
-            else:
-                literal_val = text(f"{attr_name}", default=current_display)
-                final_attrs[attr_name] = HclLiteral(value=literal_val)
+            literal_val = text(f"{attr_name}", default=current_display)
+            final_attrs[attr_name] = HclLiteral(value=literal_val)
 
     output_names = module_outputs(mpath)
     default_set = {n for n in output_names if n == "id" or n.endswith("_id")}
@@ -157,7 +176,9 @@ def _run_dir_outputs(run_dir_path: Path) -> list[str]:
     return [e.name for e in parse_dir_entities(run_dir_path, recursive=False) if isinstance(e, TfOutput)]
 
 
-def _wizard_dependencies(work_dir: Path, config: TfDoConfig, env_name: str) -> list[DependencyRef]:
+def _wizard_dependencies(
+    work_dir: Path, config: TfDoConfig, env_name: str, module_var_names: list[str]
+) -> list[DependencyRef]:
     existing = config.run_dirs(work_dir, env_name)
     if not existing:
         return []
@@ -177,10 +198,22 @@ def _wizard_dependencies(work_dir: Path, config: TfDoConfig, env_name: str) -> l
         )
         outputs: dict[str, str] = {}
         for out_name in selected_outputs:
-            local_var = text(f"Local variable name for '{out_name}'", default=out_name)
-            outputs[out_name] = local_var
+            outputs[out_name] = _ask_local_var_name(out_name, module_var_names)
         deps.append(DependencyRef(ref=rd_path.name, outputs=outputs))
     return deps
+
+
+def _ask_local_var_name(out_name: str, module_var_names: list[str]) -> str:
+    if not module_var_names:
+        return text(f"Local variable name for '{out_name}'", default=out_name)
+    var_choices = [ChoiceTyped(name=n, value=n, checked=False) for n in module_var_names]
+    new_handler = NewHandlerChoice(constructor=str, new_prompt=f"New variable name (default: {out_name})")
+    options = SelectOptions(new_handler_choice=new_handler)
+    return select_list_choice(
+        f"Local variable name for '{out_name}':",
+        var_choices,
+        options=options,
+    )
 
 
 @new_app.command("run-dir")
@@ -214,7 +247,10 @@ def run_dir_cmd(ctx: typer.Context) -> None:
         for mc in selected
     ]
 
-    dependencies = _wizard_dependencies(work_dir, config, env_name)
+    module_var_names = sorted(
+        {attr_name for br in build_results for attr_name, val in br.config.attrs.items() if isinstance(val, HclVarRef)}
+    )
+    dependencies = _wizard_dependencies(work_dir, config, env_name, module_var_names)
 
     dep_local_vars = {v for dep in dependencies for v in dep.outputs.values()}
     for br in build_results:
