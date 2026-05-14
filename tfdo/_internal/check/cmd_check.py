@@ -35,6 +35,8 @@ def _log_dir_issues(dr: DirCheckResult) -> None:
         logger.error(f"    tflint: {issue.display}")
     if dr.missing_tfvars:
         logger.error(f"    tfvars: missing {', '.join(dr.missing_tfvars)}")
+    if dr.backend_drift:
+        logger.error("    backend: backend.tf is out of sync, run 'tfdo check --fix' to update")
     if dr.provider_result is not None:
         for p in dr.provider_result.providers:
             _log_provider(p)
@@ -57,6 +59,8 @@ def _log_dir(dr: DirCheckResult) -> None:
         issues.append(f"{len(dr.tflint_issues)} tflint")
     if dr.missing_tfvars:
         issues.append(f"{len(dr.missing_tfvars)} tfvars")
+    if dr.backend_drift:
+        issues.append("backend")
     if dr.provider_result is not None and not dr.provider_result.is_ok:
         issues.append("providers")
     logger.error(f"  {d}: {', '.join(issues)}")
@@ -71,6 +75,7 @@ def _log_result(result: CheckResult) -> None:
     tflint = len(result.total_tflint_issues)
     tfvars = sum(len(dr.missing_tfvars) for dr in result.dir_results)
     provider_failures = result.total_provider_failures
+    backend_drift = sum(1 for dr in result.dir_results if dr.backend_drift)
     skipped = len(result.directories_skipped)
     parts = [f"{result.directories_checked} checked"]
     if fmt:
@@ -81,6 +86,8 @@ def _log_result(result: CheckResult) -> None:
         parts.append(f"{tflint} tflint issues")
     if tfvars:
         parts.append(f"{tfvars} missing tfvars")
+    if backend_drift:
+        parts.append(f"{backend_drift} backend drift")
     if provider_failures:
         parts.append(f"{provider_failures} provider issues")
     if skipped:

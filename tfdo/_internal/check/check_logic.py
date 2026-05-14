@@ -314,7 +314,12 @@ def check(input_model: CheckInput) -> CheckResult:
     has_backend_drift = any(d.backend_drift for d in dir_results)
     exit_code = (
         1
-        if has_fmt_issues or has_errors or has_tflint or has_missing_tfvars or has_provider_failures or has_backend_drift
+        if has_fmt_issues
+        or has_errors
+        or has_tflint
+        or has_missing_tfvars
+        or has_provider_failures
+        or has_backend_drift
         else 0
     )
 

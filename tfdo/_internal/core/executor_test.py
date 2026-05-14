@@ -11,6 +11,7 @@ from tfdo._internal.core.executor import (
     _build_init_command,
     _build_lifecycle_command,
     _clean_terraform_cache,
+    _is_backend_changed,
     _is_checksum_error,
     _is_transient,
     _needs_init,
@@ -275,6 +276,7 @@ def test_needs_init_detection():
     assert _needs_init("Error: Missing required provider")
     assert _needs_init("Error: Backend initialization required")
     assert _needs_init("Error: Module not installed")
+    assert not _needs_init("Error: Backend configuration changed")
     assert not _needs_init("Error: Invalid HCL syntax")
 
 
@@ -418,6 +420,32 @@ def test_auto_init_uses_backend_args(tmp_path: Path):
     assert result.exit_code == 0
     assert len(init_calls) == 1
     assert init_calls[0].backend_args == backend_args
+
+
+def test_backend_changed_warns_without_auto_reconfigure(tmp_path: Path):
+    """Backend configuration changed should warn, not silently auto-reconfigure."""
+    settings = _make_settings(tmp_path)
+    input_model = PlanInput(settings=settings, init_backend_args=["-backend-config=key=new"])
+
+    module = plan.__module__
+    with (
+        patch(
+            f"{module}.{executor._run_command.__name__}",
+            return_value=PlanResult(exit_code=1, stderr="Backend configuration changed"),
+        ),
+        patch(f"{module}.{init.__name__}") as mock_init,
+    ):
+        result = plan(input_model)
+
+    assert result.exit_code == 1
+    mock_init.assert_not_called()
+
+
+def test_is_backend_changed_detection():
+    assert _is_backend_changed("Error: Backend configuration changed")
+    assert _is_backend_changed("BACKEND CONFIGURATION CHANGED for module foo")
+    assert not _is_backend_changed("Error: Missing required provider")
+    assert not _is_backend_changed("")
 
 
 # --- output_json tests ---

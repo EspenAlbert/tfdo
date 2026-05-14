@@ -86,6 +86,11 @@ def github_cmd(
     dry_run: bool = typer.Option(
         False, "--dry-run/--no-dry-run", help="Log actions without writing files or calling gh"
     ),
+    replace_existing_github_secrets: bool = typer.Option(
+        False,
+        "--replace",
+        help="Overwrite Actions environment secrets that already exist on GitHub (default only creates missing ones)",
+    ),
     env: str | None = typer.Option(None, "--env", help="Sync only this environment"),
 ) -> None:
     """Scaffold GitHub Actions workflows and sync secrets/variables per environment."""
@@ -107,6 +112,7 @@ def github_cmd(
         owner_repo=owner_repo,
         os_env=dict(os.environ),
         dry_run=dry_run,
+        replace_existing_github_secrets=replace_existing_github_secrets,
     )
     result = _sync_github_mod.sync_github(input_model)
 
@@ -115,7 +121,20 @@ def github_cmd(
         logger.info(
             f"  {env_result.env}: secrets={len(env_result.secrets_set)}, variables={len(env_result.variables_set)}"
         )
+        if env_result.secrets_skipped_existing:
+            logger.info(
+                f"  {env_result.env}: skipped secrets (already set on GitHub): "
+                f"{', '.join(env_result.secrets_skipped_existing)}"
+            )
         if env_result.secrets_failed:
             logger.warning(f"  {env_result.env}: failed secrets: {', '.join(env_result.secrets_failed)}")
+        if env_result.variables_unchanged:
+            logger.info(
+                f"  {env_result.env}: variables already matching GitHub: {', '.join(env_result.variables_unchanged)}"
+            )
+        if env_result.variables_update_declined:
+            logger.info(
+                f"  {env_result.env}: variable updates skipped at prompt: {', '.join(env_result.variables_update_declined)}"
+            )
         if env_result.variables_failed:
             logger.warning(f"  {env_result.env}: failed variables: {', '.join(env_result.variables_failed)}")

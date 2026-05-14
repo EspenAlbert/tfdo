@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import json
 import logging
+import os
+import shlex
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
+from ask_shell._internal.interactive import confirm
 from ask_shell.shell import ShellError, run_and_wait
 from pydantic import BaseModel, Field
 from zero_3rdparty import file_utils
@@ -20,6 +25,16 @@ from tfdo._internal.models import TfDoBaseInput
 from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
+
+
+def prompt_github_variable_update(name: str, remote_value: str, proposed_value: str) -> bool:
+    return confirm(
+        f"GitHub variable {name} differs "
+        f"(remote={remote_value!r}; local/tfdo resolves to={proposed_value!r}). "
+        f"Update this variable on GitHub?",
+        default=False,
+    )
+
 
 TOOL_NAME = "tfdo"
 YAML_COMMENT_CONFIG = CommentConfig("#")
@@ -49,8 +64,11 @@ class EnvSyncResult(BaseModel):
     env: str
     secrets_set: list[str] = Field(default_factory=list)
     secrets_failed: list[str] = Field(default_factory=list)
+    secrets_skipped_existing: list[str] = Field(default_factory=list)
     variables_set: list[str] = Field(default_factory=list)
     variables_failed: list[str] = Field(default_factory=list)
+    variables_unchanged: list[str] = Field(default_factory=list)
+    variables_update_declined: list[str] = Field(default_factory=list)
 
 
 class SyncGithubInput(TfDoBaseInput):
@@ -61,6 +79,8 @@ class SyncGithubInput(TfDoBaseInput):
     owner_repo: str = ""
     os_env: dict[str, str] = Field(default_factory=dict)
     run_gh: Callable[[str], tuple[bool, str]] | None = None
+    replace_existing_github_secrets: bool = False
+    github_variable_changed: Callable[[str, str, str], bool] = prompt_github_variable_update
 
 
 class SyncGithubResult(BaseModel):
@@ -127,6 +147,74 @@ def resolve_variable_values(variable_names: list[str], env_vars: dict[str, str])
         else:
             logger.warning(f"variable {name} not found in env_vars, skipping")
     return entries
+
+
+def _planned_secret_writes(
+    required_names: list[str],
+    env_vars: dict[str, str],
+    existing_remote_names: set[str],
+    replace_existing_github_secrets: bool,
+) -> tuple[list[SecretEntry], list[str]]:
+    skipped: list[str] = []
+    pending_names: list[str] = []
+    for name in required_names:
+        if name in existing_remote_names and not replace_existing_github_secrets:
+            skipped.append(name)
+            continue
+        pending_names.append(name)
+    missing = [n for n in pending_names if n not in env_vars]
+    if missing:
+        raise ValueError(
+            f"missing secret values for: {', '.join(missing)}. "
+            "Set them in env_var files or shell environment before retrying."
+        )
+    return [SecretEntry(n, env_vars[n]) for n in pending_names], skipped
+
+
+def _parse_gh_json_records(raw: str) -> list[dict[str, str]]:
+    stripped = raw.strip()
+    return json.loads(stripped) if stripped else []
+
+
+def _remote_env_secret_names(env: str, run_gh: Callable[[str], tuple[bool, str]]) -> set[str]:
+    ok, raw = run_gh(f"gh secret list --env {shlex.quote(env)} --json name")
+    if not ok:
+        raise ValueError(f"failed to list GitHub secrets for environment {env!r}: {raw}")
+    return {row["name"] for row in _parse_gh_json_records(raw)}
+
+
+def _remote_env_variables(env: str, run_gh: Callable[[str], tuple[bool, str]]) -> dict[str, str]:
+    ok, raw = run_gh(f"gh variable list --env {shlex.quote(env)} --json name,value")
+    if not ok:
+        raise ValueError(f"failed to list GitHub variables for environment {env!r}: {raw}")
+    rows = _parse_gh_json_records(raw)
+    return {row["name"]: row["value"] for row in rows}
+
+
+def _format_github_dotenv_line(key: str, value: str) -> str:
+    """One dotenv-compatible line as ``KEY="..."`` for gh ``--env-file``."""
+    escaped = value.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n").replace('"', '\\"')
+    return f'{key}="{escaped}"'
+
+
+def _batch_gh_via_dotenv_tempfile(
+    *,
+    gh_resource: Literal["secret", "variable"],
+    github_env: str,
+    pairs: list[tuple[str, str]],
+    run_gh: Callable[[str], tuple[bool, str]],
+) -> tuple[bool, str]:
+    if not pairs:
+        return True, ""
+    fd, raw_path_str = tempfile.mkstemp(prefix="tfdo-gh-sync-", suffix=".env")
+    os.close(fd)
+    path = Path(raw_path_str)
+    try:
+        path.write_text("".join(f"{_format_github_dotenv_line(k, v)}\n" for k, v in pairs))
+        cmd = f"gh {gh_resource} set -f {shlex.quote(str(path))} --env {shlex.quote(github_env)}"
+        return run_gh(cmd)
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def _render_env_workflow(
@@ -372,38 +460,108 @@ def _resolve_env_vars(
     return merged
 
 
+def _record_secret_writes(
+    env: str,
+    secret_writes: list[SecretEntry],
+    run_gh: Callable[[str], tuple[bool, str]],
+    result: EnvSyncResult,
+) -> None:
+    if not secret_writes:
+        return
+    pairs = [(e.name, e.value) for e in secret_writes]
+    ok, msg = _batch_gh_via_dotenv_tempfile(gh_resource="secret", github_env=env, pairs=pairs, run_gh=run_gh)
+    if ok:
+        result.secrets_set.extend(entry.name for entry in secret_writes)
+    else:
+        logger.warning(f"failed to set secrets for env {env} using temporary env file: {msg}")
+        result.secrets_failed.extend(entry.name for entry in secret_writes)
+
+
+def _record_variable_writes(
+    env: str,
+    variable_entries: list[VariableEntry],
+    remote_vars: dict[str, str],
+    github_variable_changed: Callable[[str, str, str], bool],
+    run_gh: Callable[[str], tuple[bool, str]],
+    result: EnvSyncResult,
+) -> None:
+    pending: list[VariableEntry] = []
+    for entry in variable_entries:
+        if entry.name not in remote_vars:
+            pending.append(entry)
+            continue
+
+        github_value = remote_vars[entry.name]
+        if github_value == entry.value:
+            result.variables_unchanged.append(entry.name)
+            continue
+
+        if github_variable_changed(entry.name, github_value, entry.value):
+            pending.append(entry)
+        else:
+            result.variables_update_declined.append(entry.name)
+
+    if not pending:
+        return
+
+    pairs = [(e.name, e.value) for e in pending]
+    ok, msg = _batch_gh_via_dotenv_tempfile(gh_resource="variable", github_env=env, pairs=pairs, run_gh=run_gh)
+    if ok:
+        result.variables_set.extend(entry.name for entry in pending)
+    else:
+        logger.warning(f"failed to set variables for env {env} using temporary env file: {msg}")
+        result.variables_failed.extend(entry.name for entry in pending)
+
+
 def sync_env_secrets_and_variables(
     owner_repo: str,
     env: str,
-    secret_entries: list[SecretEntry],
+    required_secret_names: list[str],
+    env_vars_for_secrets: dict[str, str],
     variable_entries: list[VariableEntry],
     dry_run: bool,
+    replace_existing_github_secrets: bool,
+    github_variable_changed: Callable[[str, str, str], bool],
     run_gh: Callable[[str], tuple[bool, str]],
 ) -> EnvSyncResult:
     result = EnvSyncResult(env=env)
     if dry_run:
         logger.info(
-            f"dry-run: would create env {env} and set {len(secret_entries)} secrets, {len(variable_entries)} variables"
+            f"dry-run: would upsert Actions environment {env!r}; would list secrets and variables remotely; "
+            f"would write a short-lived .env file and use gh -f (values not passed on the command line); "
+            f"would set only absent secrets ({'or all when --replace' if replace_existing_github_secrets else 'no overwrites'}); "
+            f"would prompt before changing variables that differ."
         )
         return result
 
-    run_gh(f"gh api repos/{owner_repo}/environments/{env} -X PUT")
+    api_ok, api_msg = run_gh(f"gh api repos/{owner_repo}/environments/{env} -X PUT")
+    if not api_ok:
+        logger.warning(f"failed to configure GitHub environment {env!r}: {api_msg}")
 
-    for entry in secret_entries:
-        ok, msg = run_gh(f"gh secret set {entry.name} --env {env} --body '{entry.value}'")
-        if ok:
-            result.secrets_set.append(entry.name)
-        else:
-            logger.warning(f"failed to set secret {entry.name} for env {env}: {msg}")
-            result.secrets_failed.append(entry.name)
+    remote_secret_names = _remote_env_secret_names(env, run_gh)
+    logger.info(
+        f"GitHub environment {env!r}: {len(remote_secret_names)} existing secret(s): "
+        f"{', '.join(sorted(remote_secret_names))}"
+    )
+    remote_vars = _remote_env_variables(env, run_gh)
+    logger.info(f"GitHub environment {env!r}: existing variable name(s): {', '.join(sorted(remote_vars))}")
 
-    for entry in variable_entries:
-        ok, msg = run_gh(f"gh variable set {entry.name} --env {env} --body '{entry.value}'")
-        if ok:
-            result.variables_set.append(entry.name)
-        else:
-            logger.warning(f"failed to set variable {entry.name} for env {env}: {msg}")
-            result.variables_failed.append(entry.name)
+    try:
+        secret_writes, secrets_skipped = _planned_secret_writes(
+            required_secret_names,
+            env_vars_for_secrets,
+            remote_secret_names,
+            replace_existing_github_secrets,
+        )
+    except ValueError as e:
+        raise ValueError(f"{env}: {e}") from e
+
+    result.secrets_skipped_existing.extend(secrets_skipped)
+    for skipped_name in secrets_skipped:
+        logger.info(f"skipped GitHub secret {skipped_name} (already set in environment {env}; use sync --replace)")
+
+    _record_secret_writes(env, secret_writes, run_gh, result)
+    _record_variable_writes(env, variable_entries, remote_vars, github_variable_changed, run_gh, result)
 
     return result
 
@@ -439,10 +597,17 @@ def sync_github(input_model: SyncGithubInput) -> SyncGithubResult:
 
     for env in env_names:
         env_vars = _resolve_env_vars(env, config, work_dir, input_model.settings, input_model.os_env)
-        secret_entries = resolve_secret_values(reqs.secrets, env_vars)
         variable_entries = resolve_variable_values(reqs.variables, env_vars)
         env_result = sync_env_secrets_and_variables(
-            input_model.owner_repo, env, secret_entries, variable_entries, input_model.dry_run, run_gh
+            input_model.owner_repo,
+            env,
+            reqs.secrets,
+            env_vars,
+            variable_entries,
+            input_model.dry_run,
+            input_model.replace_existing_github_secrets,
+            input_model.github_variable_changed,
+            run_gh,
         )
         result.env_sync_results.append(env_result)
         logger.info(f"env {env}: secrets={len(env_result.secrets_set)}, variables={len(env_result.variables_set)}")

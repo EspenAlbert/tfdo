@@ -126,6 +126,15 @@ INIT_NEEDED_PATTERNS: list[str] = [
     "Module not installed",
 ]
 
+BACKEND_CHANGED_PATTERNS: list[str] = [
+    "Backend configuration changed",
+]
+
+
+def _is_backend_changed(stderr: str) -> bool:
+    lower = stderr.lower()
+    return any(p.lower() in lower for p in BACKEND_CHANGED_PATTERNS)
+
 
 def _needs_init(stderr: str) -> bool:
     lower = stderr.lower()
@@ -159,9 +168,15 @@ def _run_lifecycle[T: LifecycleResult](
 ) -> T:
     settings = input_model.settings
     mode = input_model.init_mode
+    force_init = mode == InitMode.ALWAYS
 
-    if mode == InitMode.ALWAYS:
-        init_result = init(InitInput(settings=settings, backend_args=input_model.init_backend_args))
+    if force_init:
+        init_result = init(
+            InitInput(
+                settings=settings,
+                backend_args=input_model.init_backend_args,
+            )
+        )
         if init_result.exit_code != 0:
             return result_cls(exit_code=init_result.exit_code)
 
@@ -169,12 +184,25 @@ def _run_lifecycle[T: LifecycleResult](
     cmd = _build_lifecycle_command(binary.resolve_binary(settings), subcommand, input_model.var_file, all_flags)
     result = _run_command(settings, cmd, result_cls)
 
-    if result.exit_code != 0 and mode == InitMode.AUTO and _needs_init(result.stderr or ""):
-        logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
-        init_result = init(InitInput(settings=settings, backend_args=input_model.init_backend_args))
-        if init_result.exit_code != 0:
-            return result_cls(exit_code=init_result.exit_code)
-        result = _run_command(settings, cmd, result_cls)
+    stderr = result.stderr or ""
+    if result.exit_code != 0 and mode != InitMode.NEVER and not force_init:
+        if _is_backend_changed(stderr):
+            logger.warning(
+                f"backend configuration changed in {settings.work_dir}. "
+                "Run 'tfdo check --fix' to update backend.tf, then 'terraform init -reconfigure' to accept "
+                "the new backend, or 'terraform init -migrate-state' to migrate existing state."
+            )
+        elif _needs_init(stderr):
+            logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
+            init_result = init(
+                InitInput(
+                    settings=settings,
+                    backend_args=input_model.init_backend_args,
+                )
+            )
+            if init_result.exit_code != 0:
+                return result_cls(exit_code=init_result.exit_code)
+            result = _run_command(settings, cmd, result_cls)
 
     return result
 

@@ -167,6 +167,7 @@ def prepare_run_dir(
     cli_var_file: Path | None,
 ) -> PreparedRunDir:
     backend_args = backend_resolution.resolve_init_backend_args(config.backend, ctx)
+
     var_files = var_file_resolution.resolve_var_files(run_dir_path, config.var_files, [])
     var_file_resolution.validate_var_files(var_files)
 
@@ -235,7 +236,15 @@ def _dispatch_command(
 ) -> RunDirResult:
     dir_settings = prepared.init_input.settings
     if inp.command == LifecycleCommand.INIT:
-        init_result = executor.init(prepared.init_input)
+        init_input = prepared.init_input
+        if inp.extra_flags:
+            init_input = InitInput(
+                settings=init_input.settings,
+                backend_args=init_input.backend_args,
+                extra_args=[*init_input.extra_args, *inp.extra_flags],
+                env=init_input.env,
+            )
+        init_result = executor.init(init_input)
         return RunDirResult(
             run_dir=rel, exit_code=init_result.exit_code, stdout=init_result.stdout, stderr=init_result.stderr or ""
         )
@@ -243,7 +252,12 @@ def _dispatch_command(
     backend_args = prepared.init_input.backend_args
     if inp.command == LifecycleCommand.PLAN:
         result = executor.plan(
-            PlanInput(settings=dir_settings, init_mode=mode, extra_args=extra_flags, init_backend_args=backend_args)
+            PlanInput(
+                settings=dir_settings,
+                init_mode=mode,
+                extra_args=extra_flags,
+                init_backend_args=backend_args,
+            )
         )
     elif inp.command == LifecycleCommand.APPLY:
         result = executor.apply(

@@ -82,13 +82,17 @@ def run_callback(
 @run_app.command("init")
 def run_init_cmd(
     ctx: typer.Context,
+    reconfigure: bool = typer.Option(False, "--reconfigure", help="Pass -reconfigure to terraform init"),
     extra_args: list[str] | None = typer.Option(
         None, "--extra-args", help="Extra arguments forwarded to terraform init (e.g. --extra-args=-upgrade)"
     ),
 ) -> None:
     """Run init across multiple run directories."""
     run_ctx = _get_run_context(ctx)
-    inp = run_ctx.build_input(LifecycleCommand.INIT, extra_flags=extra_args or [])
+    flags = list(extra_args or [])
+    if reconfigure:
+        flags.append("-reconfigure")
+    inp = run_ctx.build_input(LifecycleCommand.INIT, extra_flags=flags)
     result = orchestration.run_orchestration(inp)
     raise typer.Exit(result.exit_code)
 
