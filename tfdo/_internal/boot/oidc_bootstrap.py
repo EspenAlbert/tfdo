@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+import json
+import logging
+import re
+from pathlib import Path
+
+from ask_shell.shell import ShellError, run_and_wait
+
+logger = logging.getLogger(__name__)
+
+_GITHUB_ACTIONS_URL = "https://token.actions.githubusercontent.com"
+_GITHUB_THUMBPRINT = "6938fd4d98bab03faadb97b34396831e3780aea1"
+_ENTITY_ALREADY_EXISTS = "EntityAlreadyExists"
+
+_REMOTE_PATTERNS = [
+    re.compile(r"git@github\.com:(?P<org>[^/]+)/(?P<repo>.+?)(?:\.git)?$"),
+    re.compile(r"https://github\.com/(?P<org>[^/]+)/(?P<repo>.+?)(?:\.git)?$"),
+]
+
+
+def parse_github_remote(work_dir: Path) -> tuple[str, str] | None:
+    try:
+        run = run_and_wait("git remote get-url origin", cwd=work_dir)
+    except ShellError:
+        return None
+    url = run.stdout_one_line
+    for pattern in _REMOTE_PATTERNS:
+        if m := pattern.match(url):
+            return m.group("org"), m.group("repo")
+    return None
+
+
+def provision_oidc_provider(account_id: str) -> str:
+    expected_arn = f"arn:aws:iam::{account_id}:oidc-provider/token.actions.githubusercontent.com"
+    run = run_and_wait("aws iam list-open-id-connect-providers", cwd=Path.cwd())
+    data = run.parse_output(dict)
+    existing = [p["Arn"] for p in data.get("OpenIDConnectProviderList", [])]
+    if expected_arn in existing:
+        logger.info(f"OIDC provider already exists: {expected_arn}")
+        return expected_arn
+    run = run_and_wait(
+        f"aws iam create-open-id-connect-provider"
+        f" --url {_GITHUB_ACTIONS_URL}"
+        f" --client-id-list sts.amazonaws.com"
+        f" --thumbprint-list {_GITHUB_THUMBPRINT}",
+        cwd=Path.cwd(),
+    )
+    data = run.parse_output(dict)
+    arn = data["OpenIDConnectProviderArn"]
+    logger.info(f"Created OIDC provider: {arn}")
+    return arn
+
+
+def provision_oidc_role(account_id: str, org: str, repo: str, env: str, role_name: str, bucket: str) -> str:
+    trust_policy = json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Federated": f"arn:aws:iam::{account_id}:oidc-provider/token.actions.githubusercontent.com"
+                    },
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {
+                        "StringEquals": {"token.actions.githubusercontent.com:aud": "sts.amazonaws.com"},
+                        "StringLike": {
+                            "token.actions.githubusercontent.com:sub": f"repo:{org}/{repo}:environment:{env}"
+                        },
+                    },
+                }
+            ],
+        }
+    )
+    s3_policy = json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+                    "Resource": f"arn:aws:s3:::{bucket}/*",
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": "s3:ListBucket",
+                    "Resource": f"arn:aws:s3:::{bucket}",
+                },
+            ],
+        }
+    )
+    try:
+        run = run_and_wait(
+            f"aws iam create-role --role-name {role_name} --assume-role-policy-document '{trust_policy}'",
+            cwd=Path.cwd(),
+        )
+        data = run.parse_output(dict)
+        role_arn = data["Role"]["Arn"]
+        logger.info(f"Created IAM role: {role_arn}")
+    except ShellError as e:
+        if _ENTITY_ALREADY_EXISTS not in e.run.stdout_one_line and _ENTITY_ALREADY_EXISTS not in str(e):
+            raise
+        run = run_and_wait(f"aws iam get-role --role-name {role_name}", cwd=Path.cwd())
+        data = run.parse_output(dict)
+        role_arn = data["Role"]["Arn"]
+        logger.info(f"IAM role already exists: {role_arn}")
+
+    run_and_wait(
+        f"aws iam put-role-policy --role-name {role_name} --policy-name tfdo-s3-access --policy-document '{s3_policy}'",
+        cwd=Path.cwd(),
+    )
+    logger.info(f"Attached S3 inline policy to {role_name}")
+    return role_arn

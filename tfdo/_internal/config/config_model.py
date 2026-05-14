@@ -120,6 +120,10 @@ class ModuleConstraint(BaseModel):
         return self
 
 
+class CiConfig(BaseModel):
+    oidc_roles: dict[str, str] = Field(default_factory=dict)
+
+
 class TfDoConfig(BaseModel):
     binary: str | None = None
     tf_version: str | None = None
@@ -137,6 +141,7 @@ class TfDoConfig(BaseModel):
     providers: list[ProviderConstraint] = Field(default_factory=list)
     modules: list[ModuleConstraint] = Field(default_factory=list)
     env_var_files: list[str] = Field(default_factory=list)
+    ci: CiConfig | None = None
 
     @model_validator(mode="after")
     def _validate_discovery_pattern(self) -> Self:
@@ -166,10 +171,13 @@ class TfDoConfig(BaseModel):
             result = result.replace(f"{{{selectors[-1]}}}", run_dir_name)
         return result
 
+    @property
+    def env_path_prefix(self) -> str:
+        """Literal directory prefix before the first placeholder (e.g. 'envs')."""
+        return self.run_dir_discovery.strip("/").split("{")[0].rstrip("/")
+
     def env_base_dir(self, work_dir: Path) -> Path:
-        # Take everything before the first placeholder, e.g. "envs/{env}/{run_dir}" → "envs"
-        literal_prefix = self.run_dir_discovery.strip("/").split("{")[0].rstrip("/")
-        return work_dir / literal_prefix if literal_prefix else work_dir
+        return work_dir / self.env_path_prefix if self.env_path_prefix else work_dir
 
     def _matched_dirs(self, work_dir: Path) -> list[tuple[Path, dict[str, str]]]:
         """Walk work_dir for directories matching the discovery pattern."""

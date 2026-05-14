@@ -5,10 +5,12 @@ from pathlib import Path
 from typing import NamedTuple
 
 import yaml
-from ask_shell._internal.interactive import ChoiceTyped, select_list_multiple_choices
+from ask_shell._internal.interactive import ChoiceTyped, select_list_multiple_choices, text
+from ask_shell.shell import run_and_wait
 from pydantic import BaseModel, ConfigDict, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
+from tfdo._internal.boot.oidc_bootstrap import parse_github_remote, provision_oidc_provider, provision_oidc_role
 from tfdo._internal.boot.s3_bootstrap import check_tf_version, provision_s3_bucket
 from tfdo._internal.cache import module_cache
 from tfdo._internal.cache.module_cache import UNRESOLVED
@@ -47,6 +49,7 @@ class TfdoBootInput(TfDoBaseInput):
     region: str | None = None
     providers: list[str] = Field(default_factory=list)
     modules: list[ModuleConstraint] = Field(default_factory=list)
+    oidc: bool = False
 
 
 class TfdoBootResult(BaseModel):
@@ -133,6 +136,34 @@ def _populate_module_cache(
     return cached, pinned
 
 
+def _run_oidc_wizard(input_model: TfdoBootInput) -> dict[str, str]:
+    settings = input_model.settings
+    work_dir = settings.work_dir
+    bucket = input_model.bucket or text("S3 bucket name for IAM policy scope")
+
+    run = run_and_wait("aws sts get-caller-identity", cwd=work_dir)
+    account_id = run.parse_output(dict)["Account"]
+
+    provision_oidc_provider(account_id)
+
+    remote = parse_github_remote(work_dir)
+    default_org, default_repo = remote or ("", "")
+    org = text("GitHub org", default=default_org)
+    repo = text("GitHub repo", default=default_repo)
+
+    envs_dir = work_dir / "envs"
+    env_names = sorted(d.name for d in envs_dir.iterdir() if d.is_dir()) if envs_dir.is_dir() else []
+    if not env_names:
+        logger.info("No envs found under envs/; skipping IAM role provisioning")
+        return {}
+
+    oidc_roles: dict[str, str] = {}
+    for env in env_names:
+        role_name = text(f"IAM role name for env '{env}'", default=f"tfdo-{repo}-{env}")
+        oidc_roles[env] = provision_oidc_role(account_id, org, repo, env, role_name, bucket)
+    return oidc_roles
+
+
 def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
     settings = input_model.settings
     work_dir = settings.work_dir
@@ -164,6 +195,11 @@ def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
 
     if pinned_modules:
         raw["modules"] = [m.model_dump(exclude_none=True) for m in pinned_modules]
+
+    if input_model.oidc:
+        oidc_roles = _run_oidc_wizard(input_model)
+        if oidc_roles:
+            raw["ci"] = {"oidc_roles": oidc_roles}
 
     ensure_parents_write_text(config_path, yaml.dump(raw, default_flow_style=False))
     gitignore_path = _ensure_gitignore_lines(work_dir)

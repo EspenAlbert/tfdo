@@ -148,3 +148,24 @@ def _fake_init(input_model):
 def test_select_modules_returns_empty_when_no_hints() -> None:
     registry: dict[str, ProviderHints] = {"aws": ProviderHints()}
     assert select_modules(["aws"], registry) == []
+
+
+def test_boot_repo_oidc_true_writes_ci_oidc_roles(tmp_path: Path) -> None:
+    (tmp_path / "envs" / "dev").mkdir(parents=True)
+    _oidc_roles = {"dev": "arn:aws:iam::123:role/tfdo-repo-dev"}
+    with (
+        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
+        patch(f"{_MODULE}._run_oidc_wizard", return_value=_oidc_roles),
+    ):
+        boot_repo(TfdoBootInput(settings=_settings(tmp_path), oidc=True))
+
+    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
+    assert raw["ci"]["oidc_roles"] == _oidc_roles
+
+
+def test_boot_repo_oidc_false_does_not_write_ci(tmp_path: Path) -> None:
+    with patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"):
+        boot_repo(TfdoBootInput(settings=_settings(tmp_path)))
+
+    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
+    assert "ci" not in raw
