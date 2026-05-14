@@ -94,6 +94,7 @@ class SyncGithubResult(BaseModel):
 class CollectedRequirements(NamedTuple):
     secrets: list[str]
     variables: list[str]
+    optional_variables: list[str]
 
 
 def collect_requirements(
@@ -103,6 +104,7 @@ def collect_requirements(
 ) -> CollectedRequirements:
     secrets: list[str] = []
     variables: list[str] = []
+    optional_variables: list[str] = []
     for provider in config.providers:
         hints = registry.get(provider.name)
         if hints is None:
@@ -117,6 +119,9 @@ def collect_requirements(
             variables.extend(reqs.variables)
         for vm in hints.auth_variables:
             variables.append(vm.env)
+        for vm in hints.variable_options:
+            if vm.provider_attr is not None:
+                optional_variables.append(vm.env)
 
     match config.backend:
         case S3Backend():
@@ -126,6 +131,7 @@ def collect_requirements(
     return CollectedRequirements(
         secrets=list(dict.fromkeys(secrets)),
         variables=list(dict.fromkeys(variables)),
+        optional_variables=list(dict.fromkeys(optional_variables)),
     )
 
 
@@ -139,12 +145,14 @@ def resolve_secret_values(secret_names: list[str], env_vars: dict[str, str]) -> 
     return [SecretEntry(name, env_vars[name]) for name in secret_names]
 
 
-def resolve_variable_values(variable_names: list[str], env_vars: dict[str, str]) -> list[VariableEntry]:
+def resolve_variable_values(
+    variable_names: list[str], env_vars: dict[str, str], *, warn_if_missing: bool = True
+) -> list[VariableEntry]:
     entries: list[VariableEntry] = []
     for name in variable_names:
         if name in env_vars:
             entries.append(VariableEntry(name, env_vars[name]))
-        else:
+        elif warn_if_missing:
             logger.warning(f"variable {name} not found in env_vars, skipping")
     return entries
 
@@ -176,11 +184,48 @@ def _parse_gh_json_records(raw: str) -> list[dict[str, str]]:
     return json.loads(stripped) if stripped else []
 
 
-def _remote_env_secret_names(env: str, run_gh: Callable[[str], tuple[bool, str]]) -> set[str]:
-    ok, raw = run_gh(f"gh secret list --env {shlex.quote(env)} --json name")
-    if not ok:
+def _github_actions_environment_missing_stderr(stderr_or_msg: str) -> bool:
+    """Best-effort match for gh when the Actions deployment environment does not exist."""
+    lowered = stderr_or_msg.lower()
+    return (
+        "404" in stderr_or_msg
+        and "not found" in lowered
+        and ("environments/" in lowered or "failed to get secrets" in lowered)
+    )
+
+
+def _gh_secret_list_names_json(env: str, run_gh: Callable[[str], tuple[bool, str]]) -> tuple[bool, str]:
+    return run_gh(f"gh secret list --env {shlex.quote(env)} --json name")
+
+
+def _secret_names_from_gh_list_json(payload: str) -> set[str]:
+    return {row["name"] for row in _parse_gh_json_records(payload)}
+
+
+def _remote_env_secret_names_with_optional_bootstrap(
+    owner_repo: str, env: str, run_gh: Callable[[str], tuple[bool, str]]
+) -> set[str]:
+    ok, raw = _gh_secret_list_names_json(env, run_gh)
+    if ok:
+        return _secret_names_from_gh_list_json(raw)
+
+    if not _github_actions_environment_missing_stderr(raw):
         raise ValueError(f"failed to list GitHub secrets for environment {env!r}: {raw}")
-    return {row["name"] for row in _parse_gh_json_records(raw)}
+
+    logger.info(
+        f"GitHub Actions environment {env!r} not found ({raw.strip()}); "
+        f"creating it with gh api repos/.../environments/..."
+    )
+    api_ok, api_msg = run_gh(f"gh api repos/{owner_repo}/environments/{env} -X PUT")
+    if not api_ok:
+        logger.warning(f"failed to create GitHub Actions environment {env!r}: {api_msg}")
+
+    ok_retry, raw_retry = _gh_secret_list_names_json(env, run_gh)
+    if not ok_retry:
+        raise ValueError(
+            f"failed to list GitHub secrets for environment {env!r} after creating environment: {raw_retry}"
+        )
+    return _secret_names_from_gh_list_json(raw_retry)
 
 
 def _remote_env_variables(env: str, run_gh: Callable[[str], tuple[bool, str]]) -> dict[str, str]:
@@ -222,6 +267,7 @@ def _render_env_workflow(
     config: TfDoConfig,
     secrets: list[str],
     variables: list[str],
+    optional_variables: list[str],
 ) -> dict[str, str]:
     has_s3_backend = isinstance(config.backend, S3Backend)
     prefix = config.env_path_prefix
@@ -240,7 +286,7 @@ def _render_env_workflow(
     env_lines: list[str] = []
     for s in secrets:
         env_lines.append(f"  {s}: ${{{{ secrets.{s} }}}}")
-    for v in variables:
+    for v in dict.fromkeys([*variables, *optional_variables]):
         env_lines.append(f"  {v}: ${{{{ vars.{v} }}}}")
     env_block = "env:\n" + "\n".join(env_lines) if env_lines else ""
 
@@ -527,18 +573,15 @@ def sync_env_secrets_and_variables(
     result = EnvSyncResult(env=env)
     if dry_run:
         logger.info(
-            f"dry-run: would upsert Actions environment {env!r}; would list secrets and variables remotely; "
+            f"dry-run: would list secrets for Actions environment {env!r}; would create that environment "
+            f"via gh api only if secret list fails with a missing-environment error (typically HTTP 404); "
             f"would write a short-lived .env file and use gh -f (values not passed on the command line); "
             f"would set only absent secrets ({'or all when --replace' if replace_existing_github_secrets else 'no overwrites'}); "
             f"would prompt before changing variables that differ."
         )
         return result
 
-    api_ok, api_msg = run_gh(f"gh api repos/{owner_repo}/environments/{env} -X PUT")
-    if not api_ok:
-        logger.warning(f"failed to configure GitHub environment {env!r}: {api_msg}")
-
-    remote_secret_names = _remote_env_secret_names(env, run_gh)
+    remote_secret_names = _remote_env_secret_names_with_optional_bootstrap(owner_repo, env, run_gh)
     logger.info(
         f"GitHub environment {env!r}: {len(remote_secret_names)} existing secret(s): "
         f"{', '.join(sorted(remote_secret_names))}"
@@ -577,7 +620,7 @@ def sync_github(input_model: SyncGithubInput) -> SyncGithubResult:
     result = SyncGithubResult(dry_run=input_model.dry_run)
 
     for env in env_names:
-        sections = _render_env_workflow(env, config, reqs.secrets, reqs.variables)
+        sections = _render_env_workflow(env, config, reqs.secrets, reqs.variables, reqs.optional_variables)
         path = work_dir / GH_WORKFLOWS_DIR / f"tfdo-{env}.yml"
         _write_workflow_file(path, sections, input_model.dry_run)
         result.workflow_files.append(path)
@@ -597,7 +640,10 @@ def sync_github(input_model: SyncGithubInput) -> SyncGithubResult:
 
     for env in env_names:
         env_vars = _resolve_env_vars(env, config, work_dir, input_model.settings, input_model.os_env)
-        variable_entries = resolve_variable_values(reqs.variables, env_vars)
+        variable_entries = [
+            *resolve_variable_values(reqs.variables, env_vars),
+            *resolve_variable_values(reqs.optional_variables, env_vars, warn_if_missing=False),
+        ]
         env_result = sync_env_secrets_and_variables(
             input_model.owner_repo,
             env,
@@ -611,5 +657,7 @@ def sync_github(input_model: SyncGithubInput) -> SyncGithubResult:
         )
         result.env_sync_results.append(env_result)
         logger.info(f"env {env}: secrets={len(env_result.secrets_set)}, variables={len(env_result.variables_set)}")
+        if env_result.variables_set:
+            logger.info(f"env {env}: variables synced: {', '.join(sorted(env_result.variables_set))}")
 
     return result

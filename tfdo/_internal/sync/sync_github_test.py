@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import shlex
 from collections.abc import Callable
 from pathlib import Path
@@ -15,10 +16,12 @@ from tfdo._internal.sync.sync_github import (
     ACTION_SETUP_UV,
     SyncGithubInput,
     _format_github_dotenv_line,
+    _github_actions_environment_missing_stderr,
     _planned_secret_writes,
     _resolve_env_vars,
     collect_requirements,
     resolve_secret_values,
+    resolve_variable_values,
     sync_github,
 )
 
@@ -106,6 +109,7 @@ def test_collect_requirements_with_s3_backend() -> None:
     config = _config_with_s3()
     registry = {"mongodbatlas": _ATLAS_HINTS}
     reqs = collect_requirements(config, registry, {"mongodbatlas": "api_key"})
+    assert reqs.optional_variables == []
     assert "MONGODB_ATLAS_PUBLIC_KEY" in reqs.secrets
     assert "MONGODB_ATLAS_PRIVATE_KEY" in reqs.secrets
     assert "AWS_ROLE_ARN" in reqs.secrets
@@ -118,6 +122,45 @@ def test_collect_requirements_without_s3() -> None:
     reqs = collect_requirements(config, {"mongodbatlas": _ATLAS_HINTS}, {"mongodbatlas": "api_key"})
     assert "AWS_ROLE_ARN" not in reqs.secrets
     assert "AWS_REGION" not in reqs.variables
+
+
+def test_collect_requirements_variable_options_with_provider_attr() -> None:
+    hints = _ATLAS_HINTS.model_copy(
+        update={
+            "variable_options": [
+                VariableMapping(env="MONGODB_ATLAS_PROJECT_ID", tf_var="project_id"),
+                VariableMapping(env="MONGODB_ATLAS_BASE_URL", tf_var="base_url", provider_attr="base_url"),
+            ]
+        }
+    )
+    config = TfDoConfig(providers=[ProviderConstraint(name="mongodbatlas")])
+    reqs = collect_requirements(config, {"mongodbatlas": hints}, {"mongodbatlas": "api_key"})
+    assert "MONGODB_ATLAS_BASE_URL" in reqs.optional_variables
+    assert "MONGODB_ATLAS_PROJECT_ID" not in reqs.optional_variables
+
+
+def test_sync_github_includes_provider_attr_variable_when_set(tmp_path: Path) -> None:
+    _make_envs(tmp_path, ["dev"])
+    hints = _ATLAS_HINTS.model_copy(
+        update={
+            "variable_options": [
+                VariableMapping(env="MONGODB_ATLAS_BASE_URL", tf_var="base_url", provider_attr="base_url"),
+            ]
+        }
+    )
+    _calls, recorder = _gh_call_recorder()
+    env_vars = {**_ATLAS_ENV_VARS, "MONGODB_ATLAS_BASE_URL": "https://cloud-dev.mongodb.com/"}
+    input_model = _atlas_input(tmp_path, recorder, provider_hints_registry={"mongodbatlas": hints}, os_env=env_vars)
+    result = sync_github(input_model)
+    assert "MONGODB_ATLAS_BASE_URL" in result.env_sync_results[0].variables_set
+    wf = (tmp_path / ".github/workflows/tfdo-dev.yml").read_text()
+    assert "MONGODB_ATLAS_BASE_URL: ${{ vars.MONGODB_ATLAS_BASE_URL }}" in wf
+
+
+def test_resolve_variable_values_optional_skips_without_warning(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.WARNING)
+    assert resolve_variable_values(["MONGODB_ATLAS_BASE_URL"], {}, warn_if_missing=False) == []
+    assert not caplog.records
 
 
 def test_resolve_secrets_raises_on_missing() -> None:
@@ -140,6 +183,56 @@ def test_planned_secret_writes_skip_existing_until_replace() -> None:
     )
     assert [e.name for e in replace_all] == ["A", "B"]
     assert skipped_when_forcing_replace == []
+
+
+def test_github_actions_environment_missing_stderr_matches_gh() -> None:
+    sample = (
+        "failed to get secrets: HTTP 404: Not Found "
+        "(https://api.github.com/repos/EspenAlbert/tfdo-demo/environments/dummy/secrets?per_page=100)"
+    )
+    assert _github_actions_environment_missing_stderr(sample)
+    assert not _github_actions_environment_missing_stderr("")
+    assert not _github_actions_environment_missing_stderr("HTTP 403: Forbidden (https://example.com)")
+    assert not _github_actions_environment_missing_stderr("failed to connect: dial tcp")
+
+
+def test_github_environment_api_put_only_when_secret_list_404(tmp_path: Path) -> None:
+    _make_envs(tmp_path, ["dev"])
+    calls: list[str] = []
+    list_attempt = [0]
+
+    def recorder(script: str) -> tuple[bool, str]:
+        calls.append(script)
+        if "gh secret list" in script and "--env dev" in script:
+            list_attempt[0] += 1
+            if list_attempt[0] == 1:
+                return (
+                    False,
+                    "failed to get secrets: HTTP 404: Not Found "
+                    "(https://api.github.com/repos/org/repo/environments/dev/secrets?per_page=100)",
+                )
+            return True, "[]"
+        if "gh api repos/org/repo/environments/dev" in script and "-X PUT" in script:
+            return True, ""
+        if "gh variable list" in script and "--env dev" in script:
+            return True, "[]"
+        return True, ""
+
+    input_model = SyncGithubInput(
+        settings=_settings(tmp_path),
+        config=_config_with_s3(),
+        provider_hints_registry={"mongodbatlas": _ATLAS_HINTS},
+        selected_bundles={"mongodbatlas": "api_key"},
+        env_names=["dev"],
+        owner_repo="org/repo",
+        os_env=_S3_ENV_VARS,
+        run_gh=recorder,
+    )
+    sync_github(input_model)
+    puts = [c for c in calls if "gh api repos/org/repo/environments/dev" in c and "-X PUT" in c]
+    lists = [c for c in calls if "gh secret list" in c and "--env dev" in c]
+    assert len(puts) == 1
+    assert len(lists) == 2
 
 
 def test_two_env_workflow_generation(tmp_path: Path) -> None:
@@ -175,7 +268,7 @@ def test_two_env_workflow_generation(tmp_path: Path) -> None:
     assert result.setup_action_path is not None
     assert result.setup_action_path.is_file()
 
-    assert any("gh api" in c for c in calls)
+    assert not any("gh api repos/" in c and "/environments/" in c for c in calls)
     assert any("gh secret set" in c for c in calls)
     secret_cmds = [c for c in calls if "gh secret set" in c]
     assert len(secret_cmds) == 2

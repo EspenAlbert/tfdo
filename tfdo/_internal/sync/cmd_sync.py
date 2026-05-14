@@ -121,6 +121,8 @@ def github_cmd(
         logger.info(
             f"  {env_result.env}: secrets={len(env_result.secrets_set)}, variables={len(env_result.variables_set)}"
         )
+        if env_result.variables_set:
+            logger.info(f"  {env_result.env}: variables synced: {', '.join(sorted(env_result.variables_set))}")
         if env_result.secrets_skipped_existing:
             logger.info(
                 f"  {env_result.env}: skipped secrets (already set on GitHub): "
