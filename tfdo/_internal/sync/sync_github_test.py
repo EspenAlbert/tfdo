@@ -9,6 +9,7 @@ from tfdo._internal.config.config_model import ProviderConstraint, S3Backend, Tf
 from tfdo._internal.config.provider_hints import AuthBundle, ProviderHints, VariableMapping
 from tfdo._internal.settings import TfDoSettings
 from tfdo._internal.sync.sync_github import (
+    ACTION_AWS_CREDS,
     SyncGithubInput,
     collect_requirements,
     resolve_secret_values,
@@ -50,6 +51,19 @@ def _gh_call_recorder() -> tuple[list[str], Callable[[str], tuple[bool, str]]]:
     return calls, recorder
 
 
+_ATLAS_ENV_VARS = {
+    "MONGODB_ATLAS_PUBLIC_KEY": "p",
+    "MONGODB_ATLAS_PRIVATE_KEY": "s",
+    "MONGODB_ATLAS_ORG_ID": "o",
+}
+
+_S3_ENV_VARS = {
+    **_ATLAS_ENV_VARS,
+    "AWS_ROLE_ARN": "arn:aws:iam::role",
+    "AWS_REGION": "us-east-1",
+}
+
+
 def test_collect_requirements_with_s3_backend() -> None:
     config = _config_with_s3()
     registry = {"mongodbatlas": _ATLAS_HINTS}
@@ -76,13 +90,6 @@ def test_resolve_secrets_raises_on_missing() -> None:
 def test_two_env_workflow_generation(tmp_path: Path) -> None:
     _make_envs(tmp_path, ["dev", "prod"])
     config = _config_with_s3()
-    env_vars = {
-        "MONGODB_ATLAS_PUBLIC_KEY": "pub",
-        "MONGODB_ATLAS_PRIVATE_KEY": "priv",
-        "AWS_ROLE_ARN": "arn:aws:iam::role",
-        "MONGODB_ATLAS_ORG_ID": "org123",
-        "AWS_REGION": "us-east-1",
-    }
     calls, recorder = _gh_call_recorder()
     input_model = SyncGithubInput(
         settings=_settings(tmp_path),
@@ -91,7 +98,7 @@ def test_two_env_workflow_generation(tmp_path: Path) -> None:
         selected_bundles={"mongodbatlas": "api_key"},
         env_names=["dev", "prod"],
         owner_repo="org/repo",
-        env_vars=env_vars,
+        os_env=_S3_ENV_VARS,
         run_gh=recorder,
     )
     result = sync_github(input_model)
@@ -103,7 +110,7 @@ def test_two_env_workflow_generation(tmp_path: Path) -> None:
         content = wf_path.read_text()
         assert f"paths: ['envs/{env}/**']" in content
         assert f"environment: {env}" in content
-        assert "aws-actions/configure-aws-credentials@v4" in content
+        assert ACTION_AWS_CREDS in content
 
     assert result.manual_workflow_path is not None
     assert result.manual_workflow_path.is_file()
@@ -128,19 +135,20 @@ def test_setup_action_reads_tf_version(tmp_path: Path) -> None:
         selected_bundles={"mongodbatlas": "api_key"},
         env_names=["dev"],
         owner_repo="org/repo",
-        env_vars={"MONGODB_ATLAS_PUBLIC_KEY": "p", "MONGODB_ATLAS_PRIVATE_KEY": "s", "MONGODB_ATLAS_ORG_ID": "o"},
+        os_env=_ATLAS_ENV_VARS,
         run_gh=recorder,
     )
     result = sync_github(input_model)
     assert result.setup_action_path is not None
     content = result.setup_action_path.read_text()
     assert "default: '1.10.0'" in content
+    assert "just-version:" in content
 
 
 def test_no_aws_step_without_s3_backend(tmp_path: Path) -> None:
     _make_envs(tmp_path, ["dev"])
     config = TfDoConfig(providers=[ProviderConstraint(name="mongodbatlas")])
-    calls, recorder = _gh_call_recorder()
+    _calls, recorder = _gh_call_recorder()
     input_model = SyncGithubInput(
         settings=_settings(tmp_path),
         config=config,
@@ -148,7 +156,7 @@ def test_no_aws_step_without_s3_backend(tmp_path: Path) -> None:
         selected_bundles={"mongodbatlas": "api_key"},
         env_names=["dev"],
         owner_repo="org/repo",
-        env_vars={"MONGODB_ATLAS_PUBLIC_KEY": "p", "MONGODB_ATLAS_PRIVATE_KEY": "s", "MONGODB_ATLAS_ORG_ID": "o"},
+        os_env=_ATLAS_ENV_VARS,
         run_gh=recorder,
     )
     sync_github(input_model)
@@ -167,13 +175,7 @@ def test_dry_run_produces_no_files_no_gh_calls(tmp_path: Path) -> None:
         selected_bundles={"mongodbatlas": "api_key"},
         env_names=["dev"],
         owner_repo="org/repo",
-        env_vars={
-            "MONGODB_ATLAS_PUBLIC_KEY": "p",
-            "MONGODB_ATLAS_PRIVATE_KEY": "s",
-            "AWS_ROLE_ARN": "arn",
-            "MONGODB_ATLAS_ORG_ID": "o",
-            "AWS_REGION": "us-east-1",
-        },
+        os_env=_S3_ENV_VARS,
         run_gh=recorder,
         dry_run=True,
     )
@@ -192,7 +194,7 @@ def _atlas_input(tmp_path: Path, recorder: Callable[[str], tuple[bool, str]], **
         "selected_bundles": {"mongodbatlas": "api_key"},
         "env_names": ["dev"],
         "owner_repo": "org/repo",
-        "env_vars": {"MONGODB_ATLAS_PUBLIC_KEY": "p", "MONGODB_ATLAS_PRIVATE_KEY": "s", "MONGODB_ATLAS_ORG_ID": "o"},
+        "os_env": _ATLAS_ENV_VARS,
         "run_gh": recorder,
     }
     defaults.update(overrides)
@@ -211,3 +213,25 @@ def test_section_markers_survive_regeneration(tmp_path: Path) -> None:
 
     sync_github(input_model)
     assert "my custom job" in wf_path.read_text()
+
+
+def test_custom_discovery_pattern_affects_paths_trigger(tmp_path: Path) -> None:
+    config = TfDoConfig(
+        run_dir_discovery="environments/{env}",
+        providers=[ProviderConstraint(name="mongodbatlas")],
+    )
+    (tmp_path / "environments" / "staging").mkdir(parents=True)
+    _calls, recorder = _gh_call_recorder()
+    input_model = SyncGithubInput(
+        settings=_settings(tmp_path),
+        config=config,
+        provider_hints_registry={"mongodbatlas": _ATLAS_HINTS},
+        selected_bundles={"mongodbatlas": "api_key"},
+        env_names=["staging"],
+        owner_repo="org/repo",
+        os_env=_ATLAS_ENV_VARS,
+        run_gh=recorder,
+    )
+    sync_github(input_model)
+    content = (tmp_path / ".github/workflows/tfdo-staging.yml").read_text()
+    assert "paths: ['environments/staging/**']" in content

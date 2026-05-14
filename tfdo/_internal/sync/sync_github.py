@@ -10,12 +10,14 @@ from pydantic import BaseModel, Field
 from zero_3rdparty import file_utils
 from zero_3rdparty.sections import CommentConfig, replace_sections
 
+from tfdo._internal.config.config_file import load_optional_env_vars_from_files
 from tfdo._internal.config.config_model import S3Backend, TfDoConfig
 from tfdo._internal.config.provider_hints import (
     AuthBundle,
     ProviderHints,
 )
 from tfdo._internal.models import TfDoBaseInput
+from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,12 @@ YAML_COMMENT_CONFIG = CommentConfig("#")
 
 GH_WORKFLOWS_DIR = ".github/workflows"
 GH_ACTIONS_DIR = ".github/actions/tfdo-setup"
+
+# SHA-pinned action versions (update these when upgrading)
+ACTION_CHECKOUT = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"  # v6.0.2
+ACTION_AWS_CREDS = "aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885"  # v6.1.1
+ACTION_SETUP_JUST = "extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3"  # v4.0.0
+ACTION_SETUP_TERRAFORM = "hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e"  # v4.0.1
 
 
 class SecretEntry(NamedTuple):
@@ -50,7 +58,7 @@ class SyncGithubInput(TfDoBaseInput):
     selected_bundles: dict[str, str] = Field(default_factory=dict)
     env_names: list[str] = Field(default_factory=list)
     owner_repo: str = ""
-    env_vars: dict[str, str] = Field(default_factory=dict)
+    os_env: dict[str, str] = Field(default_factory=dict)
     run_gh: Callable[[str], tuple[bool, str]] | None = None
 
 
@@ -120,12 +128,14 @@ def resolve_variable_values(variable_names: list[str], env_vars: dict[str, str])
     return entries
 
 
-def _has_s3_backend(config: TfDoConfig) -> bool:
-    return isinstance(config.backend, S3Backend)
-
-
-def _render_env_workflow(env: str, config: TfDoConfig, secrets: list[str], variables: list[str]) -> dict[str, str]:
-    has_aws = _has_s3_backend(config)
+def _render_env_workflow(
+    env: str,
+    config: TfDoConfig,
+    secrets: list[str],
+    variables: list[str],
+) -> dict[str, str]:
+    has_s3_backend = isinstance(config.backend, S3Backend)
+    prefix = config.env_path_prefix
 
     header_lines = [
         f"name: 'tfdo: {env}'",
@@ -133,9 +143,9 @@ def _render_env_workflow(env: str, config: TfDoConfig, secrets: list[str], varia
         "on:",
         "  push:",
         "    branches: [main]",
-        f"    paths: ['envs/{env}/**']",
+        f"    paths: ['{prefix}/{env}/**']",
         "  pull_request:",
-        f"    paths: ['envs/{env}/**']",
+        f"    paths: ['{prefix}/{env}/**']",
     ]
 
     env_lines: list[str] = []
@@ -146,17 +156,17 @@ def _render_env_workflow(env: str, config: TfDoConfig, secrets: list[str], varia
     env_block = "env:\n" + "\n".join(env_lines) if env_lines else ""
 
     aws_step = ""
-    if has_aws:
+    if has_s3_backend:
         aws_step = (
             "      - name: Configure AWS Credentials\n"
-            "        uses: aws-actions/configure-aws-credentials@v4\n"
+            f"        uses: {ACTION_AWS_CREDS}\n"
             "        with:\n"
             "          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}\n"
             "          aws-region: ${{ vars.AWS_REGION }}"
         )
 
     plan_steps = [
-        "      - uses: actions/checkout@v4",
+        f"      - uses: {ACTION_CHECKOUT}",
         "      - uses: ./.github/actions/tfdo-setup",
     ]
     if aws_step:
@@ -177,7 +187,7 @@ def _render_env_workflow(env: str, config: TfDoConfig, secrets: list[str], varia
     ]
 
     apply_steps = [
-        "      - uses: actions/checkout@v4",
+        f"      - uses: {ACTION_CHECKOUT}",
         "      - uses: ./.github/actions/tfdo-setup",
     ]
     if aws_step:
@@ -206,11 +216,11 @@ def _render_env_workflow(env: str, config: TfDoConfig, secrets: list[str], varia
 
 
 def _render_manual_workflow(env_names: list[str], config: TfDoConfig) -> dict[str, str]:
-    has_aws = _has_s3_backend(config)
+    has_s3_backend = isinstance(config.backend, S3Backend)
     env_choices = ", ".join(env_names)
 
     dispatch_lines = [
-        "name: 'tfdo: manual'",
+        "name: 'tfdo: ${{ inputs.action }} ${{ inputs.env }}'",
         "",
         "on:",
         "  workflow_dispatch:",
@@ -236,20 +246,22 @@ def _render_manual_workflow(env_names: list[str], config: TfDoConfig) -> dict[st
     ]
 
     steps = [
-        "      - uses: actions/checkout@v4",
+        f"      - uses: {ACTION_CHECKOUT}",
         "      - uses: ./.github/actions/tfdo-setup",
     ]
-    if has_aws:
+    if has_s3_backend:
         steps.append(
             "      - name: Configure AWS Credentials\n"
-            "        uses: aws-actions/configure-aws-credentials@v4\n"
+            f"        uses: {ACTION_AWS_CREDS}\n"
             "        with:\n"
             "          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}\n"
             "          aws-region: ${{ vars.AWS_REGION }}"
         )
-    steps.append(
-        "      - run: just ${{ inputs.action }}-env ${{ inputs.env }} ${{ inputs.run_dir }} ${{ inputs.extra_args }}"
-    )
+    # Empty optional inputs produce empty strings; build the command conditionally
+    run_cmd = "just ${{ inputs.action }}-env ${{ inputs.env }}"
+    run_cmd += " ${{ inputs.run_dir && format('--app {0}', inputs.run_dir) || '' }}"
+    run_cmd += " ${{ inputs.extra_args }}"
+    steps.append(f"      - run: {run_cmd}")
 
     job_lines = [
         "jobs:",
@@ -278,11 +290,16 @@ def _render_setup_action(config: TfDoConfig) -> dict[str, str]:
         "  terraform-version:",
         "    description: Terraform version",
         f"    default: '{tf_version_default}'",
+        "  just-version:",
+        "    description: Just version",
+        "    default: '*'",
         "runs:",
         "  using: composite",
         "  steps:",
-        "    - uses: extractions/setup-just@v2",
-        "    - uses: hashicorp/setup-terraform@v3",
+        f"    - uses: {ACTION_SETUP_JUST}",
+        "      with:",
+        "        just-version: ${{ inputs.just-version }}",
+        f"    - uses: {ACTION_SETUP_TERRAFORM}",
         "      with:",
         "        terraform_version: ${{ inputs.terraform-version }}",
     ]
@@ -307,6 +324,21 @@ def _default_run_gh(script: str) -> tuple[bool, str]:
         return True, result.stdout_one_line
     except ShellError as e:
         return False, str(e)
+
+
+def _resolve_env_vars(
+    env: str,
+    config: TfDoConfig,
+    work_dir: Path,
+    settings: TfDoSettings,
+    os_env: dict[str, str],
+) -> dict[str, str]:
+    """Merge os.environ with per-env env_var files so each env can have different secret values."""
+    merged = dict(os_env)
+    env_dir = config.env_base_dir(work_dir) / env
+    file_vars = load_optional_env_vars_from_files(env_dir, settings, log=logger)
+    merged.update(file_vars)
+    return merged
 
 
 def sync_env_secrets_and_variables(
@@ -352,8 +384,6 @@ def sync_github(input_model: SyncGithubInput) -> SyncGithubResult:
     run_gh = input_model.run_gh or _default_run_gh
 
     reqs = collect_requirements(config, input_model.provider_hints_registry, input_model.selected_bundles)
-    secret_entries = resolve_secret_values(reqs.secrets, input_model.env_vars)
-    variable_entries = resolve_variable_values(reqs.variables, input_model.env_vars)
 
     result = SyncGithubResult(dry_run=input_model.dry_run)
 
@@ -377,6 +407,9 @@ def sync_github(input_model: SyncGithubInput) -> SyncGithubResult:
     logger.info(f"setup action: {setup_path}")
 
     for env in env_names:
+        env_vars = _resolve_env_vars(env, config, work_dir, input_model.settings, input_model.os_env)
+        secret_entries = resolve_secret_values(reqs.secrets, env_vars)
+        variable_entries = resolve_variable_values(reqs.variables, env_vars)
         env_result = sync_env_secrets_and_variables(
             input_model.owner_repo, env, secret_entries, variable_entries, input_model.dry_run, run_gh
         )

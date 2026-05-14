@@ -7,7 +7,7 @@ import typer
 from ask_shell._internal.interactive import select_list
 from ask_shell.shell import run_and_wait
 
-from tfdo._internal.config.config_file import load_config, load_optional_env_vars_from_files
+from tfdo._internal.config.config_file import load_config
 from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.config.provider_hints import ProviderHints, load_provider_hints
 from tfdo._internal.sync import sync_github as _sync_github_mod
@@ -71,8 +71,6 @@ def github_cmd(
     owner_repo = _detect_owner_repo()
 
     env_names = [env] if env else [p.name for p in config.envs(settings.work_dir)]
-    file_env_vars = load_optional_env_vars_from_files(settings.work_dir, settings, log=logger)
-    merged_env_vars = {**os.environ, **file_env_vars}
 
     input_model = SyncGithubInput(
         settings=settings,
@@ -81,7 +79,7 @@ def github_cmd(
         selected_bundles=selected_bundles,
         env_names=env_names,
         owner_repo=owner_repo,
-        env_vars=merged_env_vars,
+        os_env=dict(os.environ),
         dry_run=dry_run,
     )
     result = _sync_github_mod.sync_github(input_model)
