@@ -46,15 +46,12 @@ def _discover_targets(config: TfDoConfig, work_dir: Path) -> list[tuple[str, dic
     targets: list[tuple[str, dict[str, str]]] = []
     for env_path in config.envs(work_dir):
         env_name = env_path.name
-        if run_dir_selector is not None:
-            run_dir_paths = config.run_dirs(work_dir, env_name)
-            if run_dir_paths:
-                for rd_path in run_dir_paths:
-                    target_name = f"{env_name}-{rd_path.name}"
-                    selectors = {ENV_SELECTOR_NAME: env_name, run_dir_selector: rd_path.name}
-                    targets.append((target_name, selectors))
-                continue
         targets.append((env_name, {ENV_SELECTOR_NAME: env_name}))
+        if run_dir_selector is not None:
+            for rd_path in config.run_dirs(work_dir, env_name):
+                target_name = f"{env_name}-{rd_path.name}"
+                selectors = {ENV_SELECTOR_NAME: env_name, run_dir_selector: rd_path.name}
+                targets.append((target_name, selectors))
     return targets
 
 

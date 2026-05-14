@@ -50,8 +50,10 @@ def test_run_dir_targets_use_app_flag(tmp_path: Path) -> None:
     _make_env_dirs(tmp_path, {"dev": ["networking", "app"]})
     result = sync_justfile(SyncJustfileInput(settings=_settings(tmp_path)))
 
-    assert result.target_names == ["dev-app", "dev-networking"]
+    assert result.target_names == ["dev", "dev-app", "dev-networking"]
     section = _section(result.justfile_path)
+    assert "dev cmd *args:" in section
+    assert "tfdo run --env dev {{cmd}}" in section
     assert "dev-networking cmd *args:" in section
     assert "--env dev --app networking" in section
     assert "dev-app cmd *args:" in section

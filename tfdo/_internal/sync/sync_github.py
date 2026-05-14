@@ -172,7 +172,7 @@ def _render_env_workflow(
     ]
     if aws_step:
         plan_steps.append(aws_step)
-    plan_steps.append(f"      - run: just plan-env {env}")
+    plan_steps.append(f"      - run: just {env} plan")
 
     plan_lines = [
         "jobs:",
@@ -193,7 +193,7 @@ def _render_env_workflow(
     ]
     if aws_step:
         apply_steps.append(aws_step)
-    apply_steps.append(f"      - run: just apply-env {env} --auto-approve")
+    apply_steps.append(f"      - run: just {env} apply --auto-approve")
 
     apply_lines = [
         "  apply:",
@@ -259,7 +259,7 @@ def _render_manual_workflow(env_names: list[str], config: TfDoConfig) -> dict[st
             "          aws-region: ${{ vars.AWS_REGION }}"
         )
     # Empty optional inputs produce empty strings; build the command conditionally
-    run_cmd = "just ${{ inputs.action }}-env ${{ inputs.env }}"
+    run_cmd = "just ${{ inputs.env }} ${{ inputs.action }}"
     run_cmd += " ${{ inputs.run_dir && format('--app {0}', inputs.run_dir) || '' }}"
     run_cmd += " ${{ inputs.extra_args }}"
     steps.append(f"      - run: {run_cmd}")
