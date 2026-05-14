@@ -322,7 +322,7 @@ def _render_setup_action(config: TfDoConfig) -> dict[str, str]:
         f"    - uses: {ACTION_SETUP_UV}",
         "      with:",
         "        version: ${{ inputs.uv-version }}",
-        f"    - run: uv pip install --system '{install_expr}'",
+        f"    - run: uv tool install '{install_expr}'",
         "      shell: bash",
     ]
     return {"setup": "\n".join(setup_lines)}
