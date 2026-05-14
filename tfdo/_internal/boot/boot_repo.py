@@ -9,6 +9,7 @@ from typing import Annotated, NamedTuple
 import yaml
 from ask_shell._internal.interactive import ChoiceTyped, select_list, select_list_multiple_choices, text
 from ask_shell.shell import run_and_wait
+from model_lib import dump as model_dump
 from pydantic import BaseModel, Field, TypeAdapter
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
@@ -39,6 +40,14 @@ _BACKEND_ADAPTER: TypeAdapter[BackendConfig] = TypeAdapter(Annotated[BackendConf
 class CachedModule(NamedTuple):
     source: str
     version: str
+
+
+class ScaffoldResult(NamedTuple):
+    backend_choice: str
+    bucket: str | None
+    region: str | None
+    providers: list[str]
+    modules: list[ModuleConstraint]
 
 
 class OidcWizardResult(NamedTuple):
@@ -125,7 +134,7 @@ def _config_session(config_path: Path, binary: str) -> Iterator[TfDoConfig]:
         yield config
     finally:
         data = config.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
-        ensure_parents_write_text(config_path, yaml.dump(data, default_flow_style=False))
+        ensure_parents_write_text(config_path, model_dump.dump_as_str(data, "yaml"))
 
 
 def select_modules(providers: list[str], hints_registry: dict[str, ProviderHints]) -> list[ModuleConstraint]:
@@ -136,14 +145,15 @@ def select_modules(providers: list[str], hints_registry: dict[str, ProviderHints
     return [ModuleConstraint(source=mc.hint.source) for mc in selected]
 
 
-def _resolve_modules(input_model: TfdoBootInput) -> list[ModuleConstraint]:
-    if input_model.modules:
-        return input_model.modules
-    settings = input_model.settings
-    if not input_model.providers or not settings.is_interactive:
+def _resolve_modules(
+    modules: list[ModuleConstraint], providers: list[str], settings: TfDoSettings
+) -> list[ModuleConstraint]:
+    if modules:
+        return modules
+    if not providers or not settings.is_interactive:
         return []
     hints_registry = load_provider_hints(settings.resolved_provider_hints_path)
-    return select_modules(input_model.providers, hints_registry)
+    return select_modules(providers, hints_registry)
 
 
 def _populate_module_cache(
@@ -169,11 +179,12 @@ def _populate_module_cache(
     return cached, pinned
 
 
-def _run_oidc_wizard(input_model: TfdoBootInput, backend_bucket: str | None = None) -> OidcWizardResult:
-    settings = input_model.settings
+def _run_oidc_wizard(
+    settings: TfDoSettings, bucket: str | None = None, backend_bucket: str | None = None
+) -> OidcWizardResult:
     work_dir = settings.work_dir
-    bucket_default = input_model.bucket or backend_bucket or ""
-    bucket = input_model.bucket or text("S3 bucket name for IAM policy scope", default=bucket_default)
+    bucket_default = bucket or backend_bucket or ""
+    bucket = bucket or text("S3 bucket name for IAM policy scope", default=bucket_default)
 
     run = run_and_wait("aws sts get-caller-identity", cwd=work_dir)
     account_id = run.parse_output(dict)["Account"]
@@ -197,9 +208,10 @@ def _run_oidc_wizard(input_model: TfdoBootInput, backend_bucket: str | None = No
     return OidcWizardResult(repo_org=org, repo_name=repo, oidc_roles=oidc_roles)
 
 
-def _run_scaffold_wizard(input_model: TfdoBootInput, config: TfDoConfig) -> TfdoBootInput:
+def _run_scaffold_wizard(
+    settings: TfDoSettings, config: TfDoConfig, bucket: str | None, region: str | None
+) -> ScaffoldResult:
     """Prompt for backend and providers interactively, using existing config as defaults."""
-    settings = input_model.settings
     backend_names = scan_backend_names(settings.backends_dirs)
     match config.backend:
         case S3Backend(bucket=existing_bucket, region=existing_region):
@@ -214,8 +226,6 @@ def _run_scaffold_wizard(input_model: TfdoBootInput, config: TfDoConfig) -> Tfdo
         backend_names + ["create-new", "skip"],
         default=default_backend,
     )
-    bucket = input_model.bucket
-    region = input_model.region
     if backend_choice == "create-new":
         bucket = text("S3 bucket name", default=existing_bucket or "")
         region = text("AWS region", default=existing_region or "us-east-1")
@@ -232,46 +242,13 @@ def _run_scaffold_wizard(input_model: TfdoBootInput, config: TfDoConfig) -> Tfdo
 
     modules = select_modules(providers, hints)
 
-    return input_model.model_copy(
-        update={
-            "backend_choice": backend_choice,
-            "bucket": bucket,
-            "region": region,
-            "providers": providers,
-            "modules": modules,
-        }
+    return ScaffoldResult(
+        backend_choice=backend_choice,
+        bucket=bucket,
+        region=region,
+        providers=providers,
+        modules=modules,
     )
-
-
-def _apply_scaffold(input_model: TfdoBootInput, config: TfDoConfig) -> tuple[TfdoBootInput, list[CachedModule]]:
-    settings = input_model.settings
-    if settings.is_interactive and input_model.backend_choice == "skip" and not input_model.providers:
-        input_model = _run_scaffold_wizard(input_model, config)
-
-    match input_model.backend_choice:
-        case "skip":
-            pass
-        case "create-new":
-            if not input_model.bucket or not input_model.region:
-                raise ValueError("bucket and region are required when backend_choice is 'create-new'")
-            provision_s3_bucket(input_model.bucket, input_model.region)
-            backend = S3Backend(bucket=input_model.bucket, region=input_model.region, key=DEFAULT_KEY_TEMPLATE)
-            config.backend = backend
-            _save_backend_to_user_dir(settings, input_model.bucket, backend)
-        case backend_name:
-            config.backend = _load_existing_backend(settings.backends_dirs, backend_name)
-
-    if input_model.providers:
-        config.providers = [ProviderConstraint(name=p) for p in input_model.providers]
-
-    selected_modules = _resolve_modules(input_model)
-    _, pinned_modules = _populate_module_cache(selected_modules, settings)
-    cached = [CachedModule(source=m.source, version=m.constraint or "") for m in pinned_modules]
-
-    if pinned_modules:
-        config.modules = pinned_modules
-
-    return input_model, cached
 
 
 def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
@@ -279,7 +256,38 @@ def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
     config_path = settings.work_dir / CONFIG_FILENAME
 
     with _config_session(config_path, settings.binary) as config:
-        input_model, cached = _apply_scaffold(input_model, config)
+        if settings.is_interactive and input_model.backend_choice == "skip" and not input_model.providers:
+            scaffold = _run_scaffold_wizard(settings, config, input_model.bucket, input_model.region)
+        else:
+            scaffold = ScaffoldResult(
+                backend_choice=input_model.backend_choice,
+                bucket=input_model.bucket,
+                region=input_model.region,
+                providers=input_model.providers,
+                modules=input_model.modules,
+            )
+
+        match scaffold.backend_choice:
+            case "skip":
+                pass
+            case "create-new":
+                if not scaffold.bucket or not scaffold.region:
+                    raise ValueError("bucket and region are required when backend_choice is 'create-new'")
+                provision_s3_bucket(scaffold.bucket, scaffold.region)
+                backend = S3Backend(bucket=scaffold.bucket, region=scaffold.region, key=DEFAULT_KEY_TEMPLATE)
+                config.backend = backend
+                _save_backend_to_user_dir(settings, scaffold.bucket, backend)
+            case backend_name:
+                config.backend = _load_existing_backend(settings.backends_dirs, backend_name)
+
+        if scaffold.providers:
+            config.providers = [ProviderConstraint(name=p) for p in scaffold.providers]
+
+        selected_modules = _resolve_modules(scaffold.modules, scaffold.providers, settings)
+        _, pinned_modules = _populate_module_cache(selected_modules, settings)
+        cached = [CachedModule(source=m.source, version=m.constraint or "") for m in pinned_modules]
+        if pinned_modules:
+            config.modules = pinned_modules
 
         if input_model.oidc:
             match config.backend:
@@ -287,7 +295,7 @@ def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
                     pass
                 case _:
                     backend_bucket = None
-            oidc_result = _run_oidc_wizard(input_model, backend_bucket=backend_bucket)
+            oidc_result = _run_oidc_wizard(settings, bucket=scaffold.bucket, backend_bucket=backend_bucket)
             ci = config.ci or CiConfig()
             ci.oidc = True
             ci.repo_org = oidc_result.repo_org
@@ -302,6 +310,6 @@ def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
     return TfdoBootResult(
         written_paths=[config_path, gitignore_path],
         terraform_version=config.tf_version or "",
-        backend_choice=input_model.backend_choice,
+        backend_choice=scaffold.backend_choice,
         cached_modules=cached,
     )

@@ -99,7 +99,16 @@ def test_populate_unresolved_stores_under_resolved_version(tmp_path: Path) -> No
 
 def test_module_source_dir_reads_manifest(tmp_path: Path) -> None:
     modules_json = json.dumps(
-        {"Modules": [{"Key": "x", "Source": "registry.terraform.io/foo/bar", "Version": "1.0.0", "Dir": ".terraform/modules/x"}]}
+        {
+            "Modules": [
+                {
+                    "Key": "x",
+                    "Source": "registry.terraform.io/foo/bar",
+                    "Version": "1.0.0",
+                    "Dir": ".terraform/modules/x",
+                }
+            ]
+        }
     )
     (tmp_path / "modules.json").write_text(modules_json)
     (tmp_path / "x").mkdir()

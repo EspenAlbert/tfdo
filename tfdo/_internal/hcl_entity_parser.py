@@ -276,9 +276,10 @@ def parse_entities(path: Path) -> list[HclEntity]:
     return entities
 
 
-def parse_dir_entities(path: Path) -> list[HclEntity]:
+def parse_dir_entities(path: Path, *, recursive: bool = True) -> list[HclEntity]:
+    pattern = "**/*.tf" if recursive else "*.tf"
     entities: list[HclEntity] = []
-    for file in path.glob("**/*.tf"):
+    for file in path.glob(pattern):
         entities.extend(parse_entities(file))
     return entities
 

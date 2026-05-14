@@ -65,7 +65,7 @@ class ModuleAttrs(NamedTuple):
 def _module_required_attrs(module_path: Path) -> ModuleAttrs:
     required: list[str] = []
     optional: list[str] = []
-    for entity in parse_dir_entities(module_path):
+    for entity in parse_dir_entities(module_path, recursive=False):
         if isinstance(entity, TfVariable):
             if entity.default is None:
                 required.append(entity.name)
@@ -129,8 +129,8 @@ def _find_backend(work_dir: Path, run_dir: Path) -> BackendConfig | None:
 _BACKEND_TF = "backend.tf"
 
 
-def _write_backend_tf(run_dir: Path, relative: str, backend: BackendConfig) -> Path:
-    ctx = RunDirContext(name=relative.rsplit("/", 1)[-1], path=relative, repo_owner="", repo_name="")
+def _write_backend_tf(run_dir: Path, relative: str, backend: BackendConfig, config: TfDoConfig) -> Path:
+    ctx = RunDirContext.from_config(relative, config)
     match backend:
         case S3Backend(key=key):
             resolved_key = backend_resolution.resolve_placeholders(key, ctx)
@@ -203,7 +203,7 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
 
     backend = _find_backend(work_dir, run_dir)
     if backend:
-        written.append(_write_backend_tf(run_dir, relative, backend))
+        written.append(_write_backend_tf(run_dir, relative, backend, input_model.config))
 
     if input_model.dependencies:
         dep_data = {"dependencies": [d.model_dump(exclude_defaults=True) for d in input_model.dependencies]}
@@ -217,4 +217,4 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
 
 
 def module_outputs(module_path: Path) -> list[str]:
-    return [e.name for e in parse_dir_entities(module_path) if isinstance(e, TfOutput)]
+    return [e.name for e in parse_dir_entities(module_path, recursive=False) if isinstance(e, TfOutput)]

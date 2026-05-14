@@ -16,7 +16,9 @@ def resolve_placeholders(template: str, ctx: RunDirContext) -> str:
     def _replace(m: re.Match[str]) -> str:
         key = m.group("key")
         if key in _BUILTINS:
-            return builtin_map[key]
+            if value := builtin_map[key]:
+                return value
+            return m.group(0)
         if key.startswith("tags."):
             tag_key = key.removeprefix("tags.")
             if tag_key in ctx.tags:

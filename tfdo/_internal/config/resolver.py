@@ -79,13 +79,14 @@ def _providers_from_module(call: TfModuleCall, run_dir: Path, settings: TfDoSett
         module_path = module_cache.lookup(settings.cache_root, source, version)
         if module_path is None:
             module_path = module_cache.populate(settings.cache_root, source, version, settings)
+        module_path = module_cache.module_source_dir(module_path)
     else:
         raise UnsupportedModuleSourceError(source)
     if not module_path.exists():
         return []
     return [
         p.name
-        for entity in parse_dir_entities(module_path)
+        for entity in parse_dir_entities(module_path, recursive=False)
         if isinstance(entity, TfRequiredProviders)
         for p in entity.providers
     ]

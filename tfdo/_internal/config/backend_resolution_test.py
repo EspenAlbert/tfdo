@@ -29,6 +29,12 @@ def test_resolve_unresolved_raises_with_suggestions():
     assert "tags.env" in msg
 
 
+def test_empty_builtin_raises():
+    ctx = RunDirContext(name="compute", path="envs/dev/compute", repo_owner="", repo_name="")
+    with pytest.raises(ValueError, match="unresolved placeholders"):
+        resolve_placeholders("{repo_owner}/{repo_name}/{path}/terraform.tfstate", ctx)
+
+
 def test_builtins_win_over_tags():
     ctx = RunDirContext(name="x", path="y", repo_owner="o", repo_name="r", tags={"name": "from-tag"})
     assert resolve_placeholders("{name}", ctx) == "x"

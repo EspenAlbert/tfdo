@@ -55,7 +55,15 @@ def test_write_backend_tf_files_creates_backend_tf(tmp_path: Path) -> None:
 
 def test_new_backend_writes_files_without_aws_calls(tmp_path: Path) -> None:
     (tmp_path / ".git").mkdir()
-    (tmp_path / "tfdo.yaml").write_text(yaml.dump({"run_dir_discovery": "envs/{env}/{app}", "binary": "tofu"}))
+    (tmp_path / "tfdo.yaml").write_text(
+        yaml.dump(
+            {
+                "run_dir_discovery": "envs/{env}/{app}",
+                "binary": "tofu",
+                "ci": {"repo_org": "AcmeCorp", "repo_name": "infra"},
+            }
+        )
+    )
     run_dir = tmp_path / "envs" / "dev" / "cluster"
     run_dir.mkdir(parents=True)
     (run_dir / "main.tf").write_text('resource "null_resource" "x" {}\n')
@@ -64,4 +72,5 @@ def test_new_backend_writes_files_without_aws_calls(tmp_path: Path) -> None:
 
     assert result.bucket == "my-bucket"
     assert len(result.backend_tf_files) == 1
-    assert (run_dir / "backend.tf").is_file()
+    backend_content = (run_dir / "backend.tf").read_text()
+    assert "AcmeCorp/infra/envs/dev/cluster/terraform.tfstate" in backend_content

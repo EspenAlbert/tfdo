@@ -10,7 +10,7 @@ from zero_3rdparty.file_utils import ensure_parents_write_text, find_repo_root
 from tfdo._internal import hcl_roundtrip
 from tfdo._internal.config.backend_resolution import resolve_placeholders
 from tfdo._internal.config.config_file import CONFIG_FILENAME, load_config
-from tfdo._internal.config.config_model import S3Backend
+from tfdo._internal.config.config_model import S3Backend, TfDoConfig
 from tfdo._internal.models import TfDoBaseInput
 from tfdo._internal.run.run_context import RunDirContext
 
@@ -44,8 +44,8 @@ def update_tfdo_yaml_backend(repo_root: Path, backend: S3Backend) -> Path:
     return config_path
 
 
-def _backend_tf_for_run_dir(run_dir: Path, rel_path: str, backend: S3Backend) -> None:
-    ctx = RunDirContext(name=rel_path.rsplit("/", 1)[-1], path=rel_path, repo_owner="", repo_name="")
+def _backend_tf_for_run_dir(run_dir: Path, rel_path: str, backend: S3Backend, config: TfDoConfig) -> None:
+    ctx = RunDirContext.from_config(rel_path, config)
     resolved_key = resolve_placeholders(backend.key, ctx)
     resolved_backend = backend.model_copy(update={"key": resolved_key})
 
@@ -64,7 +64,7 @@ def write_backend_tf_files(repo_root: Path, backend: S3Backend) -> list[Path]:
     written: list[Path] = []
     for rd_path in root_config.run_dirs(repo_root):
         rel_path = str(rd_path.relative_to(repo_root))
-        _backend_tf_for_run_dir(rd_path, rel_path, backend)
+        _backend_tf_for_run_dir(rd_path, rel_path, backend, root_config)
         written.append(rd_path / _BACKEND_TF_FILENAME)
         logger.info(f"backend.tf written: {rel_path}")
     return written
