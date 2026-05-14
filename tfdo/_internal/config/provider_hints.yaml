@@ -1,5 +1,10 @@
 mongodbatlas:
   source: mongodb/mongodbatlas
+  modules:
+  - source: terraform-mongodbatlas-modules/cluster
+    alias: cluster
+  - source: terraform-mongodbatlas-modules/project
+    alias: project
   auth_bundles:
     - name: api_key
       secrets:
