@@ -8,7 +8,7 @@ import typer
 from ask_shell._internal.interactive import confirm, select_list
 from ask_shell.shell import ShellError, run_and_wait
 
-from tfdo._internal.config.config_file import load_config
+from tfdo._internal.config.config_file import CONFIG_FILENAME, load_config
 from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.config.provider_hints import ProviderHints, load_provider_hints
 from tfdo._internal.git_utils import is_git_repo
@@ -52,6 +52,8 @@ def _ensure_git_repo(work_dir: Path, config: TfDoConfig) -> None:
     if not confirm("No git repository found. Initialize one?", default=True):
         raise typer.Abort()
     run_and_wait("git init", cwd=work_dir)
+    run_and_wait(f"git add {CONFIG_FILENAME}", cwd=work_dir)
+    run_and_wait("git commit -m 'Initial commit with tfdo.yaml'", cwd=work_dir)
     logger.info(f"initialized git repo in {work_dir}")
     if not confirm("Create a GitHub repository?", default=True):
         return
