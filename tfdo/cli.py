@@ -9,6 +9,7 @@ from tfdo._internal.inspect import cmd_inspect  # noqa: F401
 from tfdo._internal.new import cmd_new  # noqa: F401
 from tfdo._internal.run import cmd_run  # noqa: F401
 from tfdo._internal.schema import cmd_schema  # noqa: F401
+from tfdo._internal.sync import cmd_sync  # noqa: F401
 from tfdo._internal.typer_app import app
 
 
