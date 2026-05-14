@@ -46,8 +46,8 @@ GH_ACTIONS_DIR = ".github/actions/tfdo-setup"
 ACTION_CHECKOUT = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"  # v6.0.2
 ACTION_AWS_CREDS = "aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885"  # v6.1.1
 ACTION_SETUP_JUST = "extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3"  # v4.0.0
-ACTION_SETUP_TERRAFORM = "hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e"  # v4.0.1
 ACTION_SETUP_UV = "astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b"  # v8.1.0
+ACTION_MISE = "jdx/mise-action@1648a7812b9aeae629881980618f079932869151"  # v4.0.1
 
 
 class SecretEntry(NamedTuple):
@@ -355,7 +355,7 @@ def _render_manual_workflow(env_names: list[str], config: TfDoConfig) -> dict[st
     env_choices = ", ".join(env_names)
 
     dispatch_lines = [
-        "name: 'tfdo: ${{ inputs.action }} ${{ inputs.env }}'",
+        "run-name: \"tfdo: env=${{ github.event.inputs.env }}, action=${{ github.event.inputs.action }}${{ github.event.inputs.run_dir && format(', run_dir={0}', github.event.inputs.run_dir) || '' }}${{ github.event.inputs.extra_args && format(', extra_args={0}', github.event.inputs.extra_args) || '' }}\"",
         "",
         "on:",
         "  workflow_dispatch:",
@@ -393,16 +393,16 @@ def _render_manual_workflow(env_names: list[str], config: TfDoConfig) -> dict[st
             "          aws-region: ${{ vars.AWS_REGION }}"
         )
     # Empty optional inputs produce empty strings; build the command conditionally
-    run_cmd = "just ${{ inputs.env }} ${{ inputs.action }}"
-    run_cmd += " ${{ inputs.run_dir && format('--app {0}', inputs.run_dir) || '' }}"
-    run_cmd += " ${{ inputs.extra_args }}"
+    run_cmd = "just ${{ github.event.inputs.env }} ${{ github.event.inputs.action }}"
+    run_cmd += " ${{ github.event.inputs.run_dir && format('--app {0}', github.event.inputs.run_dir) || '' }}"
+    run_cmd += " ${{ github.event.inputs.extra_args }}"
     steps.append(f"      - run: {run_cmd}")
 
     job_lines = [
         "jobs:",
         "  manual:",
         "    runs-on: ubuntu-latest",
-        "    environment: ${{ inputs.env }}",
+        "    environment: ${{ github.event.inputs.env }}",
         "    permissions:",
         "      id-token: write",
         "      contents: read",
@@ -433,7 +433,7 @@ def _render_setup_action(config: TfDoConfig) -> dict[str, str]:
     install_expr = _tfdo_install_expr(tfdo_install)
     setup_lines = [
         "name: tfdo-setup",
-        "description: Install terraform, just, uv, and tfdo for tfdo workflows",
+        "description: Install just, mise (terraform), uv, and tfdo for tfdo workflows",
         "inputs:",
         "  terraform-version:",
         "    description: Terraform version",
@@ -450,9 +450,9 @@ def _render_setup_action(config: TfDoConfig) -> dict[str, str]:
         f"    - uses: {ACTION_SETUP_JUST}",
         "      with:",
         "        just-version: ${{ inputs.just-version }}",
-        f"    - uses: {ACTION_SETUP_TERRAFORM}",
+        f"    - uses: {ACTION_MISE}",
         "      with:",
-        "        terraform_version: ${{ inputs.terraform-version }}",
+        "        install_args: terraform@${{ inputs.terraform-version == '*' && 'latest' || inputs.terraform-version }}",
         f"    - uses: {ACTION_SETUP_UV}",
         "      with:",
         "        version: ${{ inputs.uv-version }}",
