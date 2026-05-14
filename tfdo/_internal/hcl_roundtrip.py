@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from collections.abc import Callable, Iterable
 from typing import Any
 
@@ -13,6 +14,7 @@ from pydantic import BaseModel
 
 _BLOCK_MARKER = "__is_block__"
 _HCL_PATCH_FRAGMENT_BLOCK = "zzz_tfdo_hcl_patch_fragment"
+_MODULE_BLOCK_HEADER_LINE = re.compile(r'^(?P<prefix>\s*module\s+")(?P<label>[^"]+)(?P<suffix>")')
 
 
 class HclLiteral(BaseModel, frozen=True):
@@ -137,6 +139,52 @@ def first_block(tree: StartRule) -> BlockRule:
         if isinstance(child, BlockRule):
             return child
     raise ValueError("no block found in tree")
+
+
+def slice_top_level_block_source(original: str, label_path: Iterable[str]) -> str | None:
+    """Return the exact source slice for the first top-level block matching ``label_path``."""
+
+    target = list(label_path)
+    tree = hcl2.parses(original, discard_comments=False)
+    for child in tree.body.children:
+        if isinstance(child, BlockRule) and block_labels(child) == target:
+            meta = child._meta
+            lines = original.splitlines(keepends=True)
+            return "".join(lines[meta.line - 1 : meta.end_line])
+    return None
+
+
+def rename_module_block_label_line(block_hcl: str, new_label: str) -> str:
+    """Rewrite only the ``module \"…\"`` label on the first line of a block's source text."""
+
+    lines = block_hcl.splitlines(keepends=True)
+    if not lines:
+        return block_hcl
+    m = _MODULE_BLOCK_HEADER_LINE.match(lines[0])
+    if not m:
+        msg = f"could not parse module header from preserved block: {lines[0]!r}"
+        raise ValueError(msg)
+    lines[0] = f"{m.group('prefix')}{new_label}{m.group('suffix')}{lines[0][m.end() :]}"
+    return "".join(lines)
+
+
+def prepare_preserved_module_hcl(
+    *,
+    full_text: str,
+    example_module_label: str,
+    run_dir_module_label: str,
+    registry_version: str | None,
+) -> str | None:
+    """Slice example ``module`` source; optionally rename label; drop when version pin cannot be patched in."""
+
+    block = slice_top_level_block_source(full_text, ("module", example_module_label))
+    if block is None:
+        return None
+    if run_dir_module_label != example_module_label:
+        block = rename_module_block_label_line(block, run_dir_module_label)
+    if registry_version and "version" not in read_module_block_attrs(block, run_dir_module_label):
+        return None
+    return block
 
 
 def _append_block(original: str, block_dict: dict[str, Any]) -> str:

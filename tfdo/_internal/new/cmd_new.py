@@ -22,7 +22,7 @@ from tfdo._internal.config.config_model import DependencyRef, TfDoConfig
 from tfdo._internal.config.provider_hints import ModuleChoice, available_module_choices, load_provider_hints
 from tfdo._internal.hcl_entity_parser import TfModuleCall, TfOutput, parse_dir_entities, parse_module_examples
 from tfdo._internal.hcl_example_prompt import _hcl_value_display
-from tfdo._internal.hcl_roundtrip import HclAttrRef, HclLiteral, HclValue, HclVarRef
+from tfdo._internal.hcl_roundtrip import HclAttrRef, HclLiteral, HclValue, HclVarRef, prepare_preserved_module_hcl
 from tfdo._internal.new.backend_bootstrap import NewBackendInput, new_backend
 from tfdo._internal.new.new_run_dir import (
     AttrPromotion,
@@ -31,7 +31,6 @@ from tfdo._internal.new.new_run_dir import (
     _module_required_attrs,
     module_outputs,
     new_run_dir,
-    prepare_preserved_module_hcl,
 )
 from tfdo._internal.typer_app import app, get_settings
 
@@ -87,9 +86,32 @@ class _ModuleBuildResult(NamedTuple):
     module_path: Path
 
 
-def _select_raw_attrs(
-    mpath: Path, alias: str, source: str, registry_version: str | None
-) -> tuple[dict[str, HclValue], str | None]:
+class RawAttrsSelection(NamedTuple):
+    attrs: dict[str, HclValue]
+    configure_keys: frozenset[str]
+    preserved_hcl: str | None
+
+
+def _split_attrs_for_customize(
+    raw_attrs: dict[str, HclValue], configure_keys: frozenset[str]
+) -> tuple[dict[str, HclValue], list[tuple[str, HclValue]]]:
+    passthrough: dict[str, HclValue] = {}
+    customize: list[tuple[str, HclValue]] = []
+    for attr_name, current_val in raw_attrs.items():
+        if isinstance(current_val, dict | list):
+            passthrough[attr_name] = current_val
+        elif attr_name not in configure_keys:
+            passthrough[attr_name] = current_val
+        else:
+            customize.append((attr_name, current_val))
+    return passthrough, customize
+
+
+def _scalar_attribute_keys(attrs: dict[str, HclValue]) -> frozenset[str]:
+    return frozenset(name for name, val in attrs.items() if not isinstance(val, dict | list))
+
+
+def _select_raw_attrs(mpath: Path, alias: str, source: str, registry_version: str | None) -> RawAttrsSelection:
     examples = parse_module_examples(mpath)
     choice = select_list(
         f"Configure module '{alias}':",
@@ -103,7 +125,8 @@ def _select_raw_attrs(
         selected_names: list[str] = (
             select_list_multiple_choices("Select attributes:", attr_choices, default=[]) if attr_choices else []
         )
-        return {name: HclLiteral(value="") for name in selected_names}, None
+        attrs: dict[str, HclValue] = {name: HclLiteral(value="") for name in selected_names}
+        return RawAttrsSelection(attrs=attrs, configure_keys=frozenset(attrs), preserved_hcl=None)
     example = next(e for e in examples if e.name == choice)
     for entity in example.entities:
         if not isinstance(entity, TfModuleCall):
@@ -115,8 +138,20 @@ def _select_raw_attrs(
                 run_dir_module_label=alias,
                 registry_version=registry_version,
             )
-            return dict(entity.attrs), preserved
-    return {}, None
+            ex_attrs = dict(entity.attrs)
+            scalar_sorted = sorted(_scalar_attribute_keys(ex_attrs))
+            key_choices = [ChoiceTyped(name=k, value=k, checked=False) for k in scalar_sorted]
+            picked: list[str] = (
+                select_list_multiple_choices(
+                    "Customize which module arguments? (none = keep example values):",
+                    key_choices,
+                    default=[],
+                )
+                if key_choices
+                else []
+            )
+            return RawAttrsSelection(attrs=ex_attrs, configure_keys=frozenset(picked), preserved_hcl=preserved)
+    return RawAttrsSelection(attrs={}, configure_keys=frozenset(), preserved_hcl=None)
 
 
 def _build_module_config(
@@ -133,35 +168,37 @@ def _build_module_config(
         mpath = module_cache.populate(settings.cache_root, source, cache_version, settings)
     mpath = module_cache.module_source_dir(mpath)
 
-    raw_attrs, preserved_hcl = _select_raw_attrs(mpath, alias, source, constraint)
+    selection = _select_raw_attrs(mpath, alias, source, constraint)
+    raw_attrs = selection.attrs
+    preserved_hcl = selection.preserved_hcl
 
     provider_hints = hints_registry.get(provider_name)
     auth_var_names = {vm.tf_var for vm in provider_hints.auth_variables} if provider_hints else set()
 
     promotions: list[AttrPromotion] = []
-    final_attrs = {}
-    for attr_name, current_val in raw_attrs.items():
-        if isinstance(current_val, dict | list):
-            final_attrs[attr_name] = current_val
-            continue
+    passthrough, customize_attrs = _split_attrs_for_customize(raw_attrs, selection.configure_keys)
+    resolved: dict[str, HclValue] = dict(passthrough)
+    for attr_name, current_val in customize_attrs:
         current_display = _hcl_value_display(current_val)
         if attr_name in auth_var_names:
             default_val = _ask_default_value(attr_name, current_display)
             promotions.append(AttrPromotion(attr_name=attr_name, tf_var_name=attr_name, default_value=default_val))
-            final_attrs[attr_name] = HclVarRef(path=f"var.{attr_name}")
+            resolved[attr_name] = HclVarRef(path=f"var.{attr_name}")
             continue
         is_ref = isinstance(current_val, HclVarRef | HclAttrRef)
         choices = ["var_ref", "tf_var", "literal"] if is_ref else ["literal", "tf_var"]
         how = select_list(f"Set '{attr_name}' as:", choices)
         if how == "var_ref":
-            final_attrs[attr_name] = current_val
+            resolved[attr_name] = current_val
         elif how == "tf_var":
             default_val = _ask_default_value(attr_name, current_display)
             promotions.append(AttrPromotion(attr_name=attr_name, tf_var_name=attr_name, default_value=default_val))
-            final_attrs[attr_name] = HclVarRef(path=f"var.{attr_name}")
+            resolved[attr_name] = HclVarRef(path=f"var.{attr_name}")
         else:
             literal_val = text(f"{attr_name}", default=current_display)
-            final_attrs[attr_name] = HclLiteral(value=literal_val)
+            resolved[attr_name] = HclLiteral(value=literal_val)
+
+    final_attrs = {key: resolved[key] for key in raw_attrs}
 
     output_names = module_outputs(mpath)
     default_set = {n for n in output_names if n == "id" or n.endswith("_id")}

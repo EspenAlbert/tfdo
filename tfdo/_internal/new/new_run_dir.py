@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 from typing import Any, NamedTuple
 
-import hcl2
 import yaml
-from hcl2.rules.base import BlockRule
 from pydantic import BaseModel, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
@@ -36,9 +33,6 @@ class AttrPromotion(BaseModel):
     attr_name: str
     tf_var_name: str
     default_value: str | None = None
-
-
-_MODULE_HEADER = re.compile(r'^(?P<prefix>\s*module\s+")(?P<label>[^"]+)(?P<suffix>")')
 
 
 class ModuleRunDirConfig(BaseModel):
@@ -177,44 +171,6 @@ def _provider_attrs(rp: ResolvedProvider) -> dict[str, Any]:
     if rp.constraint is not None:
         attrs["version"] = rp.constraint
     return attrs
-
-
-def _extract_module_block_text(full_text: str, module_label: str) -> str | None:
-    tree = hcl2.parses(full_text, discard_comments=False)
-    for child in tree.body.children:
-        if isinstance(child, BlockRule) and hcl_roundtrip.block_labels(child) == ["module", module_label]:
-            m = child._meta
-            lines = full_text.splitlines(keepends=True)
-            return "".join(lines[m.line - 1 : m.end_line])
-    return None
-
-
-def _rename_module_block_label(block_hcl: str, new_label: str) -> str:
-    lines = block_hcl.splitlines(keepends=True)
-    if not lines:
-        return block_hcl
-    m = _MODULE_HEADER.match(lines[0])
-    if not m:
-        raise ValueError(f"could not parse module header from preserved block: {lines[0]!r}")
-    lines[0] = f"{m.group('prefix')}{new_label}{m.group('suffix')}{lines[0][m.end() :]}"
-    return "".join(lines)
-
-
-def prepare_preserved_module_hcl(
-    *,
-    full_text: str,
-    example_module_label: str,
-    run_dir_module_label: str,
-    registry_version: str | None,
-) -> str | None:
-    block = _extract_module_block_text(full_text, example_module_label)
-    if block is None:
-        return None
-    if run_dir_module_label != example_module_label:
-        block = _rename_module_block_label(block, run_dir_module_label)
-    if registry_version and "version" not in hcl_roundtrip.read_module_block_attrs(block, run_dir_module_label):
-        return None
-    return block
 
 
 def _module_config_to_patch_map(m: ModuleRunDirConfig) -> dict[str, str]:

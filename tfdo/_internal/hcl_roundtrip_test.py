@@ -25,6 +25,55 @@ provider "random" {}
 """
 
 
+def test_slice_top_level_block_source_returns_exact_lines() -> None:
+    src = """# head
+module "cluster" {
+  source = "../.."
+  # note
+  x = 1
+}
+output "o" {
+  value = 1
+}
+"""
+    got = hcl_roundtrip.slice_top_level_block_source(src, ("module", "cluster"))
+    assert got is not None
+    assert "# head" not in got
+    assert "# note" in got
+    assert 'module "cluster"' in got
+    assert hcl_roundtrip.slice_top_level_block_source(src, ("module", "missing")) is None
+
+
+def test_rename_module_block_label_line_rewrites_first_line_only() -> None:
+    block = """module "old" {\n  # c\n  x = 1\n}\n"""
+    got = hcl_roundtrip.rename_module_block_label_line(block, "new")
+    assert 'module "new"' in got
+    assert "# c" in got
+    assert 'module "old"' not in got
+
+
+def test_prepare_preserved_module_hcl_renames_and_requires_version_slot_when_registry_version_set() -> None:
+    full = """module "ex" {\n  source = "../.."\n}\n"""
+    assert (
+        hcl_roundtrip.prepare_preserved_module_hcl(
+            full_text=full,
+            example_module_label="ex",
+            run_dir_module_label="ex",
+            registry_version="1.0.0",
+        )
+        is None
+    )
+    full_v = """module "ex" {\n  source = "../.."\n  version = "0.1.0"\n}\n"""
+    got = hcl_roundtrip.prepare_preserved_module_hcl(
+        full_text=full_v,
+        example_module_label="ex",
+        run_dir_module_label="prod",
+        registry_version="1.0.0",
+    )
+    assert got is not None
+    assert 'module "prod"' in got
+
+
 def test_read_resource_block_values_returns_hcl_value_models() -> None:
     values = hcl_roundtrip.read_resource_block_values(
         _BASE_FIXTURE,
