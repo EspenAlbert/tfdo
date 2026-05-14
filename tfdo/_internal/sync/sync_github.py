@@ -11,7 +11,7 @@ from zero_3rdparty import file_utils
 from zero_3rdparty.sections import CommentConfig, replace_sections
 
 from tfdo._internal.config.config_file import load_optional_env_vars_from_files
-from tfdo._internal.config.config_model import S3Backend, TfDoConfig
+from tfdo._internal.config.config_model import TFDO_DEFAULT_INSTALL, S3Backend, TfDoConfig
 from tfdo._internal.config.provider_hints import (
     AuthBundle,
     ProviderHints,
@@ -32,6 +32,7 @@ ACTION_CHECKOUT = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"  #
 ACTION_AWS_CREDS = "aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885"  # v6.1.1
 ACTION_SETUP_JUST = "extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3"  # v4.0.0
 ACTION_SETUP_TERRAFORM = "hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e"  # v4.0.1
+ACTION_SETUP_UV = "astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b"  # v8.1.0
 
 
 class SecretEntry(NamedTuple):
@@ -281,17 +282,33 @@ def _render_manual_workflow(env_names: list[str], config: TfDoConfig) -> dict[st
     }
 
 
+def _tfdo_install_expr(tfdo_install: str) -> str:
+    """Build the pip install argument from the config value.
+
+    ``git+`` prefixed values are VCS URLs → ``tfdo @ <url>``.
+    Everything else is a PyPI version specifier → ``tfdo<spec>``.
+    """
+    if tfdo_install.startswith("git+"):
+        return f"tfdo @ {tfdo_install}"
+    return f"tfdo{tfdo_install}"
+
+
 def _render_setup_action(config: TfDoConfig) -> dict[str, str]:
     tf_version_default = config.tf_version or "latest"
+    tfdo_install = config.ci.tfdo_install if config.ci else TFDO_DEFAULT_INSTALL
+    install_expr = _tfdo_install_expr(tfdo_install)
     setup_lines = [
         "name: tfdo-setup",
-        "description: Install terraform and just for tfdo workflows",
+        "description: Install terraform, just, uv, and tfdo for tfdo workflows",
         "inputs:",
         "  terraform-version:",
         "    description: Terraform version",
         f"    default: '{tf_version_default}'",
         "  just-version:",
         "    description: Just version",
+        "    default: '*'",
+        "  uv-version:",
+        "    description: uv version",
         "    default: '*'",
         "runs:",
         "  using: composite",
@@ -302,6 +319,11 @@ def _render_setup_action(config: TfDoConfig) -> dict[str, str]:
         f"    - uses: {ACTION_SETUP_TERRAFORM}",
         "      with:",
         "        terraform_version: ${{ inputs.terraform-version }}",
+        f"    - uses: {ACTION_SETUP_UV}",
+        "      with:",
+        "        version: ${{ inputs.uv-version }}",
+        f"    - run: uv pip install --system '{install_expr}'",
+        "      shell: bash",
     ]
     return {"setup": "\n".join(setup_lines)}
 

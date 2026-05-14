@@ -121,8 +121,12 @@ class ModuleConstraint(BaseModel):
         return self
 
 
+TFDO_DEFAULT_INSTALL = "git+https://github.com/EspenAlbert/tfdo.git@main"
+
+
 class CiConfig(BaseModel):
     oidc_roles: dict[str, str] = Field(default_factory=dict)
+    tfdo_install: str = TFDO_DEFAULT_INSTALL
 
 
 class TfDoConfig(BaseModel):

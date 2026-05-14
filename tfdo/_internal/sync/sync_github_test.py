@@ -5,11 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from tfdo._internal.config.config_model import ProviderConstraint, S3Backend, TfDoConfig
+from tfdo._internal.config.config_model import TFDO_DEFAULT_INSTALL, CiConfig, ProviderConstraint, S3Backend, TfDoConfig
 from tfdo._internal.config.provider_hints import AuthBundle, ProviderHints, VariableMapping
 from tfdo._internal.settings import TfDoSettings
 from tfdo._internal.sync.sync_github import (
     ACTION_AWS_CREDS,
+    ACTION_SETUP_UV,
     SyncGithubInput,
     collect_requirements,
     resolve_secret_values,
@@ -143,6 +144,20 @@ def test_setup_action_reads_tf_version(tmp_path: Path) -> None:
     content = result.setup_action_path.read_text()
     assert "default: '1.10.0'" in content
     assert "just-version:" in content
+    assert ACTION_SETUP_UV in content
+    assert f"tfdo @ {TFDO_DEFAULT_INSTALL}" in content
+
+
+def test_setup_action_pypi_version(tmp_path: Path) -> None:
+    _make_envs(tmp_path, ["dev"])
+    config = TfDoConfig(ci=CiConfig(tfdo_install="==0.6.0"), providers=[ProviderConstraint(name="mongodbatlas")])
+    _calls, recorder = _gh_call_recorder()
+    input_model = _atlas_input(tmp_path, recorder, config=config)
+    result = sync_github(input_model)
+    assert result.setup_action_path is not None
+    content = result.setup_action_path.read_text()
+    assert "tfdo==0.6.0" in content
+    assert "git+" not in content
 
 
 def test_no_aws_step_without_s3_backend(tmp_path: Path) -> None:

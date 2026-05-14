@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from tfdo._internal.config.config_model import TfDoConfig
+import yaml
+
+from tfdo._internal.config.config_model import DependencyRef, TfDoConfig
 from tfdo._internal.config.env_var_loader import LoadResult
 from tfdo._internal.config.resolver import ResolvedProvider, ResolvedRunDirConfig
 from tfdo._internal.hcl_roundtrip import HclLiteral, HclVarRef
@@ -154,3 +156,17 @@ def test_custom_discovery_pattern_respected(mock_resolve, mock_fmt, tmp_path: Pa
 
     assert result.run_dir == tmp_path / "infra" / "prod" / "atlas"
     mock_resolve.assert_called_once_with(tmp_path, "infra/prod/atlas", settings=inp.settings)
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_new_run_dir_writes_dependency_yaml(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    result = new_run_dir(_input(tmp_path, dependencies=[dep]))
+
+    tfdo_yaml = result.run_dir / "tfdo.yaml"
+    assert tfdo_yaml.is_file()
+    assert tfdo_yaml in result.written_paths
+    data = yaml.safe_load(tfdo_yaml.read_text())
+    loaded = [DependencyRef(**d) for d in data["dependencies"]]
+    assert loaded == [dep]

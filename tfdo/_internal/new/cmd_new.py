@@ -8,9 +8,9 @@ from ask_shell._internal.interactive import ChoiceTyped, select_list, select_lis
 
 from tfdo._internal.cache import module_cache
 from tfdo._internal.config.config_file import load_config
-from tfdo._internal.config.config_model import TfDoConfig
+from tfdo._internal.config.config_model import DependencyRef, TfDoConfig
 from tfdo._internal.config.provider_hints import load_provider_hints
-from tfdo._internal.hcl_entity_parser import TfModuleCall, parse_module_examples
+from tfdo._internal.hcl_entity_parser import TfModuleCall, TfOutput, parse_dir_entities, parse_module_examples
 from tfdo._internal.hcl_example_prompt import _hcl_value_display
 from tfdo._internal.hcl_roundtrip import HclLiteral, HclVarRef
 from tfdo._internal.new.backend_bootstrap import NewBackendInput, new_backend
@@ -137,6 +137,36 @@ def _build_module_config(
     )
 
 
+def _run_dir_outputs(run_dir_path: Path) -> list[str]:
+    return [e.name for e in parse_dir_entities(run_dir_path) if isinstance(e, TfOutput)]
+
+
+def _wizard_dependencies(work_dir: Path, config: TfDoConfig, env_name: str) -> list[DependencyRef]:
+    existing = config.run_dirs(work_dir, env_name)
+    if not existing:
+        return []
+    dep_choices = [ChoiceTyped(name=rd.name, value=rd, checked=False) for rd in existing]
+    selected_dirs: list[Path] = select_list_multiple_choices(
+        "Does this run-dir depend on an existing one?", dep_choices, default=[]
+    )
+    deps: list[DependencyRef] = []
+    for rd_path in selected_dirs:
+        output_names = _run_dir_outputs(rd_path)
+        if not output_names:
+            logger.info(f"no outputs found in {rd_path.name}, skipping")
+            continue
+        out_choices = [ChoiceTyped(name=n, value=n, checked=True) for n in output_names]
+        selected_outputs: list[str] = select_list_multiple_choices(
+            f"Select outputs from '{rd_path.name}':", out_choices, default=[]
+        )
+        outputs: dict[str, str] = {}
+        for out_name in selected_outputs:
+            local_var = text(f"Local variable name for '{out_name}'", default=out_name)
+            outputs[out_name] = local_var
+        deps.append(DependencyRef(ref=rd_path.name, outputs=outputs))
+    return deps
+
+
 @new_app.command("run-dir")
 def run_dir_cmd(ctx: typer.Context) -> None:
     """Scaffold a new run-dir with module calls, variables, and outputs."""
@@ -167,6 +197,8 @@ def run_dir_cmd(ctx: typer.Context) -> None:
         for provider_name, source, alias in selected
     ]
 
+    dependencies = _wizard_dependencies(work_dir, config, env_name)
+
     result = new_run_dir(
         NewRunDirInput(
             settings=settings,
@@ -174,6 +206,7 @@ def run_dir_cmd(ctx: typer.Context) -> None:
             env_name=env_name,
             run_dir_name=run_dir_name,
             module_configs=module_configs,
+            dependencies=dependencies,
         )
     )
     logger.info(f"New run-dir created at {result.run_dir}. Run `tfdo check` to ensure it is ready!")

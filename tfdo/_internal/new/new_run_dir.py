@@ -4,13 +4,14 @@ import logging
 from pathlib import Path
 from typing import Any, NamedTuple
 
+import yaml
 from pydantic import BaseModel, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal import hcl_roundtrip
 from tfdo._internal.config import backend_resolution
 from tfdo._internal.config.config_file import load_config
-from tfdo._internal.config.config_model import BackendConfig, LocalBackend, S3Backend, TfDoConfig
+from tfdo._internal.config.config_model import BackendConfig, DependencyRef, LocalBackend, S3Backend, TfDoConfig
 from tfdo._internal.config.resolver import ResolvedProvider, resolve_run_dir
 from tfdo._internal.hcl_entity_parser import TfOutput, TfVariable, parse_dir_entities
 from tfdo._internal.hcl_roundtrip import (
@@ -48,6 +49,7 @@ class NewRunDirInput(TfDoBaseInput):
     env_name: str
     run_dir_name: str
     module_configs: list[ModuleRunDirConfig] = Field(default_factory=list)
+    dependencies: list[DependencyRef] = Field(default_factory=list)
 
 
 class NewRunDirResult(BaseModel):
@@ -202,6 +204,12 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
     backend = _find_backend(work_dir, run_dir)
     if backend:
         written.append(_write_backend_tf(run_dir, relative, backend))
+
+    if input_model.dependencies:
+        dep_data = {"dependencies": [d.model_dump(exclude_defaults=True) for d in input_model.dependencies]}
+        dep_path = run_dir / "tfdo.yaml"
+        ensure_parents_write_text(dep_path, yaml.dump(dep_data, default_flow_style=False))
+        written.append(dep_path)
 
     terraform_fmt(run_dir, settings.binary)
 
