@@ -5,12 +5,14 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 import hcl2
-from hcl2.rules.base import BlockRule, StartRule
+from hcl2.rules.base import AttributeRule, BlockRule, StartRule
+from hcl2.rules.expressions import ExprTermRule
 from hcl2.rules.literal_rules import IdentifierRule
 from hcl2.rules.strings import StringRule
 from pydantic import BaseModel
 
 _BLOCK_MARKER = "__is_block__"
+_HCL_PATCH_FRAGMENT_BLOCK = "zzz_tfdo_hcl_patch_fragment"
 
 
 class HclLiteral(BaseModel, frozen=True):
@@ -276,6 +278,38 @@ def update_module_block(
     mutation(attrs)
     block_dict = _build_module_block_dict(module_name, attrs)
     return splice_block(original, block_dict, ("module", module_name))
+
+
+def _attribute_rhs_expression(attr_name: str, attr_value: str) -> ExprTermRule:
+    fragment_hcl = f"{_HCL_PATCH_FRAGMENT_BLOCK} {{\n  {attr_name} = {attr_value}\n}}\n"
+    frag_tree = hcl2.parses(fragment_hcl, discard_comments=False)
+    patch_block = first_block(frag_tree)
+    for child in patch_block.body.children:
+        if isinstance(child, AttributeRule) and child.identifier.serialize() == attr_name:
+            return child.expression
+    msg = f"failed to parse fragment for attribute {attr_name!r}"
+    raise ValueError(msg)
+
+
+def patch_module_block_attributes(original: str, module_name: str, attributes: dict[str, str]) -> str:
+    """Swap attribute RHS nodes in-place so inter-attribute comments stay in the body."""
+
+    tree = hcl2.parses(original, discard_comments=False)
+    block_index = find_block_index(tree, ("module", module_name))
+    block = tree.body.children[block_index]
+    if not isinstance(block, BlockRule):
+        raise ValueError(f"expected module block, got {type(block).__name__}")
+    for attr_name, attr_value in attributes.items():
+        new_expr = _attribute_rhs_expression(attr_name, attr_value)
+        for child in block.body.children:
+            if isinstance(child, AttributeRule) and child.identifier.serialize() == attr_name:
+                new_expr.set_index(2)
+                new_expr.set_parent(child)
+                child._children[2] = new_expr
+                break
+        else:
+            raise ValueError(f"attribute {attr_name!r} not found in module {module_name!r}")
+    return hcl2.reconstruct(tree)
 
 
 def rename_module_block(original: str, old_name: str, new_name: str) -> str:

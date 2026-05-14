@@ -548,6 +548,61 @@ def test_read_module_block_values_handles_nested_list_of_objects() -> None:
     assert region["node_count"] == hcl_roundtrip.HclLiteral(value=3)
 
 
+_ATLAS_CLUSTER_MODULE_WITH_COMMENTS_FIXTURE = """\
+module "cluster" {
+  source = "../.."
+
+  # Disable default production values
+  auto_scaling = {
+    compute_enabled = false # use manual instance_size to avoid any accidental cost
+  }
+  retain_backups_enabled = false # don't keep backups when deleting the cluster
+  backup_enabled         = false # skip backup for dev cluster (pit_enabled auto-disables)
+
+  cluster_type = "REPLICASET"
+
+  # Atlas truncates cluster names to 23 characters which results in an invalid hostname due to a trailing "-" in the generated cluster name
+  name       = coalesce(var.cluster_name, substr(trim(random_pet.generated_name.id, "-"), 0, 23))
+  project_id = var.project_id
+  regions = [
+    {
+      name          = "US_EAST_1" # https://www.mongodb.com/docs/atlas/cloud-providers-regions/
+      node_count    = 3           # Minimum node count >= 3. Must be an odd number to support elections.
+      instance_size = "M10"       # 2vCPUs and 2GB Ram
+    }
+  ]
+  provider_name = "AWS"
+  tags          = var.tags
+}
+"""
+
+
+def test_patch_module_block_attributes_preserves_comments_and_rewrites_source_and_name() -> None:
+    output = hcl_roundtrip.patch_module_block_attributes(
+        _ATLAS_CLUSTER_MODULE_WITH_COMMENTS_FIXTURE,
+        module_name="cluster",
+        attributes={
+            "source": '"terraform-mongodbatlas-modules/cluster/mongodbatlas"',
+            "name": '"my-cluster"',
+        },
+    )
+    assert (
+        'source     = "terraform-mongodbatlas-modules/cluster/mongodbatlas"' in output
+        or 'source = "terraform-mongodbatlas-modules/cluster/mongodbatlas"' in output
+    )
+    assert 'name       = "my-cluster"' in output or 'name = "my-cluster"' in output
+    assert "coalesce" not in output
+    assert "../.." not in output
+    assert "# Disable default production values" in output
+    assert "# use manual instance_size to avoid any accidental cost" in output
+    assert "# don't keep backups when deleting the cluster" in output
+    assert "# skip backup for dev cluster (pit_enabled auto-disables)" in output
+    assert "# Atlas truncates cluster names to 23 characters which results in an invalid hostname" in output
+    assert "# https://www.mongodb.com/docs/atlas/cloud-providers-regions/" in output
+    assert "# Minimum node count >= 3. Must be an odd number to support elections." in output
+    assert "# 2vCPUs and 2GB Ram" in output
+
+
 def test_hcl_value_str_roundtrip_nested_list_of_objects() -> None:
     from tfdo._internal.new.new_run_dir import _hcl_value_str
 
