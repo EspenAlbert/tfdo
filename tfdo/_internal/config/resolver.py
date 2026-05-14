@@ -124,7 +124,7 @@ def resolve_run_dir(
     run_dir = fixture_path / run_dir_relative_path
     parent_cfgs, run_dir_cfg = _load_intermediate_configs(fixture_path, run_dir)
 
-    hints_registry = load_provider_hints(fixture_path / "provider_hints.yaml")
+    hints_registry = load_provider_hints(_settings.resolved_provider_hints_path)
 
     provider_pool = {p.name: p for p in merge_providers(parent_cfgs, run_dir_cfg)}
     module_pool = {m.source: m for m in merge_modules(parent_cfgs, run_dir_cfg)}

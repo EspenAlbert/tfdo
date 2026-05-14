@@ -82,6 +82,22 @@ def test_literal_attr_in_main_tf_no_variables_file(mock_resolve, mock_fmt, tmp_p
 
 @patch(f"{_module.__name__}.terraform_fmt")
 @patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_version_constraint_written_to_module_call(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    cfg = ModuleRunDirConfig(
+        source="terraform-mongodbatlas-modules/cluster/mongodbatlas",
+        label="cluster",
+        version="0.3.1",
+        attrs={"project_id": HclVarRef(path="var.project_id")},
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert 'version = "0.3.1"' in main_tf
+    assert 'source  = "terraform-mongodbatlas-modules/cluster/mongodbatlas"' in main_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
 def test_outputs_written_for_exposed(mock_resolve, mock_fmt, tmp_path: Path) -> None:
     cfg = ModuleRunDirConfig(
         source="ns/project/mongodbatlas",

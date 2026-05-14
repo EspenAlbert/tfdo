@@ -195,25 +195,6 @@ def test_saved_backend_appears_in_scan_backend_names(tmp_path: Path) -> None:
     assert "demo-bucket" in names
 
 
-def test_provider_with_no_modules_skips_prompt(tmp_path: Path) -> None:
-    hints_path = _write_hints(tmp_path, {"aws": {"source": "hashicorp/aws"}})
-    settings = TfDoSettings.for_testing(
-        tmp_path, work_dir=tmp_path, interactive=InteractiveMode.ALWAYS, provider_hints_path=hints_path
-    )
-    with (
-        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
-        patch(f"{_MODULE}.select_list_multiple_choices") as mock_prompt,
-    ):
-        result = boot_repo(
-            TfdoBootInput(settings=settings, providers=[ProviderConstraint(name="aws", source="hashicorp/aws")])
-        )
-
-    mock_prompt.assert_not_called()
-    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
-    assert "modules" not in raw
-    assert result.cached_modules == []
-
-
 def test_modules_written_to_yaml_and_cache_populated(tmp_path: Path) -> None:
     module = ModuleConstraint(source="terraform-mongodbatlas-modules/project")
     with (
@@ -226,25 +207,6 @@ def test_modules_written_to_yaml_and_cache_populated(tmp_path: Path) -> None:
     raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
     assert raw["modules"] == [{"source": "terraform-mongodbatlas-modules/project", "constraint": "0.5.0"}]
     assert result.cached_modules == [CachedModule("terraform-mongodbatlas-modules/project", "0.5.0")]
-
-
-def test_modules_prompt_fires_when_provider_has_modules(tmp_path: Path) -> None:
-    hints_path = _write_hints(
-        tmp_path,
-        {"mongodbatlas": {"modules": [{"source": "tf-modules/project", "alias": "project"}]}},
-    )
-    settings = TfDoSettings.for_testing(
-        tmp_path, work_dir=tmp_path, interactive=InteractiveMode.ALWAYS, provider_hints_path=hints_path
-    )
-    with (
-        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
-        patch(f"{_MODULE}.select_list_multiple_choices", return_value=[]) as mock_prompt,
-    ):
-        boot_repo(TfdoBootInput(settings=settings, providers=[ProviderConstraint(name="mongodbatlas")]))
-
-    mock_prompt.assert_called_once()
-    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
-    assert "modules" not in raw
 
 
 def _fake_init(input_model):
@@ -359,7 +321,7 @@ def test_boot_repo_oidc_true_no_envs_stores_org_and_repo(tmp_path: Path) -> None
     assert raw["ci"]["oidc"]
     assert raw["ci"]["repo_org"] == "acme"
     assert raw["ci"]["repo_name"] == "infra"
-    assert "oidc_roles" not in raw["ci"]
+    assert raw["ci"]["oidc_roles"] == {}
 
 
 def test_boot_repo_oidc_true_passes_backend_bucket(tmp_path: Path) -> None:

@@ -27,8 +27,8 @@ def fixture_root(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
-def settings(tmp_path: Path) -> TfDoSettings:
-    return TfDoSettings.for_testing(tmp_path)
+def settings(fixture_root: Path, tmp_path: Path) -> TfDoSettings:
+    return TfDoSettings.for_testing(tmp_path, provider_hints_path=fixture_root / "provider_hints.yaml")
 
 
 def test_negative_case_empty_run_dir(fixture_root: Path, settings: TfDoSettings, tmp_path: Path) -> None:

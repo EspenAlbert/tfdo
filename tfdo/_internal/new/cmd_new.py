@@ -68,10 +68,12 @@ def _build_module_config(
     alias: str,
     settings,
     hints_registry: dict,
+    constraint: str | None,
 ) -> ModuleRunDirConfig:
-    mpath = module_cache.lookup(settings.cache_root, source, module_cache.UNRESOLVED)
+    cache_version = constraint or module_cache.UNRESOLVED
+    mpath = module_cache.lookup(settings.cache_root, source, cache_version)
     if mpath is None:
-        mpath = module_cache.populate(settings.cache_root, source, module_cache.UNRESOLVED, settings)
+        mpath = module_cache.populate(settings.cache_root, source, cache_version, settings)
     mpath = module_cache.module_source_dir(mpath)
 
     examples = parse_module_examples(mpath)
@@ -109,7 +111,7 @@ def _build_module_config(
             continue
         current_display = _hcl_value_display(current_val)
         if attr_name in auth_var_names:
-            default_val = text(f"Default value for '{attr_name}'", default=current_display)
+            default_val = text(f"Default value for '{attr_name}' variable", default=current_display)
             promotions.append(AttrPromotion(attr_name=attr_name, tf_var_name=attr_name, default_value=default_val))
             final_attrs[attr_name] = HclVarRef(path=f"var.{attr_name}")
         else:
@@ -132,6 +134,7 @@ def _build_module_config(
     return ModuleRunDirConfig(
         source=source,
         label=alias,
+        version=constraint,
         attrs=final_attrs,
         tf_var_promotions=promotions,
         exposed_outputs=exposed,
@@ -139,7 +142,7 @@ def _build_module_config(
 
 
 def _run_dir_outputs(run_dir_path: Path) -> list[str]:
-    return [e.name for e in parse_dir_entities(run_dir_path) if isinstance(e, TfOutput)]
+    return [e.name for e in parse_dir_entities(run_dir_path, recursive=False) if isinstance(e, TfOutput)]
 
 
 def _wizard_dependencies(work_dir: Path, config: TfDoConfig, env_name: str) -> list[DependencyRef]:
@@ -186,8 +189,17 @@ def run_dir_cmd(ctx: typer.Context) -> None:
         select_list_multiple_choices("Select modules:", module_choices, default=[]) if module_choices else []
     )
 
+    constraints_by_source = {m.source: m.constraint for m in config.modules}
     module_configs = [
-        _build_module_config(mc.provider, mc.hint.source, mc.hint.alias, settings, hints_registry) for mc in selected
+        _build_module_config(
+            mc.provider,
+            mc.hint.source,
+            mc.hint.alias,
+            settings,
+            hints_registry,
+            constraints_by_source.get(mc.hint.source),
+        )
+        for mc in selected
     ]
 
     dependencies = _wizard_dependencies(work_dir, config, env_name)
