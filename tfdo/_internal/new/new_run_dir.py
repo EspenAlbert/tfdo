@@ -193,20 +193,22 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
     written.append(main_path)
 
     all_promotions = [p for m in input_model.module_configs for p in m.tf_var_promotions]
-    dep_var_names = sorted({v for dep in input_model.dependencies for v in dep.outputs.values()})
-    promotion_var_names = {p.tf_var_name for p in all_promotions}
-    dep_only_vars = [n for n in dep_var_names if n not in promotion_var_names]
+    dep_var_names_set = {v for dep in input_model.dependencies for v in dep.outputs.values()}
+    dep_only_vars = sorted(n for n in dep_var_names_set if n not in {p.tf_var_name for p in all_promotions})
+    user_promotions = [p for p in all_promotions if p.tf_var_name not in dep_var_names_set]
+    dep_promotions = [p for p in all_promotions if p.tf_var_name in dep_var_names_set]
 
     if all_promotions or dep_only_vars:
-        var_blocks = [_render_variable(p.tf_var_name, p.default_value) for p in all_promotions]
+        var_blocks = [_render_variable(p.tf_var_name, p.default_value) for p in user_promotions]
+        var_blocks.extend(_render_variable(p.tf_var_name, None) for p in dep_promotions)
         var_blocks.extend(_render_variable(name, None) for name in dep_only_vars)
         variables_path = run_dir / "variables.tf"
         ensure_parents_write_text(variables_path, "\n\n".join(var_blocks))
         written.append(variables_path)
 
-    if all_promotions:
+    if user_promotions:
         tfvars_path = run_dir / "terraform.tfvars"
-        ensure_parents_write_text(tfvars_path, _render_tfvars(all_promotions))
+        ensure_parents_write_text(tfvars_path, _render_tfvars(user_promotions))
         written.append(tfvars_path)
 
     output_pairs = [(m.label, name) for m in input_model.module_configs for name in m.exposed_outputs]

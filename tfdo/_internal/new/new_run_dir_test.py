@@ -256,7 +256,7 @@ def test_dependency_outputs_generate_variables(mock_resolve, mock_fmt, tmp_path:
 
 @patch(f"{_module.__name__}.terraform_fmt")
 @patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
-def test_dependency_vars_skip_duplicates_with_promotions(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+def test_dep_provided_promotion_excluded_from_tfvars(mock_resolve, mock_fmt, tmp_path: Path) -> None:
     promotion = AttrPromotion(attr_name="org_id", tf_var_name="org_id", default_value="my-org")
     dep = DependencyRef(ref="project", outputs={"id": "project_id", "org_id": "org_id"})
     cfg = ModuleRunDirConfig(
@@ -271,7 +271,33 @@ def test_dependency_vars_skip_duplicates_with_promotions(mock_resolve, mock_fmt,
     assert 'variable "org_id"' in variables_tf
     assert 'variable "project_id"' in variables_tf
     assert variables_tf.count('variable "org_id"') == 1
+    assert "default" not in variables_tf
+
+    assert not (result.run_dir / "terraform.tfvars").exists()
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_mixed_promotions_only_user_provided_in_tfvars(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    dep_promotion = AttrPromotion(attr_name="project_id", tf_var_name="project_id", default_value="dep-default")
+    user_promotion = AttrPromotion(attr_name="region", tf_var_name="region", default_value="US_EAST_1")
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    cfg = ModuleRunDirConfig(
+        source="ns/cluster/mongodbatlas",
+        label="cluster",
+        attrs={
+            "project_id": HclVarRef(path="var.project_id"),
+            "region": HclVarRef(path="var.region"),
+        },
+        tf_var_promotions=[dep_promotion, user_promotion],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg], dependencies=[dep]))
 
     tfvars = (result.run_dir / "terraform.tfvars").read_text()
-    assert 'org_id = "my-org"' in tfvars
+    assert 'region = "US_EAST_1"' in tfvars
     assert "project_id" not in tfvars
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "region"' in variables_tf
+    assert 'default = "US_EAST_1"' in variables_tf
+    assert 'variable "project_id"' in variables_tf
