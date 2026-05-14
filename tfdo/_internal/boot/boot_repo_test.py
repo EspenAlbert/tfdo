@@ -9,7 +9,7 @@ import yaml
 from tfdo._internal.boot import boot_repo as _module
 from tfdo._internal.boot.boot_repo import CachedModule, OidcWizardResult, TfdoBootInput, boot_repo, select_modules
 from tfdo._internal.cache import module_cache as _cache_module
-from tfdo._internal.config.config_model import ModuleConstraint
+from tfdo._internal.config.config_model import ModuleConstraint, ProviderConstraint
 from tfdo._internal.config.provider_hints import ProviderHints
 from tfdo._internal.models import InitResult
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
@@ -66,7 +66,7 @@ def test_boot_rerun_applies_explicit_flags(tmp_path: Path) -> None:
                 backend_choice="create-new",
                 bucket="my-bucket",
                 region="us-east-1",
-                providers=["aws"],
+                providers=[ProviderConstraint(name="aws", source="hashicorp/aws")],
             )
         )
 
@@ -74,6 +74,7 @@ def test_boot_rerun_applies_explicit_flags(tmp_path: Path) -> None:
     raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
     assert raw["backend"]["bucket"] == "my-bucket"
     assert [p["name"] for p in raw["providers"]] == ["aws"]
+    assert [p["source"] for p in raw["providers"]] == ["hashicorp/aws"]
 
 
 def test_gitignore_adds_missing_lines_preserves_existing(tmp_path: Path) -> None:
@@ -90,10 +91,19 @@ def test_gitignore_adds_missing_lines_preserves_existing(tmp_path: Path) -> None
 
 def test_boot_repo_writes_providers_to_yaml(tmp_path: Path) -> None:
     with patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"):
-        boot_repo(TfdoBootInput(settings=_settings(tmp_path), providers=["mongodbatlas", "aws"]))
+        boot_repo(
+            TfdoBootInput(
+                settings=_settings(tmp_path),
+                providers=[
+                    ProviderConstraint(name="mongodbatlas", source="mongodb/mongodbatlas"),
+                    ProviderConstraint(name="aws", source="hashicorp/aws"),
+                ],
+            )
+        )
 
     raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
     assert [p["name"] for p in raw["providers"]] == ["mongodbatlas", "aws"]
+    assert [p["source"] for p in raw["providers"]] == ["mongodb/mongodbatlas", "hashicorp/aws"]
     assert raw["tf_version"] == "1.11.0"
 
 
@@ -169,7 +179,9 @@ def test_provider_with_no_modules_skips_prompt(tmp_path: Path) -> None:
         patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
         patch(f"{_MODULE}.select_list_multiple_choices") as mock_prompt,
     ):
-        result = boot_repo(TfdoBootInput(settings=settings, providers=["aws"]))
+        result = boot_repo(
+            TfdoBootInput(settings=settings, providers=[ProviderConstraint(name="aws", source="hashicorp/aws")])
+        )
 
     mock_prompt.assert_not_called()
     raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
@@ -203,7 +215,7 @@ def test_modules_prompt_fires_when_provider_has_modules(tmp_path: Path) -> None:
         patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
         patch(f"{_MODULE}.select_list_multiple_choices", return_value=[]) as mock_prompt,
     ):
-        boot_repo(TfdoBootInput(settings=settings, providers=["mongodbatlas"]))
+        boot_repo(TfdoBootInput(settings=settings, providers=[ProviderConstraint(name="mongodbatlas")]))
 
     mock_prompt.assert_called_once()
     raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
@@ -245,7 +257,7 @@ def test_scaffold_wizard_runs_when_interactive_fresh_repo(tmp_path: Path) -> Non
     mock_backend.assert_called_once()
     mock_providers.assert_called_once()
     raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
-    assert raw["providers"] == [{"name": "aws"}]
+    assert raw["providers"] == [{"name": "aws", "source": "hashicorp/aws"}]
     assert result.backend_choice == "skip"
 
 
@@ -283,7 +295,7 @@ def test_scaffold_wizard_skipped_when_fields_pre_populated(tmp_path: Path) -> No
         patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
         patch(f"{_MODULE}.select_list") as mock_backend,
     ):
-        boot_repo(TfdoBootInput(settings=_settings(tmp_path), providers=["aws"]))
+        boot_repo(TfdoBootInput(settings=_settings(tmp_path), providers=[ProviderConstraint(name="aws")]))
 
     mock_backend.assert_not_called()
 

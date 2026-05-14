@@ -107,6 +107,7 @@ _LOCAL_SOURCE_PREFIXES = ("./", "../", "/")
 
 class ProviderConstraint(BaseModel):
     name: str
+    source: str | None = None
     constraint: str | None = None
 
 
