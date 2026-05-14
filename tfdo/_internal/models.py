@@ -5,7 +5,7 @@ from functools import total_ordering
 from pathlib import Path
 from typing import ClassVar, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from tfdo._internal.check.models import CheckResult as RunDirProviderResult
 from tfdo._internal.settings import TfDoSettings
@@ -125,9 +125,45 @@ class DestroyResult(LifecycleResult):
     pass
 
 
+class TflintPos(BaseModel):
+    line: int = 0
+    column: int = 0
+
+
+class TflintRange(BaseModel):
+    filename: str = ""
+    start: TflintPos = TflintPos()
+    end: TflintPos = TflintPos()
+
+
 class ValidateDiagnostic(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     severity: str = ""
     summary: str = ""
+    detail: str = ""
+    source_range: TflintRange | None = Field(default=None, validation_alias="range")
+
+    @property
+    def display(self) -> str:
+        summary_s = self.summary.strip()
+        detail_s = self.detail.strip()
+        if summary_s and detail_s:
+            body = f"{summary_s}: {detail_s}" if detail_s != summary_s else summary_s
+        elif summary_s:
+            body = summary_s
+        elif detail_s:
+            body = detail_s
+        else:
+            body = ""
+        rng = self.source_range
+        if rng and rng.filename:
+            line = rng.start.line
+            loc = f"{rng.filename}:{line}"
+            if rng.start.column > 0:
+                loc += f":{rng.start.column}"
+            return f"{body} ({loc})" if body else loc
+        return body
 
 
 class ValidateOutput(BaseModel):
@@ -138,18 +174,7 @@ class ValidateOutput(BaseModel):
 
     @property
     def error_summaries(self) -> list[str]:
-        return [d.summary for d in self.diagnostics if d.severity == self.ERROR_SEVERITY and d.summary]
-
-
-class TflintPos(BaseModel):
-    line: int = 0
-    column: int = 0
-
-
-class TflintRange(BaseModel):
-    filename: str = ""
-    start: TflintPos = TflintPos()
-    end: TflintPos = TflintPos()
+        return [d.display for d in self.diagnostics if d.severity == self.ERROR_SEVERITY and d.display]
 
 
 class TflintRule(BaseModel):
@@ -193,6 +218,7 @@ class DirCheckResult(BaseModel):
     missing_tfvars: list[str] = []
     provider_result: RunDirProviderResult | None = None
     skipped: bool = False
+    backend_drift: bool = False
 
     @property
     def has_issues(self) -> bool:
@@ -203,6 +229,7 @@ class DirCheckResult(BaseModel):
             or bool(self.tflint_issues)
             or bool(self.missing_tfvars)
             or provider_fail
+            or self.backend_drift
         )
 
     def __lt__(self, other: Self) -> bool:
