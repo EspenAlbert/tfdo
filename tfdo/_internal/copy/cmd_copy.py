@@ -28,7 +28,7 @@ app.add_typer(copy_app, name="copy")
 
 def _entity_choices(src_dir, run_dir_name: str) -> list[ChoiceTyped]:
     choices: list[ChoiceTyped] = []
-    for e in parse_dir_entities(src_dir / run_dir_name):
+    for e in parse_dir_entities(src_dir / run_dir_name, recursive=False):
         if isinstance(e, TfModuleCall):
             choices.append(ChoiceTyped(name=f"module:{e.name}", value=e, checked=False))
         elif isinstance(e, TfResource):

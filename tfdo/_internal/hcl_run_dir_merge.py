@@ -72,7 +72,7 @@ def merge_run_dir(
     originals = original_entities if original_entities is not None else new_entities
     orig_by_new_key = {entity_key(e): o for e, o in zip(new_entities, originals)}
 
-    existing = parse_dir_entities(run_dir)
+    existing = parse_dir_entities(run_dir, recursive=False)
     deduped = dedup_new_entities(existing, new_entities)
 
     by_filename: dict[str, list[HclEntity]] = {}

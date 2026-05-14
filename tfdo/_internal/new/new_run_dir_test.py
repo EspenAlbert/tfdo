@@ -186,3 +186,46 @@ def test_new_run_dir_writes_dependency_yaml(mock_resolve, mock_fmt, tmp_path: Pa
     data = yaml.safe_load(tfdo_yaml.read_text())
     loaded = [DependencyRef(**d) for d in data["dependencies"]]
     assert loaded == [dep]
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_dependency_outputs_generate_variables(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    cfg = ModuleRunDirConfig(
+        source="terraform-mongodbatlas-modules/cluster/mongodbatlas",
+        label="cluster",
+        attrs={"project_id": HclVarRef(path="var.project_id")},
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg], dependencies=[dep]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "project_id"' in variables_tf
+    assert "type = string" in variables_tf
+    assert not (result.run_dir / "terraform.tfvars").exists()
+
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert "project_id = var.project_id" in main_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_dependency_vars_skip_duplicates_with_promotions(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    promotion = AttrPromotion(attr_name="org_id", tf_var_name="org_id", default_value="my-org")
+    dep = DependencyRef(ref="project", outputs={"id": "project_id", "org_id": "org_id"})
+    cfg = ModuleRunDirConfig(
+        source="ns/project/mongodbatlas",
+        label="project",
+        attrs={"org_id": HclVarRef(path="var.org_id"), "project_id": HclVarRef(path="var.project_id")},
+        tf_var_promotions=[promotion],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg], dependencies=[dep]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "org_id"' in variables_tf
+    assert 'variable "project_id"' in variables_tf
+    assert variables_tf.count('variable "org_id"') == 1
+
+    tfvars = (result.run_dir / "terraform.tfvars").read_text()
+    assert 'org_id = "my-org"' in tfvars
+    assert "project_id" not in tfvars

@@ -177,12 +177,18 @@ def new_run_dir(input_model: NewRunDirInput) -> NewRunDirResult:
     written.append(main_path)
 
     all_promotions = [p for m in input_model.module_configs for p in m.tf_var_promotions]
-    if all_promotions:
+    dep_var_names = sorted({v for dep in input_model.dependencies for v in dep.outputs.values()})
+    promotion_var_names = {p.tf_var_name for p in all_promotions}
+    dep_only_vars = [n for n in dep_var_names if n not in promotion_var_names]
+
+    if all_promotions or dep_only_vars:
         var_blocks = [_render_variable(p.tf_var_name, p.default_value) for p in all_promotions]
+        var_blocks.extend(_render_variable(name, None) for name in dep_only_vars)
         variables_path = run_dir / "variables.tf"
         ensure_parents_write_text(variables_path, "\n\n".join(var_blocks))
         written.append(variables_path)
 
+    if all_promotions:
         tfvars_path = run_dir / "terraform.tfvars"
         ensure_parents_write_text(tfvars_path, _render_tfvars(all_promotions))
         written.append(tfvars_path)

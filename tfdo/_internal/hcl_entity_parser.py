@@ -277,7 +277,7 @@ def parse_entities(path: Path) -> list[HclEntity]:
     return entities
 
 
-def parse_dir_entities(path: Path, *, recursive: bool = True) -> list[HclEntity]:
+def parse_dir_entities(path: Path, *, recursive: bool) -> list[HclEntity]:
     pattern = "**/*.tf" if recursive else "*.tf"
     entities: list[HclEntity] = []
     for file in path.glob(pattern):
@@ -296,6 +296,6 @@ def parse_module_examples(module_path: Path) -> list[TfModuleExample]:
         tf_files = list(candidate.glob("*.tf"))
         if not tf_files:
             continue
-        entities = parse_dir_entities(candidate)
+        entities = parse_dir_entities(candidate, recursive=False)
         examples.append(TfModuleExample(name=candidate.name, path=candidate, entities=entities))
     return examples

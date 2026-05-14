@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import NamedTuple
 
 import typer
 from ask_shell._internal.interactive import ChoiceTyped, select_list, select_list_multiple_choices, text
@@ -62,6 +63,14 @@ def _select_env(work_dir: Path, config: TfDoConfig, is_interactive: bool) -> str
     return select_list("Select env:", [d.name for d in env_dirs])
 
 
+_LOCAL_SOURCE_PREFIXES = ("./", "../", "/")
+
+
+class _ModuleBuildResult(NamedTuple):
+    config: ModuleRunDirConfig
+    module_path: Path
+
+
 def _build_module_config(
     provider_name: str,
     source: str,
@@ -69,7 +78,7 @@ def _build_module_config(
     settings,
     hints_registry: dict,
     constraint: str | None,
-) -> ModuleRunDirConfig:
+) -> _ModuleBuildResult:
     cache_version = constraint or module_cache.UNRESOLVED
     mpath = module_cache.lookup(settings.cache_root, source, cache_version)
     if mpath is None:
@@ -95,7 +104,9 @@ def _build_module_config(
         example = next(e for e in examples if e.name == choice)
         raw_attrs = {}
         for entity in example.entities:
-            if isinstance(entity, TfModuleCall) and entity.source == source:
+            if not isinstance(entity, TfModuleCall):
+                continue
+            if entity.source == source or entity.source.startswith(_LOCAL_SOURCE_PREFIXES):
                 raw_attrs = dict(entity.attrs)
                 break
 
@@ -131,7 +142,7 @@ def _build_module_config(
         select_list_multiple_choices("Select outputs to expose:", output_choices, default=[]) if output_choices else []
     )
 
-    return ModuleRunDirConfig(
+    config = ModuleRunDirConfig(
         source=source,
         label=alias,
         version=constraint,
@@ -139,6 +150,7 @@ def _build_module_config(
         tf_var_promotions=promotions,
         exposed_outputs=exposed,
     )
+    return _ModuleBuildResult(config, mpath)
 
 
 def _run_dir_outputs(run_dir_path: Path) -> list[str]:
@@ -190,7 +202,7 @@ def run_dir_cmd(ctx: typer.Context) -> None:
     )
 
     constraints_by_source = {m.source: m.constraint for m in config.modules}
-    module_configs = [
+    build_results = [
         _build_module_config(
             mc.provider,
             mc.hint.source,
@@ -203,6 +215,17 @@ def run_dir_cmd(ctx: typer.Context) -> None:
     ]
 
     dependencies = _wizard_dependencies(work_dir, config, env_name)
+
+    dep_local_vars = {v for dep in dependencies for v in dep.outputs.values()}
+    for br in build_results:
+        if not dep_local_vars:
+            break
+        required = set(_module_required_attrs(br.module_path).required)
+        for var_name in dep_local_vars & required:
+            if var_name not in br.config.attrs:
+                br.config.attrs[var_name] = HclVarRef(path=f"var.{var_name}")
+
+    module_configs = [br.config for br in build_results]
 
     result = new_run_dir(
         NewRunDirInput(

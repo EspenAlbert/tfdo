@@ -132,7 +132,7 @@ def resolve_run_dir(
     all_env_files = merge_env_var_files(parent_cfgs, run_dir_cfg)
     loaded = load_env_vars(TfDoConfig(env_var_files=all_env_files), _settings, _os_env)
 
-    entities = parse_dir_entities(run_dir)
+    entities = parse_dir_entities(run_dir, recursive=False)
 
     hcl_names: set[str] = set()
     for e in entities:

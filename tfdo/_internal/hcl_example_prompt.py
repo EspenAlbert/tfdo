@@ -232,7 +232,7 @@ def ask_example_selection(examples: list[TfModuleExample]) -> tuple[TfModuleExam
 
 
 def ask_merge_selection(run_dir: Path, examples: list[TfModuleExample]) -> tuple[TfModuleExample, RunDirSelection]:
-    existing_entities = parse_dir_entities(run_dir)
+    existing_entities = parse_dir_entities(run_dir, recursive=False)
     existing_keys = {entity_key(e) for e in existing_entities}
 
     example_names = [ex.name for ex in examples]
