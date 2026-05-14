@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
-from typing import NamedTuple
+from typing import Annotated, NamedTuple
 
 import yaml
-from ask_shell._internal.interactive import ChoiceTyped, select_list_multiple_choices, text
+from ask_shell._internal.interactive import ChoiceTyped, select_list, select_list_multiple_choices, text
 from ask_shell.shell import run_and_wait
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field, TypeAdapter
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal.boot.oidc_bootstrap import provision_oidc_provider, provision_oidc_role
@@ -15,8 +17,15 @@ from tfdo._internal.boot.s3_bootstrap import check_tf_version, provision_s3_buck
 from tfdo._internal.cache import module_cache
 from tfdo._internal.cache.module_cache import UNRESOLVED
 from tfdo._internal.config.config_file import CONFIG_FILENAME
-from tfdo._internal.config.config_model import ModuleConstraint, ProviderConstraint, S3Backend
-from tfdo._internal.config.provider_hints import ModuleHint, ProviderHints, load_provider_hints
+from tfdo._internal.config.config_model import (
+    BackendConfig,
+    CiConfig,
+    ModuleConstraint,
+    ProviderConstraint,
+    S3Backend,
+    TfDoConfig,
+)
+from tfdo._internal.config.provider_hints import ProviderHints, available_module_choices, load_provider_hints
 from tfdo._internal.git_utils import parse_git_remote
 from tfdo._internal.models import TfDoBaseInput
 from tfdo._internal.new.backend_bootstrap import DEFAULT_KEY_TEMPLATE
@@ -24,15 +33,18 @@ from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
 
+_BACKEND_ADAPTER: TypeAdapter[BackendConfig] = TypeAdapter(Annotated[BackendConfig, Field(discriminator="type")])
+
 
 class CachedModule(NamedTuple):
     source: str
     version: str
 
 
-class BackendYaml(BaseModel):
-    model_config = ConfigDict(extra="allow")
-    type: str
+class OidcWizardResult(NamedTuple):
+    repo_org: str
+    repo_name: str
+    oidc_roles: dict[str, str]
 
 
 _TFDO_GITIGNORE_LINES = [
@@ -72,11 +84,11 @@ def _ensure_gitignore_lines(work_dir: Path) -> Path:
     return gitignore
 
 
-def _load_existing_backend(backends_dirs: list[Path], name: str) -> BackendYaml:
+def _load_existing_backend(backends_dirs: list[Path], name: str) -> BackendConfig:
     for d in backends_dirs:
         candidate = d / f"{name}.yaml"
         if candidate.is_file():
-            return BackendYaml.model_validate(yaml.safe_load(candidate.read_text()) or {})
+            return _BACKEND_ADAPTER.validate_python(yaml.safe_load(candidate.read_text()) or {})
     raise ValueError(f"Backend '{name}' not found in: {backends_dirs}")
 
 
@@ -101,18 +113,27 @@ def scan_backend_names(backends_dirs: list[Path]) -> list[str]:
     return names
 
 
+@contextmanager
+def _config_session(config_path: Path, binary: str) -> Iterator[TfDoConfig]:
+    """Load or create config; yield for mutation; dump to disk on exit even on error."""
+    if config_path.is_file():
+        config = TfDoConfig.model_validate(yaml.safe_load(config_path.read_text()) or {})
+        config.tf_version = config.tf_version or check_tf_version(binary)
+    else:
+        config = TfDoConfig(tf_version=check_tf_version(binary))
+    try:
+        yield config
+    finally:
+        data = config.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+        ensure_parents_write_text(config_path, yaml.dump(data, default_flow_style=False))
+
+
 def select_modules(providers: list[str], hints_registry: dict[str, ProviderHints]) -> list[ModuleConstraint]:
-    result = []
-    for provider in providers:
-        hints = hints_registry.get(provider)
-        if not hints or not hints.modules:
-            continue
-        choices: list[ChoiceTyped[ModuleHint]] = [
-            ChoiceTyped(name=h.alias, value=h, checked=True) for h in hints.modules
-        ]
-        selected: list[ModuleHint] = select_list_multiple_choices(f"{provider} modules", choices, default=[])
-        result.extend(ModuleConstraint(source=h.source) for h in selected)
-    return result
+    choices = available_module_choices(providers, hints_registry, checked=True)
+    if not choices:
+        return []
+    selected = select_list_multiple_choices("Select modules:", choices, default=[])
+    return [ModuleConstraint(source=mc.hint.source) for mc in selected]
 
 
 def _resolve_modules(input_model: TfdoBootInput) -> list[ModuleConstraint]:
@@ -148,10 +169,11 @@ def _populate_module_cache(
     return cached, pinned
 
 
-def _run_oidc_wizard(input_model: TfdoBootInput) -> dict[str, str]:
+def _run_oidc_wizard(input_model: TfdoBootInput, backend_bucket: str | None = None) -> OidcWizardResult:
     settings = input_model.settings
     work_dir = settings.work_dir
-    bucket = input_model.bucket or text("S3 bucket name for IAM policy scope")
+    bucket_default = input_model.bucket or backend_bucket or ""
+    bucket = input_model.bucket or text("S3 bucket name for IAM policy scope", default=bucket_default)
 
     run = run_and_wait("aws sts get-caller-identity", cwd=work_dir)
     account_id = run.parse_output(dict)["Account"]
@@ -166,25 +188,65 @@ def _run_oidc_wizard(input_model: TfdoBootInput) -> dict[str, str]:
     env_names = sorted(d.name for d in envs_dir.iterdir() if d.is_dir()) if envs_dir.is_dir() else []
     if not env_names:
         logger.info("No envs found under envs/; skipping IAM role provisioning")
-        return {}
+        return OidcWizardResult(repo_org=org, repo_name=repo, oidc_roles={})
 
     oidc_roles: dict[str, str] = {}
     for env in env_names:
         role_name = text(f"IAM role name for env '{env}'", default=f"tfdo-{repo}-{env}")
         oidc_roles[env] = provision_oidc_role(account_id, org, repo, env, role_name, bucket)
-    return oidc_roles
+    return OidcWizardResult(repo_org=org, repo_name=repo, oidc_roles=oidc_roles)
 
 
-def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
+def _run_scaffold_wizard(input_model: TfdoBootInput, config: TfDoConfig) -> TfdoBootInput:
+    """Prompt for backend and providers interactively, using existing config as defaults."""
     settings = input_model.settings
-    work_dir = settings.work_dir
-    config_path = work_dir / CONFIG_FILENAME
+    backend_names = scan_backend_names(settings.backends_dirs)
+    match config.backend:
+        case S3Backend(bucket=existing_bucket, region=existing_region):
+            default_backend = existing_bucket if existing_bucket in backend_names else "skip"
+        case _:
+            existing_bucket, existing_region = None, None
+            default_backend = "skip"
+    existing_provider_names = {p.name for p in config.providers}
 
-    if config_path.is_file():
-        raise ValueError(f"tfdo.yaml already exists in {work_dir}. Use 'tfdo new ...' to extend an existing repo.")
+    backend_choice = select_list(
+        "Select backend:",
+        backend_names + ["create-new", "skip"],
+        default=default_backend,
+    )
+    bucket = input_model.bucket
+    region = input_model.region
+    if backend_choice == "create-new":
+        bucket = text("S3 bucket name", default=existing_bucket or "")
+        region = text("AWS region", default=existing_region or "us-east-1")
 
-    tf_version = check_tf_version(settings.binary)
-    raw: dict = {"tf_version": tf_version}
+    hints = load_provider_hints(settings.resolved_provider_hints_path)
+    providers: list[str] = []
+    provider_choices = [ChoiceTyped(name=p, value=p, checked=p in existing_provider_names) for p in hints]
+    if provider_choices:
+        providers = select_list_multiple_choices(
+            "Select providers (space to toggle, enter to confirm):",
+            provider_choices,
+            default=[],
+        )
+
+    modules = select_modules(providers, hints)
+
+    return input_model.model_copy(
+        update={
+            "backend_choice": backend_choice,
+            "bucket": bucket,
+            "region": region,
+            "providers": providers,
+            "modules": modules,
+        }
+    )
+
+
+def _apply_scaffold(input_model: TfdoBootInput, config: TfDoConfig) -> tuple[TfdoBootInput, list[CachedModule]]:
+    settings = input_model.settings
+    if settings.is_interactive and input_model.backend_choice == "skip" and not input_model.providers:
+        input_model = _run_scaffold_wizard(input_model, config)
 
     match input_model.backend_choice:
         case "skip":
@@ -194,33 +256,52 @@ def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
                 raise ValueError("bucket and region are required when backend_choice is 'create-new'")
             provision_s3_bucket(input_model.bucket, input_model.region)
             backend = S3Backend(bucket=input_model.bucket, region=input_model.region, key=DEFAULT_KEY_TEMPLATE)
-            raw["backend"] = backend.model_dump(mode="json", exclude_none=True)
+            config.backend = backend
             _save_backend_to_user_dir(settings, input_model.bucket, backend)
         case backend_name:
-            raw["backend"] = _load_existing_backend(settings.backends_dirs, backend_name).model_dump()
+            config.backend = _load_existing_backend(settings.backends_dirs, backend_name)
 
     if input_model.providers:
-        raw["providers"] = [ProviderConstraint(name=p).model_dump(exclude_none=True) for p in input_model.providers]
+        config.providers = [ProviderConstraint(name=p) for p in input_model.providers]
 
     selected_modules = _resolve_modules(input_model)
-    cached, pinned_modules = _populate_module_cache(selected_modules, settings)
+    _, pinned_modules = _populate_module_cache(selected_modules, settings)
+    cached = [CachedModule(source=m.source, version=m.constraint or "") for m in pinned_modules]
 
     if pinned_modules:
-        raw["modules"] = [m.model_dump(exclude_none=True) for m in pinned_modules]
+        config.modules = pinned_modules
 
-    if input_model.oidc:
-        oidc_roles = _run_oidc_wizard(input_model)
-        if oidc_roles:
-            raw["ci"] = {"oidc_roles": oidc_roles}
+    return input_model, cached
 
-    ensure_parents_write_text(config_path, yaml.dump(raw, default_flow_style=False))
-    gitignore_path = _ensure_gitignore_lines(work_dir)
 
+def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
+    settings = input_model.settings
+    config_path = settings.work_dir / CONFIG_FILENAME
+
+    with _config_session(config_path, settings.binary) as config:
+        input_model, cached = _apply_scaffold(input_model, config)
+
+        if input_model.oidc:
+            match config.backend:
+                case S3Backend(bucket=backend_bucket):
+                    pass
+                case _:
+                    backend_bucket = None
+            oidc_result = _run_oidc_wizard(input_model, backend_bucket=backend_bucket)
+            ci = config.ci or CiConfig()
+            ci.oidc = True
+            ci.repo_org = oidc_result.repo_org
+            ci.repo_name = oidc_result.repo_name
+            if oidc_result.oidc_roles:
+                ci.oidc_roles = oidc_result.oidc_roles
+            config.ci = ci
+
+    gitignore_path = _ensure_gitignore_lines(settings.work_dir)
     logger.info("tfdo boot complete! run `tfdo new run-dir` to get started!")
 
     return TfdoBootResult(
         written_paths=[config_path, gitignore_path],
-        terraform_version=tf_version,
+        terraform_version=config.tf_version or "",
         backend_choice=input_model.backend_choice,
         cached_modules=cached,
     )

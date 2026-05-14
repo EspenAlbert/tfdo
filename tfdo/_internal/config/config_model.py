@@ -125,6 +125,9 @@ TFDO_DEFAULT_INSTALL = "git+https://github.com/EspenAlbert/tfdo.git@main"
 
 
 class CiConfig(BaseModel):
+    oidc: bool = False
+    repo_org: str | None = None
+    repo_name: str | None = None
     oidc_roles: dict[str, str] = Field(default_factory=dict)
     tfdo_install: str = TFDO_DEFAULT_INSTALL
 

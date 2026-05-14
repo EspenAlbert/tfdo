@@ -9,7 +9,7 @@ from ask_shell._internal.interactive import ChoiceTyped, select_list, select_lis
 from tfdo._internal.cache import module_cache
 from tfdo._internal.config.config_file import load_config
 from tfdo._internal.config.config_model import DependencyRef, TfDoConfig
-from tfdo._internal.config.provider_hints import load_provider_hints
+from tfdo._internal.config.provider_hints import ModuleChoice, available_module_choices, load_provider_hints
 from tfdo._internal.hcl_entity_parser import TfModuleCall, TfOutput, parse_dir_entities, parse_module_examples
 from tfdo._internal.hcl_example_prompt import _hcl_value_display
 from tfdo._internal.hcl_roundtrip import HclLiteral, HclVarRef
@@ -72,6 +72,7 @@ def _build_module_config(
     mpath = module_cache.lookup(settings.cache_root, source, module_cache.UNRESOLVED)
     if mpath is None:
         mpath = module_cache.populate(settings.cache_root, source, module_cache.UNRESOLVED, settings)
+    mpath = module_cache.module_source_dir(mpath)
 
     examples = parse_module_examples(mpath)
     choice = select_list(
@@ -178,23 +179,15 @@ def run_dir_cmd(ctx: typer.Context) -> None:
     run_dir_name = text("Run-dir name")
 
     hints_registry = load_provider_hints(settings.resolved_provider_hints_path)
-    module_choices: list[ChoiceTyped[tuple[str, str, str]]] = []
-    for pc in config.providers:
-        hints = hints_registry.get(pc.name)
-        if not hints or not hints.modules:
-            continue
-        for mhint in hints.modules:
-            module_choices.append(
-                ChoiceTyped(name=f"{pc.name}: {mhint.alias}", value=(pc.name, mhint.source, mhint.alias), checked=False)
-            )
+    provider_names = [pc.name for pc in config.providers]
+    module_choices = available_module_choices(provider_names, hints_registry)
 
-    selected: list[tuple[str, str, str]] = (
+    selected: list[ModuleChoice] = (
         select_list_multiple_choices("Select modules:", module_choices, default=[]) if module_choices else []
     )
 
     module_configs = [
-        _build_module_config(provider_name, source, alias, settings, hints_registry)
-        for provider_name, source, alias in selected
+        _build_module_config(mc.provider, mc.hint.source, mc.hint.alias, settings, hints_registry) for mc in selected
     ]
 
     dependencies = _wizard_dependencies(work_dir, config, env_name)

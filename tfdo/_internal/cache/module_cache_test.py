@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tfdo._internal.cache import module_cache as _module
-from tfdo._internal.cache.module_cache import UNRESOLVED, cache_dir, lookup, populate, source_safe
+from tfdo._internal.cache.module_cache import UNRESOLVED, cache_dir, lookup, module_source_dir, populate, source_safe
 from tfdo._internal.models import InitInput, InitResult
 from tfdo._internal.settings import TfDoSettings
 
@@ -95,3 +95,19 @@ def test_populate_unresolved_stores_under_resolved_version(tmp_path: Path) -> No
 
     assert result == cache_dir(tmp_path, source, resolved)
     assert result.name == resolved
+
+
+def test_module_source_dir_reads_manifest(tmp_path: Path) -> None:
+    modules_json = json.dumps(
+        {"Modules": [{"Key": "x", "Source": "registry.terraform.io/foo/bar", "Version": "1.0.0", "Dir": ".terraform/modules/x"}]}
+    )
+    (tmp_path / "modules.json").write_text(modules_json)
+    (tmp_path / "x").mkdir()
+    (tmp_path / "x" / "main.tf").write_text("")
+
+    assert module_source_dir(tmp_path) == tmp_path / "x"
+
+
+def test_module_source_dir_falls_back_to_x(tmp_path: Path) -> None:
+    (tmp_path / "x").mkdir()
+    assert module_source_dir(tmp_path) == tmp_path / "x"

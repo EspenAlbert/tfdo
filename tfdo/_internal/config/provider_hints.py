@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 import yaml
+from ask_shell._internal.interactive import ChoiceTyped
 from pydantic import BaseModel, Field
 
 
@@ -33,6 +34,11 @@ class VariableMapping(BaseModel):
 class ModuleHint(BaseModel):
     source: str
     alias: str
+
+
+class ModuleChoice(NamedTuple):
+    provider: str
+    hint: ModuleHint
 
 
 class BundleRequirements(NamedTuple):
@@ -121,3 +127,18 @@ def get_provider_hints(registry: dict[str, ProviderHints], provider: str) -> Pro
     if provider not in registry:
         raise UnknownProviderError(provider)
     return registry[provider]
+
+
+def available_module_choices(
+    providers: list[str], registry: dict[str, ProviderHints], *, checked: bool = False
+) -> list[ChoiceTyped[ModuleChoice]]:
+    """Return interactive choices for all modules available to the given providers."""
+    result: list[ChoiceTyped[ModuleChoice]] = []
+    for provider in providers:
+        hints = registry.get(provider)
+        if not hints or not hints.modules:
+            continue
+        for mhint in hints.modules:
+            mc = ModuleChoice(provider=provider, hint=mhint)
+            result.append(ChoiceTyped(name=f"{provider}: {mhint.alias}", value=mc, checked=checked))
+    return result

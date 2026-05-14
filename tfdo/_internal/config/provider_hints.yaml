@@ -1,9 +1,9 @@
 mongodbatlas:
   source: mongodb/mongodbatlas
   modules:
-  - source: terraform-mongodbatlas-modules/cluster
+  - source: terraform-mongodbatlas-modules/cluster/mongodbatlas
     alias: cluster
-  - source: terraform-mongodbatlas-modules/project
+  - source: terraform-mongodbatlas-modules/project/mongodbatlas
     alias: project
   auth_bundles:
     - name: api_key

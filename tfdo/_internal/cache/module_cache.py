@@ -38,15 +38,38 @@ def _module_stub(source: str, version: str) -> str:
     return "\n".join(lines)
 
 
-def _resolved_version(modules_src: Path) -> str | None:
+def _manifest_entry(modules_src: Path) -> dict | None:
     manifest = modules_src / "modules.json"
     if not manifest.is_file():
         return None
     data = json.loads(manifest.read_text())
     for entry in data.get("Modules", []):
-        if entry.get("Key") == "x" and entry.get("Version"):
-            return entry["Version"]
+        if entry.get("Key") == "x":
+            return entry
     return None
+
+
+def _resolved_version(modules_src: Path) -> str | None:
+    if entry := _manifest_entry(modules_src):
+        return entry.get("Version") or None
+    return None
+
+
+def module_source_dir(cache_path: Path) -> Path:
+    """Return the path to the actual module source within a cache directory.
+
+    Terraform stores the module under .terraform/modules/x; since the cache
+    copies .terraform/modules → cache_path, the source is at cache_path/x
+    (or deeper for monorepo modules).
+    """
+    if entry := _manifest_entry(cache_path):
+        relative = entry.get("Dir", "x").removeprefix(".terraform/modules/")
+        return cache_path / relative
+    return cache_path / "x"
+
+
+def _ignore_git(_directory: str, contents: list[str]) -> set[str]:
+    return {".git"} if ".git" in contents else set()
 
 
 def populate(cache_root: Path, source: str, version: str, settings: TfDoSettings) -> Path:
@@ -71,6 +94,11 @@ def populate(cache_root: Path, source: str, version: str, settings: TfDoSettings
         if not modules_src.is_dir():
             raise ValueError(f"terraform init did not produce a modules directory for {source}@{version}")
         resolved = _resolved_version(modules_src) if version == UNRESOLVED else version
-        target = cache_dir(cache_root, source, resolved or version)
-        shutil.copytree(modules_src, target, dirs_exist_ok=True)
+        effective_version = resolved or version
+        if lookup(cache_root, source, effective_version) is not None:
+            return cache_dir(cache_root, source, effective_version)
+        target = cache_dir(cache_root, source, effective_version)
+        if target.exists():
+            shutil.rmtree(target)
+        shutil.copytree(modules_src, target, ignore=_ignore_git)
     return target
