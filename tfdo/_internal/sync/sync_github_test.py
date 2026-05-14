@@ -12,6 +12,7 @@ from tfdo._internal.sync.sync_github import (
     ACTION_AWS_CREDS,
     ACTION_SETUP_UV,
     SyncGithubInput,
+    _resolve_env_vars,
     collect_requirements,
     resolve_secret_values,
     sync_github,
@@ -228,6 +229,55 @@ def test_section_markers_survive_regeneration(tmp_path: Path) -> None:
 
     sync_github(input_model)
     assert "my custom job" in wf_path.read_text()
+
+
+def test_oidc_roles_inject_aws_role_arn(tmp_path: Path) -> None:
+    _make_envs(tmp_path, ["dev", "prod"])
+    config = TfDoConfig(
+        providers=[ProviderConstraint(name="mongodbatlas")],
+        backend=S3Backend(bucket="b", key="k", region="us-east-1"),
+        ci=CiConfig(oidc_roles={"dev": "arn:dev", "prod": "arn:prod"}),
+    )
+    calls, recorder = _gh_call_recorder()
+    input_model = SyncGithubInput(
+        settings=_settings(tmp_path),
+        config=config,
+        provider_hints_registry={"mongodbatlas": _ATLAS_HINTS},
+        selected_bundles={"mongodbatlas": "api_key"},
+        env_names=["dev", "prod"],
+        owner_repo="org/repo",
+        os_env=_ATLAS_ENV_VARS,
+        run_gh=recorder,
+    )
+    result = sync_github(input_model)
+    assert len(result.env_sync_results) == 2
+    dev_secrets = [c for c in calls if "gh secret set AWS_ROLE_ARN" in c and "--env dev" in c]
+    prod_secrets = [c for c in calls if "gh secret set AWS_ROLE_ARN" in c and "--env prod" in c]
+    assert len(dev_secrets) == 1
+    assert "arn:dev" in dev_secrets[0]
+    assert len(prod_secrets) == 1
+    assert "arn:prod" in prod_secrets[0]
+
+
+def test_resolve_env_vars_oidc_role_from_config(tmp_path: Path) -> None:
+    config = TfDoConfig(
+        backend=S3Backend(bucket="b", key="k", region="eu-west-1"),
+        ci=CiConfig(oidc_roles={"dev": "arn:dev-role"}),
+    )
+    (tmp_path / "envs" / "dev").mkdir(parents=True)
+    env_vars = _resolve_env_vars("dev", config, tmp_path, _settings(tmp_path), {})
+    assert env_vars["AWS_ROLE_ARN"] == "arn:dev-role"
+    assert env_vars["AWS_REGION"] == "eu-west-1"
+
+
+def test_resolve_env_vars_os_env_overrides_config(tmp_path: Path) -> None:
+    config = TfDoConfig(
+        backend=S3Backend(bucket="b", key="k", region="eu-west-1"),
+        ci=CiConfig(oidc_roles={"dev": "arn:config-role"}),
+    )
+    (tmp_path / "envs" / "dev").mkdir(parents=True)
+    env_vars = _resolve_env_vars("dev", config, tmp_path, _settings(tmp_path), {"AWS_ROLE_ARN": "arn:os-role"})
+    assert env_vars["AWS_ROLE_ARN"] == "arn:os-role"
 
 
 def test_custom_discovery_pattern_affects_paths_trigger(tmp_path: Path) -> None:

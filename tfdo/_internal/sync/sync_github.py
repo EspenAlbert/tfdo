@@ -355,8 +355,17 @@ def _resolve_env_vars(
     settings: TfDoSettings,
     os_env: dict[str, str],
 ) -> dict[str, str]:
-    """Merge os.environ with per-env env_var files so each env can have different secret values."""
-    merged = dict(os_env)
+    """Merge os.environ with per-env env_var files and config-derived values.
+
+    Priority (lowest to highest): config defaults, os env, env_var files.
+    """
+    defaults: dict[str, str] = {}
+    if config.ci and (role_arn := config.ci.oidc_roles.get(env)):
+        defaults["AWS_ROLE_ARN"] = role_arn
+    match config.backend:
+        case S3Backend(region=region) if region:
+            defaults["AWS_REGION"] = region
+    merged = {**defaults, **os_env}
     env_dir = config.env_base_dir(work_dir) / env
     file_vars = load_optional_env_vars_from_files(env_dir, settings, log=logger)
     merged.update(file_vars)
