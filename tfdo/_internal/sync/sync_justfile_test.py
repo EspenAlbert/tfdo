@@ -43,10 +43,10 @@ def test_env_only_targets(tmp_path: Path) -> None:
     section = _section(result.justfile_path)
     assert section.startswith(POSITIONAL_ARGUMENTS_LINE)
     assert '"$@"' in section
-    assert "dev cmd *args:" in section
-    assert "prod cmd *args:" in section
-    assert "tfdo run --env dev {{cmd}}" in section
-    assert "tfdo run --env prod {{cmd}}" in section
+    assert "dev *args:" in section
+    assert "prod *args:" in section
+    assert 'tfdo run --env dev "$@"' in section
+    assert 'tfdo run --env prod "$@"' in section
 
 
 def test_run_dir_targets_use_app_flag(tmp_path: Path) -> None:
@@ -57,11 +57,11 @@ def test_run_dir_targets_use_app_flag(tmp_path: Path) -> None:
     section = _section(result.justfile_path)
     assert section.startswith(POSITIONAL_ARGUMENTS_LINE)
     assert '"$@"' in section
-    assert "dev cmd *args:" in section
-    assert "tfdo run --env dev {{cmd}}" in section
-    assert "dev-networking cmd *args:" in section
+    assert "dev *args:" in section
+    assert 'tfdo run --env dev "$@"' in section
+    assert "dev-networking *args:" in section
     assert "--env dev --app networking" in section
-    assert "dev-app cmd *args:" in section
+    assert "dev-app *args:" in section
     assert "--env dev --app app" in section
 
 

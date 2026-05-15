@@ -15,7 +15,8 @@ TOOL_NAME = "tfdo"
 SECTION_ID = "ci-targets"
 JUSTFILE_COMMENT_CONFIG = CommentConfig("#")
 JUSTFILE_NAME = "justfile"
-# Forwards *args to the shell as "$@" so flags like --auto-approve reach terraform/tofu.
+# Forwards the full recipe tail (subcommand + flags) via "$@"; with set positional-arguments,
+# do not also interpolate {{cmd}} or the first word is duplicated.
 POSITIONAL_ARGUMENTS_LINE = "set positional-arguments"
 
 
@@ -37,7 +38,7 @@ def _selector_flag(name: str, value: str) -> str:
 
 def _render_target(target_name: str, selectors: dict[str, str]) -> str:
     flags = " ".join(_selector_flag(k, v) for k, v in selectors.items())
-    return f'{target_name} cmd *args:\n    tfdo run {flags} {{{{cmd}}}} "$@"'
+    return f'{target_name} *args:\n    tfdo run {flags} "$@"'
 
 
 def _discover_targets(config: TfDoConfig, work_dir: Path) -> list[tuple[str, dict[str, str]]]:
