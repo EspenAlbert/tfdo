@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Literal, NamedTuple
 
 from ask_shell._internal.interactive import confirm
-from ask_shell.shell import ShellError, run_and_wait
+from ask_shell.shell import run_and_wait
 from pydantic import BaseModel, Field
 from zero_3rdparty import file_utils
 from zero_3rdparty.sections import CommentConfig, replace_sections
@@ -491,11 +491,16 @@ def _write_workflow_file(path: Path, sections: dict[str, str], dry_run: bool) ->
 
 
 def _default_run_gh(script: str) -> tuple[bool, str]:
-    try:
-        result = run_and_wait(script, skip_progress_output=True)
+    result = run_and_wait(
+        script,
+        skip_progress_output=True,
+        allow_non_zero_exit=True,
+        mute_shell_summary=True,
+    )
+    if result.exit_code == 0:
         return True, result.stdout_one_line
-    except ShellError as e:
-        return False, str(e)
+    detail = result.stderr_one_line.strip() or result.stdout_one_line.strip() or f"exit {result.exit_code}"
+    return False, detail
 
 
 def _resolve_env_vars(

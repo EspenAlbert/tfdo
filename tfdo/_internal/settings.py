@@ -63,6 +63,13 @@ class TfDoSettings(StaticSettings):
     log_level: str = Field(default="INFO", description="Log level for tfdo")
     passthrough: bool = Field(default=False, description="Disable parsed output, pass raw ANSI from terraform")
 
+    ENV_NAME_VERBOSE_SHELL: ClassVar[str] = f"{ENV_PREFIX}VERBOSE_SHELL"
+    verbose_shell: bool = Field(
+        default=False,
+        alias=ENV_NAME_VERBOSE_SHELL,
+        description="Log every successful shell command completion (default is errors only for tfdo)",
+    )
+
     ENV_NAME_BACKENDS_DIRS: ClassVar[str] = f"{ENV_PREFIX}BACKENDS_DIRS"
     backends_dirs_raw: str | None = Field(default=None, alias=ENV_NAME_BACKENDS_DIRS)
 

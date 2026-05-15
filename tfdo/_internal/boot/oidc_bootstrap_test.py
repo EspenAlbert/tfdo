@@ -121,5 +121,6 @@ def test_provision_oidc_role_skips_create_when_entity_exists() -> None:
 def test_parse_git_remote(url: str, expected: GitRemote, tmp_path: Path) -> None:
     run = MagicMock()
     run.stdout_one_line = url
+    run.exit_code = 0
     with patch(f"{git_utils.__name__}.run_and_wait", return_value=run):
         assert parse_git_remote(tmp_path) == expected

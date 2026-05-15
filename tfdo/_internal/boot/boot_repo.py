@@ -8,6 +8,7 @@ from typing import Annotated, NamedTuple
 
 import yaml
 from ask_shell._internal.interactive import ChoiceTyped, select_list, select_list_multiple_choices, text
+from ask_shell.shell import run_pool
 from model_lib import dump as model_dump
 from pydantic import BaseModel, Field, TypeAdapter
 from zero_3rdparty.file_utils import ensure_parents_write_text
@@ -38,6 +39,12 @@ _BACKEND_ADAPTER: TypeAdapter[BackendConfig] = TypeAdapter(Annotated[BackendConf
 class CachedModule(NamedTuple):
     source: str
     version: str
+
+
+class IndexedModuleCacheEntry(NamedTuple):
+    position: int
+    cached: CachedModule
+    pinned: ModuleConstraint
 
 
 class BackendResult(NamedTuple):
@@ -148,6 +155,22 @@ def resolve_modules(
     return select_modules(provider_names, hints_registry)
 
 
+def _populate_single_module_cache(
+    position: int, module: ModuleConstraint, settings: TfDoSettings
+) -> IndexedModuleCacheEntry:
+    request_version = module.constraint or UNRESOLVED
+    hit = module_cache.lookup(settings.cache_root, module.source, request_version)
+    target = (
+        hit if hit is not None else module_cache.populate(settings.cache_root, module.source, request_version, settings)
+    )
+    resolved_version = target.name
+    return IndexedModuleCacheEntry(
+        position=position,
+        cached=CachedModule(source=module.source, version=resolved_version),
+        pinned=ModuleConstraint(source=module.source, constraint=resolved_version),
+    )
+
+
 def _populate_module_cache(
     modules: list[ModuleConstraint], settings: TfDoSettings
 ) -> tuple[list[CachedModule], list[ModuleConstraint]]:
@@ -157,18 +180,17 @@ def _populate_module_cache(
     The resolved version is written back to ``tfdo.yaml`` via the returned
     ``pinned`` list so the project is reproducible after the first boot.
     """
-    cached: list[CachedModule] = []
-    pinned: list[ModuleConstraint] = []
-    for m in modules:
-        request_version = m.constraint or UNRESOLVED
-        hit = module_cache.lookup(settings.cache_root, m.source, request_version)
-        target = (
-            hit if hit is not None else module_cache.populate(settings.cache_root, m.source, request_version, settings)
-        )
-        resolved_version = target.name
-        cached.append(CachedModule(source=m.source, version=resolved_version))
-        pinned.append(ModuleConstraint(source=m.source, constraint=resolved_version))
-    return cached, pinned
+    if not modules:
+        return [], []
+    if len(modules) == 1:
+        one = _populate_single_module_cache(0, modules[0], settings)
+        return [one.cached], [one.pinned]
+    with run_pool(task_name="tfdo boot modules", total=len(modules)) as pool:
+        futures = [
+            pool.submit(_populate_single_module_cache, idx, module, settings) for idx, module in enumerate(modules)
+        ]
+    ordered = sorted((f.result() for f in futures), key=lambda entry: entry.position)
+    return [entry.cached for entry in ordered], [entry.pinned for entry in ordered]
 
 
 def resolve_backend(

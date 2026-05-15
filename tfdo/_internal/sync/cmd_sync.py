@@ -6,7 +6,7 @@ from pathlib import Path
 
 import typer
 from ask_shell._internal.interactive import confirm, select_list
-from ask_shell.shell import ShellError, run_and_wait
+from ask_shell.shell import run_and_wait
 
 from tfdo._internal.config.config_file import CONFIG_FILENAME, load_config
 from tfdo._internal.config.config_model import TfDoConfig
@@ -39,11 +39,15 @@ def justfile_cmd(ctx: typer.Context) -> None:
 
 
 def _detect_owner_repo() -> str:
-    try:
-        result = run_and_wait("gh repo view --json nameWithOwner -q .nameWithOwner", skip_progress_output=True)
-    except ShellError:
+    run = run_and_wait(
+        "gh repo view --json nameWithOwner -q .nameWithOwner",
+        skip_progress_output=True,
+        allow_non_zero_exit=True,
+        mute_shell_summary=True,
+    )
+    if run.exit_code != 0:
         return ""
-    return result.stdout_one_line
+    return run.stdout_one_line
 
 
 def _ensure_git_repo(work_dir: Path, config: TfDoConfig) -> None:
@@ -119,6 +123,9 @@ def github_cmd(
         oidc=oidc,
     )
     result = _sync_github_mod.sync_github(input_model)
+
+    if owner_repo:
+        logger.info(f"Repository: https://github.com/{owner_repo}")
 
     logger.info(f"sync github: {len(result.workflow_files)} workflow files")
     for env_result in result.env_sync_results:
