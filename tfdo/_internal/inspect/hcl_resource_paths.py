@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from tfdo._internal.core.tf_files import iter_tf_files
-from tfdo._internal.hcl_compat import hcl2_load
+from tfdo._internal.hcl_read import hcl2_load
 
 _TERRAFORM_META_PATHS: frozenset[str] = frozenset(
     {"connection", "count", "depends_on", "for_each", "lifecycle", "provider", "provisioner"}

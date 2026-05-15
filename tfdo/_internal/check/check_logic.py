@@ -23,7 +23,7 @@ from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
 from tfdo._internal.core.tf_files import TERRAFORM_DIR, find_tf_directories
 from tfdo._internal.git_utils import parse_git_remote
-from tfdo._internal.hcl_compat import hcl2_load
+from tfdo._internal.hcl_read import hcl2_load
 from tfdo._internal.models import (
     CheckInput,
     CheckResult,

@@ -5,9 +5,9 @@ import re
 from contextlib import suppress
 from pathlib import Path
 
-from hcl2.api import loads as hcl2_loads
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
+from tfdo._internal.hcl_read import hcl2_loads
 from tfdo._internal.schema.cache import REGISTRY_HOST_PREFIX
 
 TF_CLI_CONFIG_FILE_ENV = "TF_CLI_CONFIG_FILE"

@@ -1,3 +1,9 @@
+"""Read-only HCL parsing with v7-compatible output (stripped quotes, no block markers).
+
+Use for extracting information from .tf files. Never write results back as HCL.
+For modifying .tf content, use hcl_roundtrip instead.
+"""
+
 from __future__ import annotations
 
 from typing import Any, TextIO

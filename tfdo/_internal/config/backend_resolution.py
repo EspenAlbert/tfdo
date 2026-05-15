@@ -9,7 +9,7 @@ from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal import hcl_roundtrip
 from tfdo._internal.config.config_model import BackendConfig, LocalBackend, S3Backend
-from tfdo._internal.hcl_compat import hcl2_loads
+from tfdo._internal.hcl_read import hcl2_loads
 from tfdo._internal.run.run_context import RunDirContext
 
 logger = logging.getLogger(__name__)

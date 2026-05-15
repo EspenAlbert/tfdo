@@ -1,3 +1,9 @@
+"""Roundtrip-safe HCL block operations (add, update, patch, delete, splice).
+
+Preserves comments, formatting, and sibling blocks outside the modified region.
+Always prefer these functions over ``hcl2.loads()`` -> mutate dict -> ``hcl2.dumps()``.
+"""
+
 from __future__ import annotations
 
 import copy
@@ -10,7 +16,26 @@ from hcl2.rules.base import AttributeRule, BlockRule, StartRule
 from hcl2.rules.expressions import ExprTermRule
 from hcl2.rules.literal_rules import IdentifierRule
 from hcl2.rules.strings import StringRule
-from pydantic import BaseModel
+
+from tfdo._internal.hcl_types import (
+    HclAttrRef,
+    HclExpression,
+    HclLiteral,
+    HclValue,
+    HclVarRef,
+    _is_hcl_expression,
+    _is_hcl_string,
+    parse_hcl_value,
+    strip_wrapping_quotes,
+)
+
+__all__ = [
+    "HclAttrRef",
+    "HclExpression",
+    "HclLiteral",
+    "HclValue",
+    "HclVarRef",
+]
 
 _BLOCK_MARKER = "__is_block__"
 _COMMENT_KEYS = ("__comments__", "__inline_comments__")
@@ -18,24 +43,20 @@ _HCL_PATCH_FRAGMENT_BLOCK = "zzz_tfdo_hcl_patch_fragment"
 _MODULE_BLOCK_HEADER_LINE = re.compile(r'^(?P<prefix>\s*module\s+")(?P<label>[^"]+)(?P<suffix>")')
 _SOURCE_ATTR_LINE = re.compile(r"^(?P<indent>\s*)source\s*=")
 
-
-class HclLiteral(BaseModel, frozen=True):
-    value: Any
-
-
-class HclVarRef(BaseModel, frozen=True):
-    path: str
+_strip_wrapping_quotes = strip_wrapping_quotes
+_parse_hcl_value = parse_hcl_value
 
 
-class HclAttrRef(BaseModel, frozen=True):
-    path: str
+def _quoted_label(value: str) -> str:
+    return f'"{strip_wrapping_quotes(value)}"'
 
 
-class HclExpression(BaseModel, frozen=True):
-    expression: str
-
-
-type HclValue = HclLiteral | HclVarRef | HclAttrRef | HclExpression | list["HclValue"] | dict[str, "HclValue"]
+def _to_hcl_string(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    if _is_hcl_string(value) or _is_hcl_expression(value):
+        return value
+    return f'"{value}"'
 
 
 def _label_to_str(label: Any) -> str:
@@ -47,73 +68,6 @@ def _label_to_str(label: Any) -> str:
             return raw[1:-1]
         return str(raw)
     return str(label.serialize())
-
-
-def _strip_wrapping_quotes(value: str) -> str:
-    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
-        return value[1:-1]
-    return value
-
-
-def _quoted_label(value: str) -> str:
-    return f'"{_strip_wrapping_quotes(value)}"'
-
-
-def _is_hcl_string(value: str) -> bool:
-    return len(value) >= 2 and value[0] == '"' and value[-1] == '"'
-
-
-def _is_hcl_expression(value: str) -> bool:
-    if value.startswith("${") and value.endswith("}"):
-        return True
-    if "." in value and " " not in value and "/" not in value:
-        return True
-    return False
-
-
-def _to_hcl_string(value: Any) -> Any:
-    if not isinstance(value, str):
-        return value
-    if _is_hcl_string(value) or _is_hcl_expression(value):
-        return value
-    return f'"{value}"'
-
-
-def _is_attr_reference_path(value: str) -> bool:
-    if value.startswith("var."):
-        return False
-    segments = value.split(".")
-    if len(segments) < 2:
-        return False
-    for segment in segments:
-        if not segment:
-            return False
-        if not (segment[0].isalpha() or segment[0] == "_"):
-            return False
-        if not all(char.isalnum() or char == "_" for char in segment):
-            return False
-    return True
-
-
-def _parse_interpolation(value: str) -> HclVarRef | HclAttrRef | HclExpression:
-    expression = value[2:-1].strip()
-    if expression.startswith("var."):
-        return HclVarRef(path=expression)
-    if _is_attr_reference_path(expression):
-        return HclAttrRef(path=expression)
-    return HclExpression(expression=expression)
-
-
-def _parse_hcl_value(value: Any) -> HclValue:
-    if isinstance(value, dict):
-        return {key: _parse_hcl_value(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_parse_hcl_value(item) for item in value]
-    if isinstance(value, str) and _is_hcl_string(value):
-        return HclLiteral(value=_strip_wrapping_quotes(value))
-    if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
-        return _parse_interpolation(value)
-    return HclLiteral(value=value)
 
 
 def block_labels(block: BlockRule) -> list[str]:

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from tfdo._internal.config.config_resolution import ResolvedConfig
 from tfdo._internal.config.discovery_pattern import DiscoveryPattern, iter_dirs_at_depth
-from tfdo._internal.hcl_compat import hcl2_loads
+from tfdo._internal.hcl_read import hcl2_loads
 from tfdo._internal.run.run_context import RunDirContext
 
 logger = logging.getLogger(__name__)

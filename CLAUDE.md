@@ -32,11 +32,21 @@
 
 ### HCL manipulation
 
-Several modules handle HCL read/write without going through the Terraform CLI:
-- `_internal/hcl_entity_parser.py` — parses HCL into typed entities (`TfResource`, `TfVariable`, `TfProvider`, etc.) using `python-hcl2`.
-- `_internal/hcl_roundtrip.py` — AST-level add/update/delete of HCL blocks while preserving formatting.
-- `_internal/hcl_run_dir_gen.py` — generates/merges run-directory HCL content.
-- `_internal/hcl_run_dir_merge.py` — merges generated HCL into existing files.
+The HCL modules are layered by purpose. Pick the right layer for your task:
+
+- `_internal/hcl_types.py` — shared value model classes (`HclLiteral`, `HclVarRef`, `HclAttrRef`, `HclExpression`, `HclValue`) and the `parse_hcl_value` helper. Import from here when you only need the types.
+- `_internal/hcl_read.py` — read-only parsing with v7-compatible output (stripped quotes, no block markers). Use `hcl_read.hcl2_loads()` / `hcl_read.hcl2_load()` when you only need to check block presence, extract names, or read simple attribute values. Never write these dicts back as HCL.
+- `_internal/hcl_roundtrip.py` — roundtrip-safe HCL block operations (splice, patch, update, delete, add). Preserves comments, formatting, and sibling blocks outside the modified region. Always use these functions when modifying existing `.tf` files.
+- `_internal/hcl_entity_parser.py` — high-level entity extraction. Use `parse_entities()` / `parse_dir_entities()` to get structured `TfVariable`, `TfResource`, `TfModuleCall`, etc. objects.
+- `_internal/hcl_run_dir_gen.py` — generates run-directory HCL content from example entities.
+- `_internal/hcl_run_dir_merge.py` — merges generated HCL into existing run-directory files.
+
+**Guidelines for new HCL code:**
+
+- **Read-only extraction**: use `hcl_read` or `hcl_entity_parser`.
+- **Modifying existing `.tf` files**: use `hcl_roundtrip` functions (`splice_block`, `patch_module_block_attributes`, `update_*_block`, `delete_*_block`, `add_*_block`).
+- **Generating new `.tf` files from scratch**: string templates or `hcl2.Builder` are both fine when there is no existing content to preserve.
+- **Never** do `hcl2.loads()` -> mutate dict -> `hcl2.dumps()` on existing files. This silently drops comments, type expressions, and formatting.
 
 ### Provider hints
 

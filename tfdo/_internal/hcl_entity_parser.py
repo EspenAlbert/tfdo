@@ -6,14 +6,9 @@ from typing import Any
 from model_lib import Event
 from pydantic import Field
 
-from tfdo._internal import hcl_compat
-from tfdo._internal.hcl_roundtrip import (
-    HclLiteral,
-    HclValue,
-    _parse_hcl_value,
-    read_module_block_values,
-    read_resource_block_values,
-)
+from tfdo._internal import hcl_read
+from tfdo._internal.hcl_roundtrip import read_module_block_values, read_resource_block_values
+from tfdo._internal.hcl_types import HclLiteral, HclValue, parse_hcl_value
 
 
 class TfRequiredProvider(Event):
@@ -109,9 +104,9 @@ def _parse_variables(doc: dict[str, Any], file_path: Path) -> list[TfVariable]:
                 TfVariable(
                     file_path=file_path,
                     name=name,
-                    type=_parse_hcl_value(raw_type) if raw_type is not None else None,
+                    type=parse_hcl_value(raw_type) if raw_type is not None else None,
                     description=attrs.get("description"),
-                    default=_parse_hcl_value(raw_default) if has_default else None,
+                    default=parse_hcl_value(raw_default) if has_default else None,
                     sensitive=bool(attrs.get("sensitive", False)),
                     nullable=bool(raw_nullable) if raw_nullable is not None else None,
                 )
@@ -136,7 +131,7 @@ def _parse_outputs(doc: dict[str, Any], file_path: Path) -> list[TfOutput]:
                 TfOutput(
                     file_path=file_path,
                     name=name,
-                    value=_parse_hcl_value(raw_value) if raw_value is not None else HclLiteral(value=None),
+                    value=parse_hcl_value(raw_value) if raw_value is not None else HclLiteral(value=None),
                     description=attrs.get("description"),
                     sensitive=bool(attrs.get("sensitive", False)),
                 )
@@ -251,7 +246,7 @@ def _parse_providers(doc: dict[str, Any], file_path: Path) -> list[TfProvider]:
             if not isinstance(attrs, dict):
                 attrs = {}
             alias = attrs.get("alias")
-            remaining = {k: _parse_hcl_value(v) for k, v in attrs.items() if k not in _PROVIDER_RESERVED_ATTRS}
+            remaining = {k: parse_hcl_value(v) for k, v in attrs.items() if k not in _PROVIDER_RESERVED_ATTRS}
             entities.append(
                 TfProvider(
                     file_path=file_path,
@@ -265,7 +260,7 @@ def _parse_providers(doc: dict[str, Any], file_path: Path) -> list[TfProvider]:
 
 def parse_entities(path: Path) -> list[HclEntity]:
     text = path.read_text()
-    doc = hcl_compat.hcl2_loads(text)
+    doc = hcl_read.hcl2_loads(text)
 
     entities: list[HclEntity] = []
     entities.extend(_parse_variables(doc, path))
