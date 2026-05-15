@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 from tfdo._internal.boot import boot_repo as _module
@@ -26,6 +28,20 @@ from tfdo._internal.settings import InteractiveMode, TfDoSettings
 _MODULE = _module.__name__
 _CACHE_MODULE = _cache_module.__name__
 _PVC_MODULE = _pvc_module.__name__
+
+
+@pytest.fixture(autouse=True)
+def _boot_repo_skip_resolve_provider_versions_tf_init() -> Iterator[None]:
+    """Boot calls resolve_provider_versions which runs terraform init per provider; keep boot tests unit-fast."""
+
+    def _passthrough(
+        providers: list[ProviderConstraint],
+        _settings_arg: TfDoSettings,
+    ) -> list[ProviderConstraint]:
+        return list(providers)
+
+    with patch.object(_pvc_module, _pvc_module.resolve_provider_versions.__name__, side_effect=_passthrough):
+        yield
 
 
 def _settings(tmp_path: Path, interactive: InteractiveMode = InteractiveMode.NEVER) -> TfDoSettings:
@@ -222,10 +238,6 @@ def _fake_init(input_model):
     return InitResult(exit_code=0, attempts_used=1)
 
 
-def _passthrough_resolve(providers, _settings):
-    return providers
-
-
 def test_scaffold_wizard_runs_when_interactive_fresh_repo(tmp_path: Path) -> None:
     hints_path = _write_hints(tmp_path, {"aws": {"source": "hashicorp/aws"}})
     settings = TfDoSettings.for_testing(
@@ -235,10 +247,6 @@ def test_scaffold_wizard_runs_when_interactive_fresh_repo(tmp_path: Path) -> Non
         patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
         patch(f"{_MODULE}.select_list", return_value="skip") as mock_backend,
         patch(f"{_MODULE}.select_list_multiple_choices", return_value=["aws"]) as mock_providers,
-        patch(
-            f"{_MODULE}.provider_version_cache.{_pvc_module.resolve_provider_versions.__name__}",
-            side_effect=_passthrough_resolve,
-        ),
     ):
         result = boot_repo(TfdoBootInput(settings=settings))
 
