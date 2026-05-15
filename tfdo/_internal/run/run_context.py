@@ -23,4 +23,5 @@ class RunDirContext(BaseModel):
             path=relative_path,
             repo_owner=ci.repo_org or "" if ci else "",
             repo_name=ci.repo_name or "" if ci else "",
+            tags=config.tags,
         )

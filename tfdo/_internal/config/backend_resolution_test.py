@@ -26,18 +26,21 @@ def test_resolve_builtins_and_tags():
 
 
 def test_resolve_unresolved_raises_with_suggestions():
-    with pytest.raises(ValueError, match="Add the missing key to tags") as exc_info:
+    with pytest.raises(ValueError, match="unresolved placeholders") as exc_info:
         resolve_placeholders("{missing}", _CTX)
     msg = str(exc_info.value)
-    assert "Available:" in msg
+    assert "Populated:" in msg
     assert "name" in msg
     assert "tags.env" in msg
 
 
 def test_empty_builtin_raises():
     ctx = RunDirContext(name="compute", path="envs/dev/compute", repo_owner="", repo_name="")
-    with pytest.raises(ValueError, match="unresolved placeholders"):
+    with pytest.raises(ValueError, match="Empty builtins") as exc_info:
         resolve_placeholders("{repo_owner}/{repo_name}/{path}/terraform.tfstate", ctx)
+    msg = str(exc_info.value)
+    assert "repo_owner" in msg
+    assert "repo_name" in msg
 
 
 def test_builtins_win_over_tags():

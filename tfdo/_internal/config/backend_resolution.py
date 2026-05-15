@@ -45,11 +45,17 @@ def resolve_placeholders(template: str, ctx: RunDirContext) -> str:
 
     result = _PLACEHOLDER_RE.sub(_replace, template)
     if unresolved := _PLACEHOLDER_RE.findall(result):
-        available = sorted({*_BUILTINS, *(f"tags.{k}" for k in ctx.tags), *ctx.tags})
-        raise ValueError(
-            f"unresolved placeholders in {template!r}: {unresolved}. "
-            f"Available: {available}. Add the missing key to tags in tfdo.yaml or fix the template"
-        )
+        populated = sorted(k for k, v in builtin_map.items() if v)
+        empty_builtins = sorted(_BUILTINS - set(populated))
+        tag_keys = sorted({*(f"tags.{k}" for k in ctx.tags), *ctx.tags})
+        parts = [f"unresolved placeholders in {template!r}: {unresolved}."]
+        if populated or tag_keys:
+            parts.append(f"Populated: {sorted({*populated, *tag_keys})}.")
+        if empty_builtins:
+            parts.append(
+                f"Empty builtins (set ci.repo_org/ci.repo_name in tfdo.yaml or run tfdo boot): {empty_builtins}."
+            )
+        raise ValueError(" ".join(parts))
     return result
 
 

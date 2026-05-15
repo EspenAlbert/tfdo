@@ -7,12 +7,20 @@ from unittest.mock import patch
 import yaml
 
 from tfdo._internal.boot import boot_repo as _module
-from tfdo._internal.boot.boot_repo import CachedModule, OidcWizardResult, TfdoBootInput, boot_repo, select_modules
+from tfdo._internal.boot.boot_repo import (
+    CachedModule,
+    OidcWizardResult,
+    TfdoBootInput,
+    boot_repo,
+    resolve_repo_identity,
+    select_modules,
+)
 from tfdo._internal.cache import module_cache as _cache_module
 from tfdo._internal.cache import provider_version_cache as _pvc_module
 from tfdo._internal.config.config_file import load_config
-from tfdo._internal.config.config_model import ModuleConstraint, ProviderConstraint, S3Backend
+from tfdo._internal.config.config_model import CiConfig, ModuleConstraint, ProviderConstraint, S3Backend, TfDoConfig
 from tfdo._internal.config.provider_hints import ProviderHints
+from tfdo._internal.git_utils import GitRemote
 from tfdo._internal.models import InitResult
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
@@ -373,3 +381,67 @@ def test_boot_pins_provider_versions(tmp_path: Path) -> None:
     raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
     constraints = {p["name"]: p.get("constraint") for p in raw["providers"]}
     assert constraints == {"aws": "5.82.0", "mongodbatlas": "1.23.0"}
+
+
+def test_resolve_repo_identity_from_git_remote_non_interactive(tmp_path: Path) -> None:
+    config = TfDoConfig(tf_version="1.11.0")
+    settings = _settings(tmp_path, interactive=InteractiveMode.NEVER)
+    remote = GitRemote(org="acme", repo="infra")
+    with patch(f"{_MODULE}.parse_git_remote", return_value=remote):
+        resolve_repo_identity(settings, config)
+
+    assert config.ci is not None
+    assert config.ci.repo_org == "acme"
+    assert config.ci.repo_name == "infra"
+
+
+def test_resolve_repo_identity_no_git_remote_non_interactive(tmp_path: Path) -> None:
+    config = TfDoConfig(tf_version="1.11.0")
+    settings = _settings(tmp_path, interactive=InteractiveMode.NEVER)
+    with patch(f"{_MODULE}.parse_git_remote", return_value=None):
+        resolve_repo_identity(settings, config)
+
+    assert config.ci is None
+
+
+def test_resolve_repo_identity_interactive_prompts(tmp_path: Path) -> None:
+    config = TfDoConfig(tf_version="1.11.0")
+    settings = _settings(tmp_path, interactive=InteractiveMode.ALWAYS)
+    with (
+        patch(f"{_MODULE}.parse_git_remote", return_value=GitRemote(org="default-org", repo="default-repo")),
+        patch(f"{_MODULE}.text", side_effect=["my-org", "my-repo"]) as mock_text,
+    ):
+        resolve_repo_identity(settings, config)
+
+    assert config.ci is not None
+    assert config.ci.repo_org == "my-org"
+    assert config.ci.repo_name == "my-repo"
+    assert mock_text.call_count == 2
+    assert mock_text.call_args_list[0].kwargs["default"] == "default-org"
+    assert mock_text.call_args_list[1].kwargs["default"] == "default-repo"
+
+
+def test_resolve_repo_identity_skips_when_already_set(tmp_path: Path) -> None:
+    config = TfDoConfig(tf_version="1.11.0", ci=CiConfig(repo_org="existing-org", repo_name="existing-repo"))
+    settings = _settings(tmp_path, interactive=InteractiveMode.ALWAYS)
+    with patch(f"{_MODULE}.parse_git_remote") as mock_remote:
+        resolve_repo_identity(settings, config)
+
+    mock_remote.assert_not_called()
+    assert config.ci is not None
+    assert config.ci.repo_org == "existing-org"
+    assert config.ci.repo_name == "existing-repo"
+
+
+def test_boot_writes_repo_identity_without_oidc(tmp_path: Path) -> None:
+    remote = GitRemote(org="my-org", repo="my-repo")
+    with (
+        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
+        patch(f"{_MODULE}.parse_git_remote", return_value=remote),
+    ):
+        boot_repo(TfdoBootInput(settings=_settings(tmp_path)))
+
+    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
+    assert raw["ci"]["repo_org"] == "my-org"
+    assert raw["ci"]["repo_name"] == "my-repo"
+    assert not raw["ci"]["oidc"]

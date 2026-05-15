@@ -181,7 +181,7 @@ def _populate_module_cache(
 
 
 def _run_oidc_wizard(
-    settings: TfDoSettings, bucket: str | None = None, backend_bucket: str | None = None
+    settings: TfDoSettings, org: str, repo: str, bucket: str | None = None, backend_bucket: str | None = None
 ) -> OidcWizardResult:
     work_dir = settings.work_dir
     bucket_default = bucket or backend_bucket or ""
@@ -191,10 +191,6 @@ def _run_oidc_wizard(
     account_id = run.parse_output(dict)["Account"]
 
     provision_oidc_provider(account_id)
-
-    remote = parse_git_remote(work_dir)
-    org = text("GitHub org", default=remote.org if remote else "")
-    repo = text("GitHub repo", default=remote.repo if remote else "")
 
     envs_dir = work_dir / "envs"
     env_names = sorted(d.name for d in envs_dir.iterdir() if d.is_dir()) if envs_dir.is_dir() else []
@@ -253,15 +249,35 @@ def resolve_providers(
     return [ProviderConstraint(name=name, source=hints[name].source) for name in selected_names]
 
 
+def resolve_repo_identity(settings: TfDoSettings, config: TfDoConfig) -> None:
+    ci = config.ci or CiConfig()
+    if ci.repo_org and ci.repo_name:
+        config.ci = ci
+        return
+    remote = parse_git_remote(settings.work_dir)
+    if not settings.is_interactive:
+        ci.repo_org = ci.repo_org or (remote.org if remote else None)
+        ci.repo_name = ci.repo_name or (remote.repo if remote else None)
+        if ci.repo_org or ci.repo_name:
+            config.ci = ci
+        return
+    ci.repo_org = ci.repo_org or text("Repo owner (GitHub org/user)", default=remote.org if remote else "")
+    ci.repo_name = ci.repo_name or text("Repo name", default=remote.repo if remote else "")
+    config.ci = ci
+
+
 def add_oidc(settings: TfDoSettings, config: TfDoConfig, bucket: str | None, oidc: bool) -> OidcWizardResult | None:
     if not oidc:
         return None
+    ci = config.ci or CiConfig()
     match config.backend:
         case S3Backend(bucket=backend_bucket):
             pass
         case _:
             backend_bucket = None
-    return _run_oidc_wizard(settings, bucket=bucket, backend_bucket=backend_bucket)
+    return _run_oidc_wizard(
+        settings, org=ci.repo_org or "", repo=ci.repo_name or "", bucket=bucket, backend_bucket=backend_bucket
+    )
 
 
 def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
@@ -293,6 +309,8 @@ def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
         cached = [CachedModule(source=m.source, version=m.constraint or "") for m in pinned_modules]
         if pinned_modules:
             config.modules = pinned_modules
+
+        resolve_repo_identity(settings, config)
 
         if oidc_result := add_oidc(settings, config, backend.bucket, input_model.oidc):
             ci = config.ci or CiConfig()
