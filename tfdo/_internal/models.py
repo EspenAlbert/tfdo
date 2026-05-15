@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from enum import StrEnum
 from functools import total_ordering
 from pathlib import Path
@@ -80,6 +81,8 @@ class DestroyInput(LifecycleInput):
 
 
 class CheckInput(TfDoBaseInput):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     fix: bool = False
     diff: bool = False
     init_mode: InitMode = InitMode.AUTO
@@ -87,6 +90,7 @@ class CheckInput(TfDoBaseInput):
     exclude_patterns: list[str] = Field(default_factory=list)
     tflint: bool = False
     skip_check_providers: bool = False
+    tfvar_prompt: Callable[[str], str] | None = None
 
 
 class OutputInput(TfDoBaseInput):

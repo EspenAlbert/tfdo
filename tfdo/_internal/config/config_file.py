@@ -15,6 +15,7 @@ from tfdo._internal.settings import TfDoSettings
 logger = logging.getLogger(__name__)
 
 CONFIG_FILENAME = "tfdo.yaml"
+DEFAULT_TFVARS_FILENAME = "terraform.tfvars"
 
 
 def save_config(work_dir: Path, config: TfDoConfig) -> Path:
@@ -59,7 +60,7 @@ def load_config_layers(work_dir: Path) -> list[ConfigLayer]:
 
 
 def resolve_var_file_paths(work_dir: Path, include_default_tfvars: bool = True) -> list[Path]:
-    paths: list[Path] = [work_dir / "terraform.tfvars"] if include_default_tfvars else []
+    paths: list[Path] = [work_dir / DEFAULT_TFVARS_FILENAME] if include_default_tfvars else []
     for layer in reversed(load_config_layers(work_dir)):
         for var_file in layer.config.var_files:
             path = Path(var_file)

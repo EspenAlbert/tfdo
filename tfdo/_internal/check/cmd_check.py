@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 import typer
+from ask_shell import ask
 
 from tfdo._internal import cmd_options
 from tfdo._internal.check import check_logic
@@ -120,7 +121,11 @@ def _log_next_steps(work_dir: Path) -> None:
 @app.command("c")
 def check_cmd(
     ctx: typer.Context,
-    fix: bool = typer.Option(False, "--fix", help="Auto-format instead of checking"),
+    fix: bool = typer.Option(
+        False,
+        "--fix",
+        help="Apply fixes: terraform fmt, backend/provider drift in HCL; when interactive, prompt for missing terraform.tfvars.",
+    ),
     diff: bool = typer.Option(False, "--diff", help="Show what would change"),
     init_mode: InitMode = cmd_options.init_mode_option(),
     include: list[str] = cmd_options.include_option(),
@@ -133,6 +138,7 @@ def check_cmd(
     layers = load_config_layers(settings.work_dir)
     tflint_enabled = resolve_tflint(tflint, settings, layers=layers)
     skip_providers = resolve_skip_check_providers(skip_check_providers, settings, layers=layers)
+    tfvar_prompt = ask.text if fix else None
     input_model = CheckInput(
         settings=settings,
         fix=fix,
@@ -142,6 +148,7 @@ def check_cmd(
         exclude_patterns=exclude,
         tflint=tflint_enabled,
         skip_check_providers=skip_providers,
+        tfvar_prompt=tfvar_prompt,
     )
     result = check_logic.check(input_model)
     _log_result(result)

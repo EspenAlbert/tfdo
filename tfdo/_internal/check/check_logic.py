@@ -9,12 +9,14 @@ from typing import NamedTuple
 
 from ask_shell._internal.run_pool import run_pool
 from ask_shell.shell import run_and_wait
+from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal.cache.provider_version_cache import _is_exact_version
 from tfdo._internal.check.check_run_dir import check_run_dir
 from tfdo._internal.check.models import CheckResult as RunDirProviderResult
 from tfdo._internal.config import backend_resolution
 from tfdo._internal.config.config_file import (
+    DEFAULT_TFVARS_FILENAME,
     load_config_layers,
     load_optional_env_vars_from_files,
     resolve_var_file_paths,
@@ -177,7 +179,75 @@ def _missing_tf_vars(tf_dir: Path, settings: TfDoSettings, os_env: Mapping[str, 
     if not required:
         return []
     provided = _provided_tf_vars(tf_dir, settings, os_env)
-    return sorted(required - provided)
+    dep_fed = _dependency_fed_tf_var_names(tf_dir)
+    return sorted((required - provided) - dep_fed)
+
+
+def _dependency_fed_tf_var_names(tf_dir: Path) -> set[str]:
+    names: set[str] = set()
+    for layer in load_config_layers(tf_dir):
+        for dep in layer.config.dependencies:
+            names.update(dep.outputs.values())
+    return names
+
+
+def _escape_hcl_string(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _merge_prompted_tfvars(tf_dir: Path, assignments: dict[str, str]) -> None:
+    if assignments:
+        path = tf_dir / DEFAULT_TFVARS_FILENAME
+        existing = ""
+        if path.is_file():
+            existing = path.read_text().rstrip()
+        new_lines = [f'{k} = "{_escape_hcl_string(v)}"' for k, v in sorted(assignments.items())]
+        body = "\n".join(new_lines)
+        content = f"{existing}\n{body}\n" if existing else f"{body}\n"
+        ensure_parents_write_text(path, content)
+
+
+def _apply_missing_tfvar_fixes(
+    input_model: CheckInput,
+    dir_results: list[DirCheckResult],
+    os_env: dict[str, str],
+) -> list[DirCheckResult]:
+    if input_model.fix and any(dr.missing_tfvars for dr in dir_results):
+        settings = input_model.settings
+        if settings.is_interactive:
+            prompt = input_model.tfvar_prompt
+            if prompt is None:
+                logger.error("tfdo check --fix needs tfvar_prompt to fill missing tfvars")
+                return dir_results
+            work_dir = settings.work_dir
+            out: list[DirCheckResult] = []
+            for dr in dir_results:
+                missing = dr.missing_tfvars
+                if missing:
+                    tf_dir = dr.directory
+                    assignments: dict[str, str] = {}
+                    for name in missing:
+                        try:
+                            rel = str(tf_dir.relative_to(work_dir))
+                        except ValueError:
+                            rel = str(tf_dir)
+                        answer = prompt(f"{rel} variable {name}")
+                        stripped = answer.strip()
+                        if stripped:
+                            assignments[name] = stripped
+                    if assignments:
+                        _merge_prompted_tfvars(tf_dir, assignments)
+                        logger.info(f"appended terraform.tfvars keys in {tf_dir} ({len(assignments)})")
+                    new_missing = _missing_tf_vars(tf_dir, settings, os_env)
+                    out.append(dr.model_copy(update={"missing_tfvars": new_missing}))
+                else:
+                    out.append(dr)
+            return out
+        logger.error(
+            f"tfdo check --fix cannot prompt for missing terraform variables in non-interactive mode. "
+            f"Set {TfDoSettings.ENV_NAME_INTERACTIVE}=always or edit terraform.tfvars / TF_VAR_*."
+        )
+    return dir_results
 
 
 def _check_directory(
@@ -383,6 +453,8 @@ def check(input_model: CheckInput) -> CheckResult:
         )
         for tf_dir, run_result in run_results.items()
     ]
+
+    dir_results = _apply_missing_tfvar_fixes(input_model, dir_results, os_env)
 
     has_fmt_issues = any(d.fmt_files for d in dir_results) and not input_model.fix
     has_errors = any(d.validation_errors for d in dir_results)

@@ -263,6 +263,57 @@ def test_check_reports_missing_tfvars(tmp_path: Path):
     assert result.dir_results[0].missing_tfvars == ["base_url"]
 
 
+def test_missing_tfvars_skips_dependency_output_targets(tmp_path: Path):
+    ensure_parents_write_text(tmp_path / "variables.tf", 'variable "project_id" {}\n')
+    ensure_parents_write_text(
+        tmp_path / "tfdo.yaml",
+        "dependencies:\n  - ref: project\n    outputs:\n      id: project_id\n",
+    )
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings))
+    assert result.dir_results[0].missing_tfvars == []
+    assert result.exit_code == 0
+
+
+def test_check_fix_writes_prompted_tfvars(tmp_path: Path):
+    ensure_parents_write_text(
+        tmp_path / "variables.tf",
+        'variable "slug" {}\nvariable "extra" {}\n',
+    )
+    ensure_parents_write_text(tmp_path / "terraform.tfvars", 'slug = "a"\n')
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+
+    def fake_prompt(_msg: str) -> str:
+        return "from-prompt"
+
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings, fix=True, tfvar_prompt=fake_prompt))
+    tfvars = (tmp_path / "terraform.tfvars").read_text()
+    assert 'extra = "from-prompt"' in tfvars
+    assert "slug" in tfvars
+    assert result.dir_results[0].missing_tfvars == []
+    assert result.exit_code == 0
+
+
+def test_check_fix_noninteractive_does_not_write_tfvars(tmp_path: Path):
+    ensure_parents_write_text(tmp_path / "variables.tf", 'variable "need" {}\n')
+    (tmp_path / ".terraform").mkdir()
+    settings = TfDoSettings.for_testing(tmp_path, work_dir=tmp_path, interactive=InteractiveMode.NEVER)
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings, fix=True, tfvar_prompt=lambda _m: "x"))
+    assert result.exit_code == 1
+    assert not (tmp_path / "terraform.tfvars").exists()
+
+
 def test_check_tfvars_satisfied_by_var_file_and_env_file(tmp_path: Path):
     ensure_parents_write_text(
         tmp_path / "variables.tf",
