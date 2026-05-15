@@ -380,6 +380,8 @@ def _render_manual_workflow(
     env_choices = ", ".join(env_names)
 
     dispatch_lines = [
+        "name: 'tfdo: Manual workflow'",
+        "",
         "run-name: \"tfdo: env=${{ github.event.inputs.env }}, action=${{ github.event.inputs.action }}${{ github.event.inputs.run_dir && format(', run_dir={0}', github.event.inputs.run_dir) || '' }}${{ github.event.inputs.extra_args && format(', extra_args={0}', github.event.inputs.extra_args) || '' }}\"",
         "",
         "on:",

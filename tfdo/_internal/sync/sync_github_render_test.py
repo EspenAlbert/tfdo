@@ -12,6 +12,7 @@ def test_manual_workflow_maps_secrets_and_vars_to_job_env() -> None:
         ["AWS_REGION"],
         [],
     )
+    assert got["dispatch"].startswith("name: 'tfdo: Manual workflow'\n")
     job = got["job-manual"]
     assert "    env:" in job
     assert "      MONGODB_ATLAS_API_KEY: ${{ secrets.MONGODB_ATLAS_API_KEY }}" in job
@@ -21,4 +22,5 @@ def test_manual_workflow_maps_secrets_and_vars_to_job_env() -> None:
 
 def test_manual_workflow_omits_empty_env_block() -> None:
     got = _render_manual_workflow(["dev"], TfDoConfig(), [], [], [])
+    assert "name: 'tfdo: Manual workflow'" in got["dispatch"]
     assert "    env:" not in got["job-manual"]
