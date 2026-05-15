@@ -26,8 +26,8 @@ class DependencyRef(BaseModel):
 
 | Version | Change |
 |---------|--------|
-| unreleased | field 'outputs' default: True -> ... |
-| unreleased | field 'outputs' type: bool -> dict[str, str] |
-| unreleased | added optional field 'outputs_mock' (default: ...) |
+| 0.7.0 | field 'outputs' default: True -> ... |
+| 0.7.0 | field 'outputs' type: bool -> dict[str, str] |
+| 0.7.0 | added optional field 'outputs_mock' (default: ...) |
 | 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext dependencyref_changes === -->

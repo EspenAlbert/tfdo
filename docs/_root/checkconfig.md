@@ -24,6 +24,6 @@ class CheckConfig(BaseModel):
 
 | Version | Change |
 |---------|--------|
-| unreleased | added optional field 'skip_check_providers' (default: False) |
+| 0.7.0 | added optional field 'skip_check_providers' (default: False) |
 | 0.3.0 | Made public |
 <!-- === OK_EDIT: pkg-ext checkconfig_changes === -->

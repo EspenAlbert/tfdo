@@ -16,7 +16,7 @@
 
 ### cli_command: `boot_cmd`
 - [source](../../tfdo/_internal/boot/cmd_boot.py#L13)
-> **Since:** unreleased
+> **Since:** 0.7.0
 
 ```python
 def boot_cmd() -> None:
@@ -29,5 +29,5 @@ Bootstrap a new tfdo-managed Terraform repo.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.7.0 | Made public |
 <!-- === OK_EDIT: pkg-ext boot_cmd_def === -->

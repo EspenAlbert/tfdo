@@ -205,7 +205,7 @@ Detect run directories and generate a starter tfdo.yaml.
 
 ### class: `CiConfig`
 - [source](../../tfdo/_internal/config/config_model.py#L128)
-> **Since:** unreleased
+> **Since:** 0.7.0
 
 ```python
 class CiConfig(BaseModel):
@@ -218,24 +218,24 @@ class CiConfig(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| oidc | `bool` | `False` | unreleased |
-| repo_org | `str | None` | `None` | unreleased |
-| repo_name | `str | None` | `None` | unreleased |
-| oidc_roles | `dict[str, str]` | `...` | unreleased |
-| tfdo_install | `str` | `'git+https://github.com/EspenAlbert/tfdo.git@main'` | unreleased |
+| oidc | `bool` | `False` | 0.7.0 |
+| repo_org | `str | None` | `None` | 0.7.0 |
+| repo_name | `str | None` | `None` | 0.7.0 |
+| oidc_roles | `dict[str, str]` | `...` | 0.7.0 |
+| tfdo_install | `str` | `'git+https://github.com/EspenAlbert/tfdo.git@main'` | 0.7.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.7.0 | Made public |
 <!-- === OK_EDIT: pkg-ext ciconfig_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext moduleconstraint_def === -->
 <a id="moduleconstraint_def"></a>
 
 ### class: `ModuleConstraint`
 - [source](../../tfdo/_internal/config/config_model.py#L114)
-> **Since:** unreleased
+> **Since:** 0.7.0
 
 ```python
 class ModuleConstraint(BaseModel):
@@ -245,21 +245,21 @@ class ModuleConstraint(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| source | `str` | - | unreleased |
-| constraint | `str | None` | `None` | unreleased |
+| source | `str` | - | 0.7.0 |
+| constraint | `str | None` | `None` | 0.7.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.7.0 | Made public |
 <!-- === OK_EDIT: pkg-ext moduleconstraint_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext providerconstraint_def === -->
 <a id="providerconstraint_def"></a>
 
 ### class: `ProviderConstraint`
 - [source](../../tfdo/_internal/config/config_model.py#L108)
-> **Since:** unreleased
+> **Since:** 0.7.0
 
 ```python
 class ProviderConstraint(BaseModel):
@@ -270,13 +270,13 @@ class ProviderConstraint(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| name | `str` | - | unreleased |
-| source | `str | None` | `None` | unreleased |
-| constraint | `str | None` | `None` | unreleased |
+| name | `str` | - | 0.7.0 |
+| source | `str | None` | `None` | 0.7.0 |
+| constraint | `str | None` | `None` | 0.7.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.7.0 | Made public |
 <!-- === OK_EDIT: pkg-ext providerconstraint_def === -->

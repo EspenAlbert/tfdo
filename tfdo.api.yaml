@@ -1,5 +1,5 @@
 pkg_import_name: tfdo
-version: 0.6.0
+version: 0.7.0
 groups:
 - name: __ROOT__
   symbols:
@@ -21,7 +21,7 @@ groups:
   - name: CheckConfig
     module_path: _internal.settings
     docstring: ''
-    line_number: 89
+    line_number: 133
     type: class
     mro_bases:
     - BaseModel
@@ -35,10 +35,18 @@ groups:
         is_factory: false
       is_class_var: false
       is_computed: false
+    - name: skip_check_providers
+      type_annotation: bool
+      type_imports: []
+      default:
+        value_repr: 'False'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
   - name: InteractiveMode
     module_path: _internal.settings
     docstring: ''
-    line_number: 21
+    line_number: 24
     type: class
     mro_bases:
     - StrEnum
@@ -61,7 +69,7 @@ groups:
   - name: TfDoSettings
     module_path: _internal.settings
     docstring: ''
-    line_number: 27
+    line_number: 30
     type: class
     mro_bases:
     - StaticSettings
@@ -173,10 +181,56 @@ groups:
       description: Disable parsed output, pass raw ANSI from terraform
       env_vars:
       - passthrough
+    - name: verbose_shell
+      type_annotation: bool
+      type_imports: []
+      default:
+        value_repr: 'False'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      description: Log every successful shell command completion (default is errors only for tfdo)
+      env_vars:
+      - tfdo_verbose_shell
+      - verbose_shell
+    - name: backends_dirs_raw
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      env_vars:
+      - tfdo_backends_dirs
+      - backends_dirs_raw
+    - name: provider_hints_path
+      type_annotation: Path | None
+      type_imports:
+      - pathlib.Path
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      env_vars:
+      - tfdo_provider_hints_path
+      - provider_hints_path
+    - name: env_vars_dirs_raw
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+      env_vars:
+      - tfdo_env_vars_dirs
+      - env_vars_dirs_raw
   - name: TfDoUserConfig
     module_path: _internal.settings
     docstring: ''
-    line_number: 93
+    line_number: 138
     type: class
     mro_bases:
     - BaseModel
@@ -194,7 +248,7 @@ groups:
   - name: get_settings
     module_path: _internal.typer_app
     docstring: ''
-    line_number: 46
+    line_number: 60
     type: cli_command
     signature:
       parameters:
@@ -210,7 +264,7 @@ groups:
   - name: main_callback
     module_path: _internal.typer_app
     docstring: ''
-    line_number: 15
+    line_number: 17
     type: cli_command
     signature:
       parameters:
@@ -257,6 +311,13 @@ groups:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
       - name: passthrough
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: verbose_shell
         kind: positional_or_keyword
         type_annotation: bool
         type_imports: []
@@ -331,6 +392,33 @@ groups:
       required: false
       is_argument: false
       hidden: false
+    - param_name: verbose_shell
+      type_annotation: bool
+      flags:
+      - --verbose-shell
+      help: Log successful shell command completions
+      default_repr: 'False'
+      required: false
+      envvar: TFDO_VERBOSE_SHELL
+      is_argument: false
+      hidden: false
+- name: boot
+  symbols:
+  - name: boot_cmd
+    module_path: _internal.boot.cmd_boot
+    docstring: Bootstrap a new tfdo-managed Terraform repo.
+    line_number: 13
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      return_annotation: None
+      return_type_imports: []
+    cli_params: []
 - name: config
   symbols:
   - name: init_cmd
@@ -379,10 +467,59 @@ groups:
       return_annotation: None
       return_type_imports: []
     cli_params: []
+  - name: CiConfig
+    module_path: _internal.config.config_model
+    docstring: ''
+    line_number: 128
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: oidc
+      type_annotation: bool
+      type_imports: []
+      default:
+        value_repr: 'False'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: repo_org
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: repo_name
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: oidc_roles
+      type_annotation: dict[str, str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: tfdo_install
+      type_annotation: str
+      type_imports: []
+      default:
+        value_repr: '''git+https://github.com/EspenAlbert/tfdo.git@main'''
+        is_factory: false
+      is_class_var: false
+      is_computed: false
   - name: DependencyRef
     module_path: _internal.config.config_model
     docstring: ''
-    line_number: 68
+    line_number: 99
     type: class
     mro_bases:
     - BaseModel
@@ -394,17 +531,25 @@ groups:
       is_class_var: false
       is_computed: false
     - name: outputs
-      type_annotation: bool
+      type_annotation: dict[str, str]
       type_imports: []
       default:
-        value_repr: 'True'
-        is_factory: false
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: outputs_mock
+      type_annotation: dict[str, str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
       is_class_var: false
       is_computed: false
   - name: HookConfig
     module_path: _internal.config.config_model
     docstring: ''
-    line_number: 50
+    line_number: 81
     type: class
     mro_bases:
     - BaseModel
@@ -465,7 +610,7 @@ groups:
   - name: LocalBackend
     module_path: _internal.config.config_model
     docstring: ''
-    line_number: 38
+    line_number: 69
     type: class
     mro_bases:
     - BaseModel
@@ -484,10 +629,62 @@ groups:
       type_imports: []
       is_class_var: false
       is_computed: false
+  - name: ModuleConstraint
+    module_path: _internal.config.config_model
+    docstring: ''
+    line_number: 114
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: source
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: constraint
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+  - name: ProviderConstraint
+    module_path: _internal.config.config_model
+    docstring: ''
+    line_number: 108
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: name
+      type_annotation: str
+      type_imports: []
+      is_class_var: false
+      is_computed: false
+    - name: source
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: constraint
+      type_annotation: str | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
   - name: S3Backend
     module_path: _internal.config.config_model
     docstring: ''
-    line_number: 15
+    line_number: 24
     type: class
     mro_bases:
     - BaseModel
@@ -535,10 +732,18 @@ groups:
         is_factory: false
       is_class_var: false
       is_computed: false
+    - name: use_lockfile
+      type_annotation: bool | None
+      type_imports: []
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
   - name: TfDoConfig
     module_path: _internal.config.config_model
     docstring: ''
-    line_number: 73
+    line_number: 136
     type: class
     mro_bases:
     - BaseModel
@@ -623,8 +828,43 @@ groups:
       is_class_var: false
       is_computed: false
     - name: run_dir_discovery
-      type_annotation: str | None
+      type_annotation: str
       type_imports: []
+      default:
+        value_repr: '''envs/{env}/{run_dir}'''
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: providers
+      type_annotation: list[ProviderConstraint]
+      type_imports:
+      - tfdo._internal.config.config_model.ProviderConstraint
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: modules
+      type_annotation: list[ModuleConstraint]
+      type_imports:
+      - tfdo._internal.config.config_model.ModuleConstraint
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: env_var_files
+      type_annotation: list[str]
+      type_imports: []
+      default:
+        value_repr: '...'
+        is_factory: true
+      is_class_var: false
+      is_computed: false
+    - name: ci
+      type_annotation: CiConfig | None
+      type_imports:
+      - tfdo._internal.config.config_model.CiConfig
       default:
         value_repr: None
         is_factory: false
@@ -722,12 +962,59 @@ groups:
         kind: var_keyword
         type_imports: []
       return_type_imports: []
+- name: copy
+  symbols:
+  - name: env_cmd
+    module_path: _internal.copy.cmd_copy
+    docstring: Copy a tfdo-managed environment.
+    line_number: 99
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: src
+        kind: positional_or_keyword
+        type_annotation: str
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: dst
+        kind: positional_or_keyword
+        type_annotation: str
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: src
+      type_annotation: str
+      flags:
+      - --from
+      help: Source env name
+      required: true
+      is_argument: false
+      hidden: false
+    - param_name: dst
+      type_annotation: str
+      flags:
+      - --to
+      help: Destination env name
+      required: true
+      is_argument: false
+      hidden: false
 - name: core
   symbols:
   - name: check_cmd
     module_path: _internal.check.cmd_check
     docstring: Run terraform fmt check + validate (ruff-style).
-    line_number: 59
+    line_number: 120
     type: cli_command
     signature:
       parameters:
@@ -779,6 +1066,13 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
+      - name: skip_check_providers
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
       return_annotation: None
       return_type_imports: []
     cli_params:
@@ -786,7 +1080,7 @@ groups:
       type_annotation: bool
       flags:
       - --fix
-      help: Auto-format instead of checking
+      help: 'Apply fixes: terraform fmt, backend/provider drift in HCL; when interactive, prompt for missing terraform.tfvars.'
       default_repr: 'False'
       required: false
       is_argument: false
@@ -841,6 +1135,16 @@ groups:
       default_repr: None
       required: false
       envvar: TFDO_TFLINT
+      is_argument: false
+      hidden: false
+    - param_name: skip_check_providers
+      type_annotation: bool | None
+      flags:
+      - --skip-check-providers/--no-skip-check-providers
+      help: Skip provider declaration and credential checks
+      default_repr: None
+      required: false
+      envvar: TFDO_SKIP_CHECK_PROVIDERS
       is_argument: false
       hidden: false
   - name: apply_cmd
@@ -999,6 +1303,13 @@ groups:
         type_annotation: Context
         type_imports:
         - typer.models.Context
+      - name: reconfigure
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
       - name: extra_args
         kind: positional_or_keyword
         type_annotation: list[str] | None
@@ -1009,6 +1320,15 @@ groups:
       return_annotation: None
       return_type_imports: []
     cli_params:
+    - param_name: reconfigure
+      type_annotation: bool
+      flags:
+      - --reconfigure
+      help: Pass -reconfigure to terraform init
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
     - param_name: extra_args
       type_annotation: list[str] | None
       flags: []
@@ -1110,7 +1430,7 @@ groups:
   - name: InitMode
     module_path: _internal.models
     docstring: ''
-    line_number: 13
+    line_number: 17
     type: class
     mro_bases:
     - StrEnum
@@ -1814,12 +2134,93 @@ groups:
         kind: var_keyword
         type_imports: []
       return_type_imports: []
+- name: new
+  symbols:
+  - name: backend_cmd
+    module_path: _internal.new.cmd_new
+    docstring: Write backend.tf to all run-dirs.
+    line_number: 44
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: bucket
+        kind: positional_or_keyword
+        type_annotation: str
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: region
+        kind: positional_or_keyword
+        type_annotation: str
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: key
+        kind: positional_or_keyword
+        type_annotation: str
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: bucket
+      type_annotation: str
+      flags:
+      - --bucket
+      - -b
+      help: S3 bucket name for Terraform state
+      required: true
+      is_argument: false
+      hidden: false
+    - param_name: region
+      type_annotation: str
+      flags:
+      - --region
+      - -r
+      help: AWS region
+      default_repr: '''us-east-1'''
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: key
+      type_annotation: str
+      flags:
+      - --key
+      help: State key template; {path} is resolved per run-dir
+      default_repr: '''{path}/terraform.tfstate'''
+      required: false
+      is_argument: false
+      hidden: false
+  - name: run_dir_cmd
+    module_path: _internal.new.cmd_new
+    docstring: Scaffold a new run-dir with module calls, variables, and outputs.
+    line_number: 268
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      return_annotation: None
+      return_type_imports: []
+    cli_params: []
 - name: run
   symbols:
   - name: run_apply_cmd
     module_path: _internal.run.cmd_run
     docstring: Run apply across multiple run directories.
-    line_number: 112
+    line_number: 121
     type: cli_command
     signature:
       parameters:
@@ -1891,7 +2292,7 @@ groups:
   - name: run_callback
     module_path: _internal.run.cmd_run
     docstring: ''
-    line_number: 46
+    line_number: 48
     type: cli_command
     signature:
       parameters:
@@ -2038,7 +2439,7 @@ groups:
   - name: run_destroy_cmd
     module_path: _internal.run.cmd_run
     docstring: Run destroy across multiple run directories.
-    line_number: 127
+    line_number: 136
     type: cli_command
     signature:
       parameters:
@@ -2110,7 +2511,7 @@ groups:
   - name: run_init_cmd
     module_path: _internal.run.cmd_run
     docstring: Run init across multiple run directories.
-    line_number: 77
+    line_number: 82
     type: cli_command
     signature:
       parameters:
@@ -2119,6 +2520,13 @@ groups:
         type_annotation: Context
         type_imports:
         - typer.models.Context
+      - name: reconfigure
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
       - name: extra_args
         kind: positional_or_keyword
         type_annotation: list[str] | None
@@ -2129,6 +2537,15 @@ groups:
       return_annotation: None
       return_type_imports: []
     cli_params:
+    - param_name: reconfigure
+      type_annotation: bool
+      flags:
+      - --reconfigure
+      help: Pass -reconfigure to terraform init
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
     - param_name: extra_args
       type_annotation: list[str] | None
       flags:
@@ -2141,7 +2558,7 @@ groups:
   - name: run_plan_cmd
     module_path: _internal.run.cmd_run
     docstring: Run plan across multiple run directories.
-    line_number: 91
+    line_number: 100
     type: cli_command
     signature:
       parameters:
@@ -2602,4 +3019,100 @@ groups:
         is_factory: true
       is_class_var: false
       is_computed: false
-dumped_at: 2026-04-12 17:41:51.434023+00:00
+- name: sync
+  symbols:
+  - name: github_cmd
+    module_path: _internal.sync.cmd_sync
+    docstring: Scaffold GitHub Actions workflows and sync secrets/variables per environment.
+    line_number: 86
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      - name: dry_run
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: replace_existing_github_secrets
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: env
+        kind: positional_or_keyword
+        type_annotation: str | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: oidc
+        kind: positional_or_keyword
+        type_annotation: bool
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      return_annotation: None
+      return_type_imports: []
+    cli_params:
+    - param_name: dry_run
+      type_annotation: bool
+      flags:
+      - --dry-run/--no-dry-run
+      help: Log actions without writing files or calling gh
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: replace_existing_github_secrets
+      type_annotation: bool
+      flags:
+      - --replace
+      help: Overwrite Actions environment secrets that already exist on GitHub (default only creates missing ones)
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: env
+      type_annotation: str | None
+      flags:
+      - --env
+      help: Sync only this environment
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: oidc
+      type_annotation: bool
+      flags:
+      - --oidc/--no-oidc
+      help: Provision GitHub OIDC provider and per-env IAM roles for S3 backend
+      default_repr: 'False'
+      required: false
+      is_argument: false
+      hidden: false
+  - name: justfile_cmd
+    module_path: _internal.sync.cmd_sync
+    docstring: Generate repo-level justfile with per-env (and per-run-dir) Terraform targets.
+    line_number: 29
+    type: cli_command
+    signature:
+      parameters:
+      - name: ctx
+        kind: positional_or_keyword
+        type_annotation: Context
+        type_imports:
+        - typer.models.Context
+      return_annotation: None
+      return_type_imports: []
+    cli_params: []
+dumped_at: 2026-05-15 16:46:04.247227+00:00

@@ -48,11 +48,11 @@ class TfDoConfig(BaseModel):
 
 | Version | Change |
 |---------|--------|
-| unreleased | field 'run_dir_discovery' default: None -> 'envs/{env}/{run_dir}' |
-| unreleased | field 'run_dir_discovery' type: str | None -> str |
-| unreleased | added optional field 'providers' (default: ...) |
-| unreleased | added optional field 'modules' (default: ...) |
-| unreleased | added optional field 'env_var_files' (default: ...) |
-| unreleased | added optional field 'ci' (default: None) |
+| 0.7.0 | field 'run_dir_discovery' default: None -> 'envs/{env}/{run_dir}' |
+| 0.7.0 | field 'run_dir_discovery' type: str | None -> str |
+| 0.7.0 | added optional field 'providers' (default: ...) |
+| 0.7.0 | added optional field 'modules' (default: ...) |
+| 0.7.0 | added optional field 'env_var_files' (default: ...) |
+| 0.7.0 | added optional field 'ci' (default: None) |
 | 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tfdoconfig_changes === -->

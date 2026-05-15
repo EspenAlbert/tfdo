@@ -16,7 +16,7 @@
 
 ### cli_command: `env_cmd`
 - [source](../../tfdo/_internal/copy/cmd_copy.py#L99)
-> **Since:** unreleased
+> **Since:** 0.7.0
 
 ```python
 def env_cmd(*, src: str = ..., dst: str = ...) -> None:
@@ -36,5 +36,5 @@ Copy a tfdo-managed environment.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.7.0 | Made public |
 <!-- === OK_EDIT: pkg-ext env_cmd_def === -->

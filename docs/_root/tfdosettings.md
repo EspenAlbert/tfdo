@@ -50,10 +50,10 @@ class TfDoSettings(StaticSettings):
 
 | Version | Change |
 |---------|--------|
-| unreleased | added optional field 'verbose_shell' (default: False) |
-| unreleased | added optional field 'provider_hints_path' (default: None) |
-| unreleased | added optional field 'env_vars_dirs_raw' (default: None) |
-| unreleased | added optional field 'backends_dirs_raw' (default: None) |
+| 0.7.0 | added optional field 'verbose_shell' (default: False) |
+| 0.7.0 | added optional field 'provider_hints_path' (default: None) |
+| 0.7.0 | added optional field 'env_vars_dirs_raw' (default: None) |
+| 0.7.0 | added optional field 'backends_dirs_raw' (default: None) |
 | 0.2.0 | added optional field 'interactive' (default: <InteractiveMode.AUTO: 'auto'>) |
 | 0.1.1 | added optional field 'work_dir' (default: ...) |
 | 0.1.0 | Made public |

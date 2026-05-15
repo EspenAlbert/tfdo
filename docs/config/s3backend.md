@@ -34,6 +34,6 @@ class S3Backend(BaseModel):
 
 | Version | Change |
 |---------|--------|
-| unreleased | added optional field 'use_lockfile' (default: None) |
+| 0.7.0 | added optional field 'use_lockfile' (default: None) |
 | 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext s3backend_changes === -->

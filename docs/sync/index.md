@@ -17,7 +17,7 @@
 
 ### cli_command: `github_cmd`
 - [source](../../tfdo/_internal/sync/cmd_sync.py#L86)
-> **Since:** unreleased
+> **Since:** 0.7.0
 
 ```python
 def github_cmd(*, dry_run: bool = False, replace_existing_github_secrets: bool = False, env: str | None = None, oidc: bool = False) -> None:
@@ -39,14 +39,14 @@ Scaffold GitHub Actions workflows and sync secrets/variables per environment.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.7.0 | Made public |
 <!-- === OK_EDIT: pkg-ext github_cmd_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext justfile_cmd_def === -->
 <a id="justfile_cmd_def"></a>
 
 ### cli_command: `justfile_cmd`
 - [source](../../tfdo/_internal/sync/cmd_sync.py#L29)
-> **Since:** unreleased
+> **Since:** 0.7.0
 
 ```python
 def justfile_cmd() -> None:
@@ -59,5 +59,5 @@ Generate repo-level justfile with per-env (and per-run-dir) Terraform targets.
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.7.0 | Made public |
 <!-- === OK_EDIT: pkg-ext justfile_cmd_def === -->

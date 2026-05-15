@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.7.0 2026-05-15T16-46Z
+
+### __Root__
+- `__ROOT__.CheckConfig`: added optional field 'skip_check_providers' (default: False)
+- `__ROOT__.TfDoSettings`: added optional field 'backends_dirs_raw' (default: None)
+- `__ROOT__.TfDoSettings`: added optional field 'env_vars_dirs_raw' (default: None)
+- `__ROOT__.TfDoSettings`: added optional field 'provider_hints_path' (default: None)
+- `__ROOT__.TfDoSettings`: added optional field 'verbose_shell' (default: False)
+
+### Boot
+- New function `boot_cmd`
+
+### Config
+- BREAKING `config.DependencyRef`: field 'outputs' type: bool -> dict[str, str]
+- BREAKING `config.TfDoConfig`: field 'run_dir_discovery' type: str | None -> str
+- New class `ProviderConstraint`
+- New class `ModuleConstraint`
+- New class `CiConfig`
+- `config.DependencyRef`: added optional field 'outputs_mock' (default: ...)
+- `config.DependencyRef`: field 'outputs' default: True -> ...
+- `config.S3Backend`: added optional field 'use_lockfile' (default: None)
+- `config.TfDoConfig`: added optional field 'ci' (default: None)
+- `config.TfDoConfig`: added optional field 'env_var_files' (default: ...)
+- `config.TfDoConfig`: added optional field 'modules' (default: ...)
+- `config.TfDoConfig`: added optional field 'providers' (default: ...)
+- `config.TfDoConfig`: field 'run_dir_discovery' default: None -> 'envs/{env}/{run_dir}'
+
+### Copy
+- New function `env_cmd`
+
+### New
+- New function `backend_cmd`
+- New function `run_dir_cmd`
+
+### Sync
+- New function `justfile_cmd`
+- New function `github_cmd`
+
+
 ## 0.6.0 2026-04-12T17-41Z
 
 ### Config
