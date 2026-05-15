@@ -2,7 +2,7 @@
 
 <!-- === DO_NOT_EDIT: pkg-ext tfdosettings_def === -->
 ## class: TfDoSettings
-- [source](../../tfdo/_internal/settings.py#L27)
+- [source](../../tfdo/_internal/settings.py#L30)
 > **Since:** 0.1.0
 
 ```python
@@ -16,6 +16,10 @@ class TfDoSettings(StaticSettings):
     interactive: InteractiveMode = <InteractiveMode.AUTO: 'auto'>
     log_level: str = 'INFO'
     passthrough: bool = False
+    verbose_shell: bool = False
+    backends_dirs_raw: str | None = None
+    provider_hints_path: Path | None = None
+    env_vars_dirs_raw: str | None = None
 ```
 <!-- === OK_EDIT: pkg-ext tfdosettings_def === -->
 
@@ -46,6 +50,10 @@ class TfDoSettings(StaticSettings):
 
 | Version | Change |
 |---------|--------|
+| unreleased | added optional field 'verbose_shell' (default: False) |
+| unreleased | added optional field 'provider_hints_path' (default: None) |
+| unreleased | added optional field 'env_vars_dirs_raw' (default: None) |
+| unreleased | added optional field 'backends_dirs_raw' (default: None) |
 | 0.2.0 | added optional field 'interactive' (default: <InteractiveMode.AUTO: 'auto'>) |
 | 0.1.1 | added optional field 'work_dir' (default: ...) |
 | 0.1.0 | Made public |

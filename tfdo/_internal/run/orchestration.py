@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import json
 import logging
-import re
 from concurrent.futures import Future
 from enum import StrEnum
 from pathlib import Path
@@ -9,25 +9,27 @@ from typing import NamedTuple
 
 from ask_shell.shell import run_and_wait, run_pool
 from pydantic import BaseModel, Field
-from zero_3rdparty.file_utils import find_repo_root
+from zero_3rdparty.file_utils import ensure_parents_write_text, find_repo_root
 
 from tfdo._internal.config import backend_resolution, config_resolution
 from tfdo._internal.config.config_file import load_config_layers
+from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
+from tfdo._internal.config.discovery_pattern import parse_discovery_pattern
 from tfdo._internal.config.enums import LifecycleCommand, LifecycleEvent
 from tfdo._internal.core import executor
+from tfdo._internal.git_utils import parse_git_remote
 from tfdo._internal.hooks import execution as hook_execution
 from tfdo._internal.hooks.execution import HookContext
 from tfdo._internal.hooks.models import HookAbortError
 from tfdo._internal.hooks.registry import HookRegistry
 from tfdo._internal.hooks.runner import LocalHookRunner
-from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, PlanInput
+from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, OutputInput, PlanInput
 from tfdo._internal.run import filtering, tags_injection, var_file_resolution
 from tfdo._internal.run.discovery import (
     DiscoveredRunDir,
     build_run_dir_contexts,
     discover_run_dirs,
-    parse_discovery_pattern,
 )
 from tfdo._internal.run.filtering import TagFilter
 from tfdo._internal.run.run_context import RunDirContext
@@ -36,30 +38,6 @@ from tfdo._internal.settings import TfDoSettings, load_user_config
 logger = logging.getLogger(__name__)
 
 MIN_CONCURRENT_SUBMITS = 2
-_GIT_REMOTE_RE = re.compile(r"(?:https?://[^/]+/|git@[^:]+:)(?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?$")
-
-
-def _parse_git_remote_url(url: str) -> tuple[str, str] | None:
-    if m := _GIT_REMOTE_RE.match(url.strip()):
-        return m.group("owner"), m.group("repo")
-    return None
-
-
-def _parse_git_remote(repo_root: Path) -> tuple[str, str]:
-    """Returns (owner, repo_name) from git remote origin URL."""
-    try:
-        run = run_and_wait(
-            "git remote get-url origin",
-            cwd=repo_root,
-            allow_non_zero_exit=True,
-            skip_binary_check=True,
-        )
-        url = run.stdout.strip()
-        if result := _parse_git_remote_url(url):
-            return result
-    except Exception:
-        logger.info(f"failed to read git remote for {repo_root}")
-    return ("unknown", repo_root.name)
 
 
 class FailureMode(StrEnum):
@@ -115,6 +93,11 @@ class ExecutionPlan(BaseModel):
     @property
     def total_run_dirs(self) -> int:
         return sum(len(w.run_dirs) for w in self.waves)
+
+    def reversed(self) -> ExecutionPlan:
+        return ExecutionPlan(
+            waves=[ExecutionWave(wave_index=i, run_dirs=w.run_dirs) for i, w in enumerate(reversed(self.waves))]
+        )
 
 
 class DependencyGraph(BaseModel):
@@ -184,6 +167,7 @@ def prepare_run_dir(
     cli_var_file: Path | None,
 ) -> PreparedRunDir:
     backend_args = backend_resolution.resolve_init_backend_args(config.backend, ctx)
+
     var_files = var_file_resolution.resolve_var_files(run_dir_path, config.var_files, [])
     var_file_resolution.validate_var_files(var_files)
 
@@ -205,6 +189,97 @@ def prepare_run_dir(
     return PreparedRunDir(init_input=init_input, lifecycle_flags=all_var_flags)
 
 
+DEP_TFVARS_SUFFIX = TfDoSettings.DEP_TFVARS_SUFFIX
+
+
+def _dependency_outputs_or_log(
+    init_input: InitInput, run_dir_path: Path, *, log_suffix: str = ""
+) -> dict[str, object] | None:
+    result = executor.output_json(OutputInput(settings=init_input.settings))
+    if result.exit_code != 0:
+        extra = f" {log_suffix}" if log_suffix else ""
+        logger.warning(f"terraform output failed in {run_dir_path}{extra}: {result.stderr}")
+        return None
+    return result.outputs
+
+
+def _outputs_after_prereq_init(init_input: InitInput, run_dir_path: Path) -> dict[str, object] | None:
+    if (ir := executor.init(init_input)).exit_code != 0:
+        logger.warning(f"terraform init before output failed in {run_dir_path}: {ir.stderr}")
+        return None
+    return _dependency_outputs_or_log(init_input, run_dir_path)
+
+
+def _outputs_retry_after_auto_init(
+    init_input: InitInput,
+    run_dir_path: Path,
+    stderr: str,
+) -> dict[str, object] | None:
+    init_for_retry = executor.init_input_for_output_retry(stderr, init_input)
+    if init_for_retry is None:
+        logger.warning(f"terraform output failed in {run_dir_path}: {stderr}")
+        return None
+    if (ir := executor.init(init_for_retry)).exit_code != 0:
+        logger.warning(f"terraform init before output retry failed in {run_dir_path}: {ir.stderr}")
+        return None
+    return _dependency_outputs_or_log(init_input, run_dir_path, log_suffix="after init")
+
+
+def _collect_dependency_outputs(
+    settings: TfDoSettings,
+    run_dir_path: Path,
+    ctx: RunDirContext,
+    config: ResolvedConfig,
+    init_mode: InitMode,
+    var_file: Path | None,
+) -> dict[str, object] | None:
+    try:
+        prepared = prepare_run_dir(settings, run_dir_path, ctx, config, var_file)
+    except Exception as e:
+        logger.warning(f"dependency output prepare failed in {run_dir_path}: {e}")
+        return None
+    init_input = prepared.init_input
+    if init_mode == InitMode.ALWAYS:
+        return _outputs_after_prereq_init(init_input, run_dir_path)
+
+    first = executor.output_json(OutputInput(settings=init_input.settings))
+    if first.exit_code == 0:
+        return first.outputs
+    if init_mode == InitMode.NEVER:
+        logger.warning(f"terraform output failed in {run_dir_path}: {first.stderr}")
+        return None
+    return _outputs_retry_after_auto_init(init_input, run_dir_path, first.stderr or "")
+
+
+def _resolve_dep_outputs(dep_ref: DependencyRef, collected: dict[str, object] | None) -> dict[str, str] | None:
+    if not dep_ref.outputs:
+        return None
+    if collected is not None:
+        mapped: dict[str, str] = {}  # pyright: ignore[reportRedeclaration]
+        for out_name, local_var in dep_ref.outputs.items():
+            if out_name not in collected:
+                return None
+            val = collected[out_name]
+            if val is None:
+                return None
+            mapped[local_var] = str(val)
+        return mapped
+    if dep_ref.outputs_mock:
+        mapped: dict[str, str] = {}
+        for out_name, local_var in dep_ref.outputs.items():
+            if out_name not in dep_ref.outputs_mock:
+                return None
+            mapped[local_var] = dep_ref.outputs_mock[out_name]
+        return mapped
+    return None
+
+
+def _write_dep_tfvars(dependent_run_dir: Path, dep_name: str, mapped_values: dict[str, str]) -> Path:
+    path = dependent_run_dir / f"{dep_name}{DEP_TFVARS_SUFFIX}"
+    ensure_parents_write_text(path, json.dumps(mapped_values, indent=2) + "\n")
+    return path
+
+
 def _build_hook_registry(config: ResolvedConfig, run_dir_path: Path) -> HookRegistry | None:
     if not config.hook_configs:
         return None
@@ -220,7 +295,15 @@ def _dispatch_command(
 ) -> RunDirResult:
     dir_settings = prepared.init_input.settings
     if inp.command == LifecycleCommand.INIT:
-        init_result = executor.init(prepared.init_input)
+        init_input = prepared.init_input
+        if inp.extra_flags:
+            init_input = InitInput(
+                settings=init_input.settings,
+                backend_args=init_input.backend_args,
+                extra_args=[*init_input.extra_args, *inp.extra_flags],
+                env=init_input.env,
+            )
+        init_result = executor.init(init_input)
         return RunDirResult(
             run_dir=rel, exit_code=init_result.exit_code, stdout=init_result.stdout, stderr=init_result.stderr or ""
         )
@@ -228,7 +311,12 @@ def _dispatch_command(
     backend_args = prepared.init_input.backend_args
     if inp.command == LifecycleCommand.PLAN:
         result = executor.plan(
-            PlanInput(settings=dir_settings, init_mode=mode, extra_args=extra_flags, init_backend_args=backend_args)
+            PlanInput(
+                settings=dir_settings,
+                init_mode=mode,
+                extra_args=extra_flags,
+                init_backend_args=backend_args,
+            )
         )
     elif inp.command == LifecycleCommand.APPLY:
         result = executor.apply(
@@ -332,7 +420,9 @@ def _resolve_all_configs(
     repo_root: Path,
 ) -> tuple[dict[str, ResolvedConfig], dict[str, RunDirContext]]:
     user_config = load_user_config(inp.settings)
-    owner, repo_name = _parse_git_remote(repo_root)
+    remote = parse_git_remote(repo_root)
+    owner = remote.org if remote else "unknown"
+    repo_name = remote.repo if remote else repo_root.name
     configs: dict[str, ResolvedConfig] = {}
     contexts: dict[str, RunDirContext] = {}
     for d in discovered:
@@ -344,19 +434,68 @@ def _resolve_all_configs(
     return configs, contexts
 
 
+_OUTPUT_INJECT_COMMANDS = {LifecycleCommand.APPLY, LifecycleCommand.PLAN, LifecycleCommand.DESTROY}
+
+
+def _inject_dep_outputs(
+    rel_path: str,
+    inp: RunOrchestrationInput,
+    repo_root: Path,
+    configs: dict[str, ResolvedConfig],
+    collected_outputs: dict[str, dict[str, object] | None],
+) -> list[str] | None:
+    """Write .dep.tfvars.json files and return extra var-file flags. Returns None to signal skip."""
+    cfg = configs.get(rel_path)
+    if not cfg or not cfg.dependencies:
+        return []
+    extra_flags: list[str] = []
+    for dep_ref in cfg.dependencies:
+        if not dep_ref.outputs:
+            continue
+        dep_path = _resolve_ref_path(dep_ref.ref, rel_path)
+        collected = collected_outputs.get(dep_path)
+        resolved = _resolve_dep_outputs(dep_ref, collected)
+        if resolved is None:
+            if inp.command == LifecycleCommand.PLAN:
+                logger.warning(f"{rel_path}: skipping, no outputs or mocks for dependency '{dep_ref.ref}'")
+                return None
+            raise ValueError(f"{rel_path}: dependency '{dep_ref.ref}' has no outputs and no mocks")
+        dep_name = dep_ref.ref.rsplit("/", 1)[-1]
+        tfvars_path = _write_dep_tfvars(repo_root / rel_path, dep_name, resolved)
+        extra_flags.append(f"-var-file={tfvars_path}")
+    return extra_flags
+
+
 def _execute_wave_sequential(
     wave: ExecutionWave,
     inp: RunOrchestrationInput,
     repo_root: Path,
     contexts: dict[str, RunDirContext],
     configs: dict[str, ResolvedConfig],
+    collected_outputs: dict[str, dict[str, object] | None] | None = None,
 ) -> tuple[list[RunDirResult], bool]:
     results: list[RunDirResult] = []
     has_failure = False
     for rel_path in wave.run_dirs:
+        if collected_outputs is not None and inp.command in _OUTPUT_INJECT_COMMANDS:
+            dep_flags = _inject_dep_outputs(rel_path, inp, repo_root, configs, collected_outputs)
+            if dep_flags is None:
+                results.append(RunDirResult(run_dir=rel_path, exit_code=0, skipped=True))
+                continue
+            if dep_flags:
+                inp = inp.model_copy(update={"extra_flags": [*inp.extra_flags, *dep_flags]})
         result = _execute_run_dir(inp, repo_root / rel_path, contexts[rel_path], configs[rel_path])
         results.append(result)
         _log_run_dir_output(result, inp.command)
+        if result.exit_code == 0 and collected_outputs is not None and inp.command != LifecycleCommand.DESTROY:
+            collected_outputs[rel_path] = _collect_dependency_outputs(
+                inp.settings,
+                repo_root / rel_path,
+                contexts[rel_path],
+                configs[rel_path],
+                inp.init_mode,
+                inp.var_file,
+            )
         if result.exit_code != 0:
             has_failure = True
     return results, has_failure
@@ -369,6 +508,7 @@ def _execute_wave_parallel(
     contexts: dict[str, RunDirContext],
     configs: dict[str, ResolvedConfig],
     effective_parallel: int,
+    collected_outputs: dict[str, dict[str, object] | None] | None = None,
 ) -> tuple[list[RunDirResult], bool]:
     max_submits = min(max(effective_parallel, MIN_CONCURRENT_SUBMITS), len(wave.run_dirs))
     futures: list[tuple[str, Future[RunDirResult]]] = []
@@ -385,10 +525,19 @@ def _execute_wave_parallel(
 
     results: list[RunDirResult] = []
     has_failure = False
-    for _, fut in futures:
+    for rel_path, fut in futures:
         result = fut.result()
         results.append(result)
         _log_run_dir_output(result, inp.command)
+        if result.exit_code == 0 and collected_outputs is not None and inp.command != LifecycleCommand.DESTROY:
+            collected_outputs[rel_path] = _collect_dependency_outputs(
+                inp.settings,
+                repo_root / rel_path,
+                contexts[rel_path],
+                configs[rel_path],
+                inp.init_mode,
+                inp.var_file,
+            )
         if result.exit_code != 0:
             has_failure = True
     return results, has_failure
@@ -406,13 +555,27 @@ def _execute_plan(
     if needs_approval:
         logger.warning(f"interactive approval: running sequentially for {inp.command}")
 
+    collected_outputs: dict[str, dict[str, object] | None] | None = (
+        {} if inp.command in _OUTPUT_INJECT_COMMANDS else None
+    )
+    if collected_outputs is not None and inp.command == LifecycleCommand.DESTROY:
+        for wave in plan.waves:
+            for rel_path in wave.run_dirs:
+                collected_outputs[rel_path] = _collect_dependency_outputs(
+                    inp.settings,
+                    repo_root / rel_path,
+                    contexts[rel_path],
+                    configs[rel_path],
+                    inp.init_mode,
+                    inp.var_file,
+                )
     all_results: list[RunDirResult] = []
     for wave in plan.waves:
         use_sequential = sequential or len(wave.run_dirs) <= 1
         wave_results, has_failure = (
-            _execute_wave_sequential(wave, inp, repo_root, contexts, configs)
+            _execute_wave_sequential(wave, inp, repo_root, contexts, configs, collected_outputs)
             if use_sequential
-            else _execute_wave_parallel(wave, inp, repo_root, contexts, configs, inp.parallel)
+            else _execute_wave_parallel(wave, inp, repo_root, contexts, configs, inp.parallel, collected_outputs)
         )
         all_results.extend(wave_results)
         if has_failure and inp.on_failure == FailureMode.STOP:
@@ -516,6 +679,8 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
     discovered = _include_dependency_targets(discovered, all_discovered, configs)
     graph = build_dependency_graph(discovered, configs)
     plan = graph.to_waves()
+    if inp.command == LifecycleCommand.DESTROY:
+        plan = plan.reversed()
 
     if inp.dry_run:
         for wave in plan.waves:

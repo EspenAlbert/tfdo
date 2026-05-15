@@ -1,0 +1,1142 @@
+name: sync_justfile
+ts: 2026-05-15 16:09:50.812175+00:00
+type: keep_private
+full_path: _internal.sync.sync_justfile.sync_justfile
+---
+name: prompt_github_variable_update
+ts: 2026-05-15 16:09:59.166919+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.prompt_github_variable_update
+---
+name: collect_requirements
+ts: 2026-05-15 16:09:59.167039+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.collect_requirements
+---
+name: resolve_secret_values
+ts: 2026-05-15 16:09:59.167049+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.resolve_secret_values
+---
+name: resolve_variable_values
+ts: 2026-05-15 16:09:59.167056+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.resolve_variable_values
+---
+name: sync_env_secrets_and_variables
+ts: 2026-05-15 16:09:59.167066+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.sync_env_secrets_and_variables
+---
+name: sync_github
+ts: 2026-05-15 16:09:59.167074+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.sync_github
+---
+name: sync
+ts: 2026-05-15 16:10:14.609479+00:00
+type: group_module
+module_path: _internal.sync.cmd_sync
+---
+name: justfile_cmd
+ts: 2026-05-15 16:10:14.611709+00:00
+type: make_public
+details: CLI command in _internal/sync/cmd_sync.py
+full_path: _internal.sync.cmd_sync.justfile_cmd
+group: sync
+---
+name: github_cmd
+ts: 2026-05-15 16:10:14.615362+00:00
+type: make_public
+details: CLI command in _internal/sync/cmd_sync.py
+full_path: _internal.sync.cmd_sync.github_cmd
+group: sync
+---
+name: module_variable_sources
+ts: 2026-05-15 16:10:25.643490+00:00
+type: keep_private
+full_path: _internal.new.new_run_dir.module_variable_sources
+---
+name: new_run_dir
+ts: 2026-05-15 16:10:25.643552+00:00
+type: keep_private
+full_path: _internal.new.new_run_dir.new_run_dir
+---
+name: module_outputs
+ts: 2026-05-15 16:10:25.643560+00:00
+type: keep_private
+full_path: _internal.new.new_run_dir.module_outputs
+---
+name: new
+ts: 2026-05-15 16:10:32.602779+00:00
+type: group_module
+module_path: _internal.new.cmd_new
+---
+name: backend_cmd
+ts: 2026-05-15 16:10:32.605243+00:00
+type: make_public
+details: CLI command in _internal/new/cmd_new.py
+full_path: _internal.new.cmd_new.backend_cmd
+group: new
+---
+name: run_dir_cmd
+ts: 2026-05-15 16:10:32.609153+00:00
+type: make_public
+details: CLI command in _internal/new/cmd_new.py
+full_path: _internal.new.cmd_new.run_dir_cmd
+group: new
+---
+name: update_tfdo_yaml_backend
+ts: 2026-05-15 16:10:42.515455+00:00
+type: keep_private
+full_path: _internal.new.backend_bootstrap.update_tfdo_yaml_backend
+---
+name: write_backend_tf_files
+ts: 2026-05-15 16:10:42.515660+00:00
+type: keep_private
+full_path: _internal.new.backend_bootstrap.write_backend_tf_files
+---
+name: new_backend
+ts: 2026-05-15 16:10:42.515667+00:00
+type: keep_private
+full_path: _internal.new.backend_bootstrap.new_backend
+---
+name: strip_wrapping_quotes
+ts: 2026-05-15 16:10:45.799359+00:00
+type: keep_private
+full_path: _internal.hcl_types.strip_wrapping_quotes
+---
+name: parse_hcl_value
+ts: 2026-05-15 16:10:45.799482+00:00
+type: keep_private
+full_path: _internal.hcl_types.parse_hcl_value
+---
+name: merge_run_dir
+ts: 2026-05-15 16:10:48.188513+00:00
+type: keep_private
+full_path: _internal.hcl_run_dir_merge.merge_run_dir
+---
+name: terraform_fmt
+ts: 2026-05-15 16:10:53.717025+00:00
+type: keep_private
+full_path: _internal.hcl_run_dir_gen.terraform_fmt
+---
+name: hcl_value_to_attr_raw
+ts: 2026-05-15 16:10:53.717154+00:00
+type: keep_private
+full_path: _internal.hcl_run_dir_gen.hcl_value_to_attr_raw
+---
+name: generate_run_dir
+ts: 2026-05-15 16:10:53.717161+00:00
+type: keep_private
+full_path: _internal.hcl_run_dir_gen.generate_run_dir
+---
+name: ask_field_edits
+ts: 2026-05-15 16:10:57.031671+00:00
+type: keep_private
+full_path: _internal.hcl_example_prompt.ask_field_edits
+---
+name: ask_example_selection
+ts: 2026-05-15 16:10:57.031744+00:00
+type: keep_private
+full_path: _internal.hcl_example_prompt.ask_example_selection
+---
+name: ask_merge_selection
+ts: 2026-05-15 16:10:57.031751+00:00
+type: keep_private
+full_path: _internal.hcl_example_prompt.ask_merge_selection
+---
+name: entity_key
+ts: 2026-05-15 16:10:59.328702+00:00
+type: keep_private
+full_path: _internal.hcl_entity_selector.entity_key
+---
+name: dedup_new_entities
+ts: 2026-05-15 16:10:59.328776+00:00
+type: keep_private
+full_path: _internal.hcl_entity_selector.dedup_new_entities
+---
+name: collect_var_refs
+ts: 2026-05-15 16:10:59.328790+00:00
+type: keep_private
+full_path: _internal.hcl_entity_selector.collect_var_refs
+---
+name: select_entities
+ts: 2026-05-15 16:10:59.328795+00:00
+type: keep_private
+full_path: _internal.hcl_entity_selector.select_entities
+---
+name: parse_entities
+ts: 2026-05-15 16:11:01.208860+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.parse_entities
+---
+name: parse_dir_entities
+ts: 2026-05-15 16:11:01.208947+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.parse_dir_entities
+---
+name: parse_module_examples
+ts: 2026-05-15 16:11:01.208954+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.parse_module_examples
+---
+name: block_labels
+ts: 2026-05-15 16:11:04.256678+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.block_labels
+---
+name: find_block_index
+ts: 2026-05-15 16:11:04.256754+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.find_block_index
+---
+name: block_exists
+ts: 2026-05-15 16:11:04.256760+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.block_exists
+---
+name: first_block
+ts: 2026-05-15 16:11:04.256764+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.first_block
+---
+name: slice_top_level_block_source
+ts: 2026-05-15 16:11:04.256769+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.slice_top_level_block_source
+---
+name: rename_module_block_label_line
+ts: 2026-05-15 16:11:04.256773+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.rename_module_block_label_line
+---
+name: prepare_preserved_module_hcl
+ts: 2026-05-15 16:11:04.256777+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.prepare_preserved_module_hcl
+---
+name: splice_block
+ts: 2026-05-15 16:11:04.256781+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.splice_block
+---
+name: read_resource_block_attrs
+ts: 2026-05-15 16:11:04.256785+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.read_resource_block_attrs
+---
+name: read_module_block_attrs
+ts: 2026-05-15 16:11:04.256790+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.read_module_block_attrs
+---
+name: read_resource_block_values
+ts: 2026-05-15 16:11:04.256804+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.read_resource_block_values
+---
+name: read_module_block_values
+ts: 2026-05-15 16:11:04.256808+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.read_module_block_values
+---
+name: update_resource_block
+ts: 2026-05-15 16:11:04.256812+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.update_resource_block
+---
+name: rename_resource_block
+ts: 2026-05-15 16:11:04.256816+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.rename_resource_block
+---
+name: update_module_block
+ts: 2026-05-15 16:11:04.256824+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.update_module_block
+---
+name: patch_module_block_attributes
+ts: 2026-05-15 16:11:04.256828+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.patch_module_block_attributes
+---
+name: module_attr_raw_to_patch_rhs
+ts: 2026-05-15 16:11:04.256832+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.module_attr_raw_to_patch_rhs
+---
+name: rename_module_block
+ts: 2026-05-15 16:11:04.256837+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.rename_module_block
+---
+name: add_resource_block
+ts: 2026-05-15 16:11:04.256841+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.add_resource_block
+---
+name: delete_resource_block
+ts: 2026-05-15 16:11:04.256845+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.delete_resource_block
+---
+name: add_module_block
+ts: 2026-05-15 16:11:04.256854+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.add_module_block
+---
+name: delete_module_block
+ts: 2026-05-15 16:11:04.256859+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.delete_module_block
+---
+name: delete_variable_block
+ts: 2026-05-15 16:11:04.256863+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.delete_variable_block
+---
+name: delete_output_block
+ts: 2026-05-15 16:11:04.256867+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.delete_output_block
+---
+name: delete_provider_block
+ts: 2026-05-15 16:11:04.256872+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.delete_provider_block
+---
+name: delete_terraform_block
+ts: 2026-05-15 16:11:04.256876+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.delete_terraform_block
+---
+name: update_required_providers
+ts: 2026-05-15 16:11:04.256880+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.update_required_providers
+---
+name: remove_required_providers
+ts: 2026-05-15 16:11:04.256887+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.remove_required_providers
+---
+name: add_backend_block
+ts: 2026-05-15 16:11:04.256898+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.add_backend_block
+---
+name: update_backend_block
+ts: 2026-05-15 16:11:04.256901+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.update_backend_block
+---
+name: remove_backend_block
+ts: 2026-05-15 16:11:04.256908+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.remove_backend_block
+---
+name: delete_required_providers_section
+ts: 2026-05-15 16:11:04.256912+00:00
+type: keep_private
+full_path: _internal.hcl_roundtrip.delete_required_providers_section
+---
+name: hcl2_load
+ts: 2026-05-15 16:11:06.879064+00:00
+type: keep_private
+full_path: _internal.hcl_read.hcl2_load
+---
+name: hcl2_loads
+ts: 2026-05-15 16:11:06.879136+00:00
+type: keep_private
+full_path: _internal.hcl_read.hcl2_loads
+---
+name: parse_lock_file_versions
+ts: 2026-05-15 16:11:06.879142+00:00
+type: keep_private
+full_path: _internal.hcl_read.parse_lock_file_versions
+---
+name: lock_provider_version
+ts: 2026-05-15 16:11:06.879147+00:00
+type: keep_private
+full_path: _internal.hcl_read.lock_provider_version
+---
+name: parse_git_remote_url
+ts: 2026-05-15 16:11:09.167683+00:00
+type: keep_private
+full_path: _internal.git_utils.parse_git_remote_url
+---
+name: is_git_repo
+ts: 2026-05-15 16:11:09.167748+00:00
+type: keep_private
+full_path: _internal.git_utils.is_git_repo
+---
+name: parse_git_remote
+ts: 2026-05-15 16:11:09.167755+00:00
+type: keep_private
+full_path: _internal.git_utils.parse_git_remote
+---
+name: is_backend_changed
+ts: 2026-05-15 16:11:18.521419+00:00
+type: keep_private
+full_path: _internal.core.executor.is_backend_changed
+---
+name: needs_init
+ts: 2026-05-15 16:11:18.521582+00:00
+type: keep_private
+full_path: _internal.core.executor.needs_init
+---
+name: init_input_for_output_retry
+ts: 2026-05-15 16:11:18.521606+00:00
+type: keep_private
+full_path: _internal.core.executor.init_input_for_output_retry
+---
+name: output_json
+ts: 2026-05-15 16:11:18.521612+00:00
+type: keep_private
+full_path: _internal.core.executor.output_json
+---
+name: copy
+ts: 2026-05-15 16:11:27.557963+00:00
+type: group_module
+module_path: _internal.copy.cmd_copy
+---
+name: env_cmd
+ts: 2026-05-15 16:11:27.560441+00:00
+type: make_public
+details: CLI command in _internal/copy/cmd_copy.py
+full_path: _internal.copy.cmd_copy.env_cmd
+group: copy
+---
+name: copy_env
+ts: 2026-05-15 16:11:32.705670+00:00
+type: keep_private
+full_path: _internal.copy.copy_env.copy_env
+---
+name: load_env_vars
+ts: 2026-05-15 16:11:35.824822+00:00
+type: keep_private
+full_path: _internal.config.env_var_loader.load_env_vars
+---
+name: parse_discovery_pattern
+ts: 2026-05-15 16:11:40.771359+00:00
+type: keep_private
+full_path: _internal.config.discovery_pattern.parse_discovery_pattern
+---
+name: iter_dirs_at_depth
+ts: 2026-05-15 16:11:40.771529+00:00
+type: keep_private
+full_path: _internal.config.discovery_pattern.iter_dirs_at_depth
+---
+name: resolve_backend
+ts: 2026-05-15 16:11:45.082391+00:00
+type: keep_private
+full_path: _internal.config.backend_resolution.resolve_backend
+---
+name: has_backend_drift
+ts: 2026-05-15 16:11:45.082514+00:00
+type: keep_private
+full_path: _internal.config.backend_resolution.has_backend_drift
+---
+name: ensure_backend_tf
+ts: 2026-05-15 16:11:45.082521+00:00
+type: keep_private
+full_path: _internal.config.backend_resolution.ensure_backend_tf
+---
+name: skip_check_providers_option
+ts: 2026-05-15 16:11:48.489775+00:00
+type: keep_private
+full_path: _internal.cmd_options.skip_check_providers_option
+---
+name: check_resolved
+ts: 2026-05-15 16:11:53.658266+00:00
+type: keep_private
+full_path: _internal.check.check_run_dir.check_resolved
+---
+name: check_run_dir
+ts: 2026-05-15 16:11:53.658356+00:00
+type: keep_private
+full_path: _internal.check.check_run_dir.check_run_dir
+---
+name: resolve_run_dir
+ts: 2026-05-15 16:11:56.154303+00:00
+type: keep_private
+full_path: _internal.config.resolver.resolve_run_dir
+---
+name: load_provider_hints
+ts: 2026-05-15 16:12:01.728981+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.load_provider_hints
+---
+name: get_provider_hints
+ts: 2026-05-15 16:12:01.729065+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.get_provider_hints
+---
+name: available_module_choices
+ts: 2026-05-15 16:12:01.729075+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.available_module_choices
+---
+name: ensure_run_dir_backend
+ts: 2026-05-15 16:12:04.394893+00:00
+type: keep_private
+full_path: _internal.check.check_logic.ensure_run_dir_backend
+---
+name: resolve_skip_check_providers
+ts: 2026-05-15 16:12:06.912128+00:00
+type: keep_private
+full_path: _internal.config.config_resolution.resolve_skip_check_providers
+---
+name: save_config
+ts: 2026-05-15 16:12:12.818955+00:00
+type: keep_private
+full_path: _internal.config.config_file.save_config
+---
+name: resolve_var_file_paths
+ts: 2026-05-15 16:12:12.819032+00:00
+type: keep_private
+full_path: _internal.config.config_file.resolve_var_file_paths
+---
+name: resolve_env_var_file_names
+ts: 2026-05-15 16:12:12.819043+00:00
+type: keep_private
+full_path: _internal.config.config_file.resolve_env_var_file_names
+---
+name: load_optional_env_vars_from_files
+ts: 2026-05-15 16:12:12.819056+00:00
+type: keep_private
+full_path: _internal.config.config_file.load_optional_env_vars_from_files
+---
+name: resolve_provider_versions
+ts: 2026-05-15 16:12:15.613736+00:00
+type: keep_private
+full_path: _internal.cache.provider_version_cache.resolve_provider_versions
+---
+name: merge_providers
+ts: 2026-05-15 16:12:18.172032+00:00
+type: keep_private
+full_path: _internal.config.config_model.merge_providers
+---
+name: merge_modules
+ts: 2026-05-15 16:12:18.172157+00:00
+type: keep_private
+full_path: _internal.config.config_model.merge_modules
+---
+name: merge_env_var_files
+ts: 2026-05-15 16:12:18.172170+00:00
+type: keep_private
+full_path: _internal.config.config_model.merge_env_var_files
+---
+name: source_safe
+ts: 2026-05-15 16:12:20.727844+00:00
+type: keep_private
+full_path: _internal.cache.module_cache.source_safe
+---
+name: cache_dir
+ts: 2026-05-15 16:12:20.727914+00:00
+type: keep_private
+full_path: _internal.cache.module_cache.cache_dir
+---
+name: lookup
+ts: 2026-05-15 16:12:20.727920+00:00
+type: keep_private
+full_path: _internal.cache.module_cache.lookup
+---
+name: module_source_dir
+ts: 2026-05-15 16:12:20.727929+00:00
+type: keep_private
+full_path: _internal.cache.module_cache.module_source_dir
+---
+name: populate
+ts: 2026-05-15 16:12:20.727934+00:00
+type: keep_private
+full_path: _internal.cache.module_cache.populate
+---
+name: check_tf_version
+ts: 2026-05-15 16:12:23.688083+00:00
+type: keep_private
+full_path: _internal.boot.s3_bootstrap.check_tf_version
+---
+name: provision_s3_bucket
+ts: 2026-05-15 16:12:23.688298+00:00
+type: keep_private
+full_path: _internal.boot.s3_bootstrap.provision_s3_bucket
+---
+name: provision_oidc_provider
+ts: 2026-05-15 16:12:26.601014+00:00
+type: keep_private
+full_path: _internal.boot.oidc_bootstrap.provision_oidc_provider
+---
+name: provision_oidc_role
+ts: 2026-05-15 16:12:26.601091+00:00
+type: keep_private
+full_path: _internal.boot.oidc_bootstrap.provision_oidc_role
+---
+name: run_oidc_wizard
+ts: 2026-05-15 16:12:26.601151+00:00
+type: keep_private
+full_path: _internal.boot.oidc_bootstrap.run_oidc_wizard
+---
+name: boot
+ts: 2026-05-15 16:12:34.035185+00:00
+type: group_module
+module_path: _internal.boot.cmd_boot
+---
+name: boot_cmd
+ts: 2026-05-15 16:12:34.039658+00:00
+type: make_public
+details: CLI command in _internal/boot/cmd_boot.py
+full_path: _internal.boot.cmd_boot.boot_cmd
+group: boot
+---
+name: scan_backend_names
+ts: 2026-05-15 16:12:38.381149+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.scan_backend_names
+---
+name: select_modules
+ts: 2026-05-15 16:12:38.381377+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.select_modules
+---
+name: resolve_modules
+ts: 2026-05-15 16:12:38.381396+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.resolve_modules
+---
+name: resolve_backend
+ts: 2026-05-15 16:12:38.381401+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.resolve_backend
+---
+name: resolve_providers
+ts: 2026-05-15 16:12:38.381406+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.resolve_providers
+---
+name: resolve_repo_identity
+ts: 2026-05-15 16:12:38.381412+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.resolve_repo_identity
+---
+name: boot_repo
+ts: 2026-05-15 16:12:38.381420+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.boot_repo
+---
+name: SyncJustfileInput
+ts: 2026-05-15 16:12:42.219449+00:00
+type: keep_private
+full_path: _internal.sync.sync_justfile.SyncJustfileInput
+---
+name: SyncJustfileResult
+ts: 2026-05-15 16:12:42.219531+00:00
+type: keep_private
+full_path: _internal.sync.sync_justfile.SyncJustfileResult
+---
+name: SecretEntry
+ts: 2026-05-15 16:12:49.108720+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.SecretEntry
+---
+name: VariableEntry
+ts: 2026-05-15 16:12:49.108830+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.VariableEntry
+---
+name: EnvSyncResult
+ts: 2026-05-15 16:12:49.108842+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.EnvSyncResult
+---
+name: SyncGithubInput
+ts: 2026-05-15 16:12:49.108849+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.SyncGithubInput
+---
+name: SyncGithubResult
+ts: 2026-05-15 16:12:49.108857+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.SyncGithubResult
+---
+name: CollectedRequirements
+ts: 2026-05-15 16:12:49.108869+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.CollectedRequirements
+---
+name: AttrPromotion
+ts: 2026-05-15 16:12:53.451190+00:00
+type: keep_private
+full_path: _internal.new.new_run_dir.AttrPromotion
+---
+name: ModuleRunDirConfig
+ts: 2026-05-15 16:12:53.451262+00:00
+type: keep_private
+full_path: _internal.new.new_run_dir.ModuleRunDirConfig
+---
+name: NewRunDirInput
+ts: 2026-05-15 16:12:53.451269+00:00
+type: keep_private
+full_path: _internal.new.new_run_dir.NewRunDirInput
+---
+name: NewRunDirResult
+ts: 2026-05-15 16:12:53.451277+00:00
+type: keep_private
+full_path: _internal.new.new_run_dir.NewRunDirResult
+---
+name: ModuleAttrs
+ts: 2026-05-15 16:12:53.451281+00:00
+type: keep_private
+full_path: _internal.new.new_run_dir.ModuleAttrs
+---
+name: RawAttrsSelection
+ts: 2026-05-15 16:12:55.908611+00:00
+type: keep_private
+full_path: _internal.new.cmd_new.RawAttrsSelection
+---
+name: NewBackendInput
+ts: 2026-05-15 16:12:57.969059+00:00
+type: keep_private
+full_path: _internal.new.backend_bootstrap.NewBackendInput
+---
+name: NewBackendResult
+ts: 2026-05-15 16:12:57.969180+00:00
+type: keep_private
+full_path: _internal.new.backend_bootstrap.NewBackendResult
+---
+name: OutputInput
+ts: 2026-05-15 16:13:04.346284+00:00
+type: keep_private
+full_path: _internal.models.OutputInput
+---
+name: OutputResult
+ts: 2026-05-15 16:13:04.346412+00:00
+type: keep_private
+full_path: _internal.models.OutputResult
+---
+name: HclLiteral
+ts: 2026-05-15 16:13:07.308217+00:00
+type: keep_private
+full_path: _internal.hcl_types.HclLiteral
+---
+name: HclVarRef
+ts: 2026-05-15 16:13:07.308406+00:00
+type: keep_private
+full_path: _internal.hcl_types.HclVarRef
+---
+name: HclAttrRef
+ts: 2026-05-15 16:13:07.308427+00:00
+type: keep_private
+full_path: _internal.hcl_types.HclAttrRef
+---
+name: HclExpression
+ts: 2026-05-15 16:13:07.308435+00:00
+type: keep_private
+full_path: _internal.hcl_types.HclExpression
+---
+name: EditableField
+ts: 2026-05-15 16:13:11.588871+00:00
+type: keep_private
+full_path: _internal.hcl_example_prompt.EditableField
+---
+name: ModuleBlock
+ts: 2026-05-15 16:13:11.588938+00:00
+type: keep_private
+full_path: _internal.hcl_example_prompt.ModuleBlock
+---
+name: ResourceBlock
+ts: 2026-05-15 16:13:11.588951+00:00
+type: keep_private
+full_path: _internal.hcl_example_prompt.ResourceBlock
+---
+name: ProviderBlock
+ts: 2026-05-15 16:13:11.588956+00:00
+type: keep_private
+full_path: _internal.hcl_example_prompt.ProviderBlock
+---
+name: RunDirSelection
+ts: 2026-05-15 16:13:16.060145+00:00
+type: keep_private
+full_path: _internal.hcl_entity_selector.RunDirSelection
+---
+name: TfRequiredProvider
+ts: 2026-05-15 16:13:19.928143+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.TfRequiredProvider
+---
+name: TfVariable
+ts: 2026-05-15 16:13:19.928189+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.TfVariable
+---
+name: TfOutput
+ts: 2026-05-15 16:13:19.928195+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.TfOutput
+---
+name: TfResource
+ts: 2026-05-15 16:13:19.928202+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.TfResource
+---
+name: TfModuleCall
+ts: 2026-05-15 16:13:19.928206+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.TfModuleCall
+---
+name: TfRequiredProviders
+ts: 2026-05-15 16:13:19.928211+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.TfRequiredProviders
+---
+name: TfTerraform
+ts: 2026-05-15 16:13:19.928214+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.TfTerraform
+---
+name: TfProvider
+ts: 2026-05-15 16:13:19.928218+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.TfProvider
+---
+name: TfModuleExample
+ts: 2026-05-15 16:13:19.928224+00:00
+type: keep_private
+full_path: _internal.hcl_entity_parser.TfModuleExample
+---
+name: GitRemote
+ts: 2026-05-15 16:13:23.108175+00:00
+type: keep_private
+full_path: _internal.git_utils.GitRemote
+---
+name: SrcEnvNotFoundError
+ts: 2026-05-15 16:13:29.173542+00:00
+type: keep_private
+full_path: _internal.copy.copy_env.SrcEnvNotFoundError
+---
+name: DstEnvExistsError
+ts: 2026-05-15 16:13:29.173612+00:00
+type: keep_private
+full_path: _internal.copy.copy_env.DstEnvExistsError
+---
+name: ModuleCallEdit
+ts: 2026-05-15 16:13:29.173619+00:00
+type: keep_private
+full_path: _internal.copy.copy_env.ModuleCallEdit
+---
+name: ResourceEdit
+ts: 2026-05-15 16:13:29.173626+00:00
+type: keep_private
+full_path: _internal.copy.copy_env.ResourceEdit
+---
+name: CopyEnvInput
+ts: 2026-05-15 16:13:29.173631+00:00
+type: keep_private
+full_path: _internal.copy.copy_env.CopyEnvInput
+---
+name: CopyEnvResult
+ts: 2026-05-15 16:13:29.173635+00:00
+type: keep_private
+full_path: _internal.copy.copy_env.CopyEnvResult
+---
+name: LoadResult
+ts: 2026-05-15 16:13:32.327873+00:00
+type: keep_private
+full_path: _internal.config.env_var_loader.LoadResult
+---
+name: DiscoveryPattern
+ts: 2026-05-15 16:13:35.044510+00:00
+type: keep_private
+full_path: _internal.config.discovery_pattern.DiscoveryPattern
+---
+name: EnvVarLoadMode
+ts: 2026-05-15 16:13:37.718452+00:00
+type: keep_private
+full_path: _internal.config.enums.EnvVarLoadMode
+---
+name: DeclarationCase
+ts: 2026-05-15 16:13:40.499330+00:00
+type: keep_private
+full_path: _internal.check.models.DeclarationCase
+---
+name: DeclarationResult
+ts: 2026-05-15 16:13:40.499405+00:00
+type: keep_private
+full_path: _internal.check.models.DeclarationResult
+---
+name: CredentialResult
+ts: 2026-05-15 16:13:40.499412+00:00
+type: keep_private
+full_path: _internal.check.models.CredentialResult
+---
+name: ProviderCheckResult
+ts: 2026-05-15 16:13:40.499417+00:00
+type: keep_private
+full_path: _internal.check.models.ProviderCheckResult
+---
+name: CheckResult
+ts: 2026-05-15 16:13:40.499425+00:00
+type: keep_private
+full_path: _internal.check.models.CheckResult
+---
+name: UnsupportedModuleSourceError
+ts: 2026-05-15 16:13:47.853365+00:00
+type: keep_private
+full_path: _internal.config.resolver.UnsupportedModuleSourceError
+---
+name: ResolvedProvider
+ts: 2026-05-15 16:13:47.853440+00:00
+type: keep_private
+full_path: _internal.config.resolver.ResolvedProvider
+---
+name: ResolvedModule
+ts: 2026-05-15 16:13:47.853447+00:00
+type: keep_private
+full_path: _internal.config.resolver.ResolvedModule
+---
+name: ResolvedRunDirConfig
+ts: 2026-05-15 16:13:47.853453+00:00
+type: keep_private
+full_path: _internal.config.resolver.ResolvedRunDirConfig
+---
+name: ProviderHintsError
+ts: 2026-05-15 16:13:52.166675+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.ProviderHintsError
+---
+name: UnknownInheritsFromError
+ts: 2026-05-15 16:13:52.166798+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.UnknownInheritsFromError
+---
+name: UnknownProviderError
+ts: 2026-05-15 16:13:52.166805+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.UnknownProviderError
+---
+name: VariableMapping
+ts: 2026-05-15 16:13:52.166813+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.VariableMapping
+---
+name: ModuleHint
+ts: 2026-05-15 16:13:52.166818+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.ModuleHint
+---
+name: ModuleChoice
+ts: 2026-05-15 16:13:52.166822+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.ModuleChoice
+---
+name: BundleRequirements
+ts: 2026-05-15 16:13:52.166826+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.BundleRequirements
+---
+name: AuthBundle
+ts: 2026-05-15 16:13:52.166831+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.AuthBundle
+---
+name: ClosestBundle
+ts: 2026-05-15 16:13:52.166836+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.ClosestBundle
+---
+name: ProviderHints
+ts: 2026-05-15 16:13:52.166840+00:00
+type: keep_private
+full_path: _internal.config.provider_hints.ProviderHints
+---
+name: ProviderConstraint
+ts: 2026-05-15 16:14:06.257128+00:00
+type: make_public
+details: created in _internal/config/config_model.py
+full_path: _internal.config.config_model.ProviderConstraint
+group: config
+---
+name: ModuleConstraint
+ts: 2026-05-15 16:14:06.259917+00:00
+type: make_public
+details: created in _internal/config/config_model.py
+full_path: _internal.config.config_model.ModuleConstraint
+group: config
+---
+name: CiConfig
+ts: 2026-05-15 16:14:06.262586+00:00
+type: make_public
+details: created in _internal/config/config_model.py
+full_path: _internal.config.config_model.CiConfig
+group: config
+---
+name: OidcWizardResult
+ts: 2026-05-15 16:14:11.327962+00:00
+type: keep_private
+full_path: _internal.boot.oidc_bootstrap.OidcWizardResult
+---
+name: CachedModule
+ts: 2026-05-15 16:14:14.930731+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.CachedModule
+---
+name: IndexedModuleCacheEntry
+ts: 2026-05-15 16:14:14.930869+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.IndexedModuleCacheEntry
+---
+name: BackendResult
+ts: 2026-05-15 16:14:14.930877+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.BackendResult
+---
+name: TfdoBootInput
+ts: 2026-05-15 16:14:14.930882+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.TfdoBootInput
+---
+name: TfdoBootResult
+ts: 2026-05-15 16:14:14.930888+00:00
+type: keep_private
+full_path: _internal.boot.boot_repo.TfdoBootResult
+---
+name: EnvVarMissingError
+ts: 2026-05-15 16:14:18.320800+00:00
+type: keep_private
+full_path: _internal.config.env_var_loader.EnvVarMissingError
+---
+name: CheckConfig
+ts: 2026-05-15 16:14:19.386189+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''skip_check_providers'' (default: False)'
+field_name: skip_check_providers
+group: __ROOT__
+---
+name: TfDoSettings
+ts: 2026-05-15 16:14:19.386202+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''backends_dirs_raw'' (default: None)'
+field_name: backends_dirs_raw
+group: __ROOT__
+---
+name: TfDoSettings
+ts: 2026-05-15 16:14:19.386206+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''env_vars_dirs_raw'' (default: None)'
+field_name: env_vars_dirs_raw
+group: __ROOT__
+---
+name: TfDoSettings
+ts: 2026-05-15 16:14:19.386209+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''provider_hints_path'' (default: None)'
+field_name: provider_hints_path
+group: __ROOT__
+---
+name: TfDoSettings
+ts: 2026-05-15 16:14:19.386212+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''verbose_shell'' (default: False)'
+field_name: verbose_shell
+group: __ROOT__
+---
+name: DependencyRef
+ts: 2026-05-15 16:14:19.386214+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''outputs_mock'' (default: ...)'
+field_name: outputs_mock
+group: config
+---
+name: DependencyRef
+ts: 2026-05-15 16:14:19.386218+00:00
+type: breaking_change
+auto_generated: true
+change_kind: param_type_changed
+details: 'field ''outputs'' type: bool -> dict[str, str]'
+field_name: outputs
+group: config
+---
+name: DependencyRef
+ts: 2026-05-15 16:14:19.386224+00:00
+type: additional_change
+auto_generated: true
+change_kind: default_changed
+details: 'field ''outputs'' default: True -> ...'
+field_name: outputs
+group: config
+---
+name: S3Backend
+ts: 2026-05-15 16:14:19.386227+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''use_lockfile'' (default: None)'
+field_name: use_lockfile
+group: config
+---
+name: TfDoConfig
+ts: 2026-05-15 16:14:19.386229+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''ci'' (default: None)'
+field_name: ci
+group: config
+---
+name: TfDoConfig
+ts: 2026-05-15 16:14:19.386232+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''env_var_files'' (default: ...)'
+field_name: env_var_files
+group: config
+---
+name: TfDoConfig
+ts: 2026-05-15 16:14:19.386234+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''modules'' (default: ...)'
+field_name: modules
+group: config
+---
+name: TfDoConfig
+ts: 2026-05-15 16:14:19.386237+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''providers'' (default: ...)'
+field_name: providers
+group: config
+---
+name: TfDoConfig
+ts: 2026-05-15 16:14:19.386239+00:00
+type: breaking_change
+auto_generated: true
+change_kind: param_type_changed
+details: 'field ''run_dir_discovery'' type: str | None -> str'
+field_name: run_dir_discovery
+group: config
+---
+name: TfDoConfig
+ts: 2026-05-15 16:14:19.386242+00:00
+type: additional_change
+auto_generated: true
+change_kind: default_changed
+details: 'field ''run_dir_discovery'' default: None -> ''envs/{env}/{run_dir}'''
+field_name: run_dir_discovery
+group: config

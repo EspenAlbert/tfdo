@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from enum import StrEnum
 from functools import total_ordering
 from pathlib import Path
 from typing import ClassVar, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from tfdo._internal.check.models import CheckResult as RunDirProviderResult
 from tfdo._internal.settings import TfDoSettings
+
+_TF_PLUGIN_CACHE_DIR_KEY = "TF_PLUGIN_CACHE_DIR"
 
 
 class InitMode(StrEnum):
@@ -25,6 +29,16 @@ class InitInput(TfDoBaseInput):
     backend_args: list[str] = Field(default_factory=list)
     extra_args: list[str] = Field(default_factory=list)
     env: dict[str, str] | None = None
+
+    @model_validator(mode="after")
+    def _inject_plugin_cache(self) -> Self:
+        env = dict(self.env or {})
+        if _TF_PLUGIN_CACHE_DIR_KEY not in env:
+            cache_dir = self.settings.cache_root / "tf_plugins"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            env[_TF_PLUGIN_CACHE_DIR_KEY] = str(cache_dir)
+        self.env = env
+        return self
 
 
 class LifecycleInput(TfDoBaseInput):
@@ -67,12 +81,27 @@ class DestroyInput(LifecycleInput):
 
 
 class CheckInput(TfDoBaseInput):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     fix: bool = False
     diff: bool = False
     init_mode: InitMode = InitMode.AUTO
     include_patterns: list[str] = Field(default_factory=list)
     exclude_patterns: list[str] = Field(default_factory=list)
     tflint: bool = False
+    skip_check_providers: bool = False
+    tfvar_prompt: Callable[[str], str] | None = None
+
+
+class OutputInput(TfDoBaseInput):
+    state: Path | None = None
+    name: str | None = None
+
+
+class OutputResult(BaseModel):
+    exit_code: int
+    outputs: dict[str, object] = Field(default_factory=dict)
+    stderr: str | None = None
 
 
 class InitResult(BaseModel):
@@ -100,9 +129,45 @@ class DestroyResult(LifecycleResult):
     pass
 
 
+class TflintPos(BaseModel):
+    line: int = 0
+    column: int = 0
+
+
+class TflintRange(BaseModel):
+    filename: str = ""
+    start: TflintPos = TflintPos()
+    end: TflintPos = TflintPos()
+
+
 class ValidateDiagnostic(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     severity: str = ""
     summary: str = ""
+    detail: str = ""
+    source_range: TflintRange | None = Field(default=None, validation_alias="range")
+
+    @property
+    def display(self) -> str:
+        summary_s = self.summary.strip()
+        detail_s = self.detail.strip()
+        if summary_s and detail_s:
+            body = f"{summary_s}: {detail_s}" if detail_s != summary_s else summary_s
+        elif summary_s:
+            body = summary_s
+        elif detail_s:
+            body = detail_s
+        else:
+            body = ""
+        rng = self.source_range
+        if rng and rng.filename:
+            line = rng.start.line
+            loc = f"{rng.filename}:{line}"
+            if rng.start.column > 0:
+                loc += f":{rng.start.column}"
+            return f"{body} ({loc})" if body else loc
+        return body
 
 
 class ValidateOutput(BaseModel):
@@ -113,18 +178,7 @@ class ValidateOutput(BaseModel):
 
     @property
     def error_summaries(self) -> list[str]:
-        return [d.summary for d in self.diagnostics if d.severity == self.ERROR_SEVERITY and d.summary]
-
-
-class TflintPos(BaseModel):
-    line: int = 0
-    column: int = 0
-
-
-class TflintRange(BaseModel):
-    filename: str = ""
-    start: TflintPos = TflintPos()
-    end: TflintPos = TflintPos()
+        return [d.display for d in self.diagnostics if d.severity == self.ERROR_SEVERITY and d.display]
 
 
 class TflintRule(BaseModel):
@@ -165,11 +219,29 @@ class DirCheckResult(BaseModel):
     fmt_files: list[str] = []
     validation_errors: list[str] = []
     tflint_issues: list[TflintIssue] = []
+    missing_tfvars: list[str] = []
+    provider_result: RunDirProviderResult | None = None
     skipped: bool = False
+    backend_drift: bool = False
+    provider_version_drift: bool = False
+    unpinned_providers: list[str] = Field(default_factory=list)
 
     @property
     def has_issues(self) -> bool:
-        return bool(self.fmt_files) or bool(self.validation_errors) or bool(self.tflint_issues)
+        provider_fail = self.provider_result is not None and not self.provider_result.is_ok
+        return (
+            bool(self.fmt_files)
+            or bool(self.validation_errors)
+            or bool(self.tflint_issues)
+            or bool(self.missing_tfvars)
+            or provider_fail
+            or self.backend_drift
+            or self.provider_version_drift
+        )
+
+    @property
+    def has_warnings(self) -> bool:
+        return bool(self.unpinned_providers)
 
     def __lt__(self, other: Self) -> bool:
         if not isinstance(other, DirCheckResult):
@@ -197,6 +269,14 @@ class CheckResult(BaseModel):
     @property
     def total_tflint_issues(self) -> list[TflintIssue]:
         return [i for d in self.dir_results for i in d.tflint_issues]
+
+    @property
+    def total_provider_failures(self) -> int:
+        return sum(1 for d in self.dir_results if d.provider_result is not None and not d.provider_result.is_ok)
+
+    @property
+    def total_unpinned_providers(self) -> list[str]:
+        return [name for d in self.dir_results for name in d.unpinned_providers]
 
     @property
     def directories_checked(self) -> int:

@@ -22,14 +22,19 @@ tfdo = "tfdo.cli:typer_main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build.targets.sdist]
-include = ["*/**/*.py", "*/py.typed", "*/**/*.tmpl"]
+[tool.hatch.build]
 exclude = [
   "*_examples.py",
   "*_test.py",
   "conftest.py",
-  "test_*.json",
+  "*_test/",
 ]
+
+[tool.hatch.build.targets.sdist]
+include = ["tfdo/", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["tfdo"]
 
 # === DO_NOT_EDIT: path-sync pkg-ext ===
 [tool.pkg-ext]

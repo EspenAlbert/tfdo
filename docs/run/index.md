@@ -19,7 +19,7 @@
 <a id="run_apply_cmd_def"></a>
 
 ### cli_command: `run_apply_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L112)
+- [source](../../tfdo/_internal/run/cmd_run.py#L121)
 > **Since:** 0.6.0
 
 ```python
@@ -47,7 +47,7 @@ Run apply across multiple run directories.
 <a id="run_callback_def"></a>
 
 ### cli_command: `run_callback`
-- [source](../../tfdo/_internal/run/cmd_run.py#L46)
+- [source](../../tfdo/_internal/run/cmd_run.py#L48)
 > **Since:** 0.6.0
 
 ```python
@@ -78,7 +78,7 @@ def run_callback(*, env: str | None = None, app_name: str | None = None, team: s
 <a id="run_destroy_cmd_def"></a>
 
 ### cli_command: `run_destroy_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L127)
+- [source](../../tfdo/_internal/run/cmd_run.py#L136)
 > **Since:** 0.6.0
 
 ```python
@@ -106,11 +106,11 @@ Run destroy across multiple run directories.
 <a id="run_init_cmd_def"></a>
 
 ### cli_command: `run_init_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L77)
+- [source](../../tfdo/_internal/run/cmd_run.py#L82)
 > **Since:** 0.6.0
 
 ```python
-def run_init_cmd(*, extra_args: list[str] | None = None) -> None:
+def run_init_cmd(*, reconfigure: bool = False, extra_args: list[str] | None = None) -> None:
     ...
 ```
 
@@ -120,6 +120,7 @@ Run init across multiple run directories.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
+| `--reconfigure` | `bool` | `False` | Pass -reconfigure to terraform init |
 | `--extra-args` | `list[str] | None` | `None` | Extra arguments forwarded to terraform init (e.g. --extra-args=-upgrade) |
 
 ### Changes
@@ -132,7 +133,7 @@ Run init across multiple run directories.
 <a id="run_plan_cmd_def"></a>
 
 ### cli_command: `run_plan_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L91)
+- [source](../../tfdo/_internal/run/cmd_run.py#L100)
 > **Since:** 0.6.0
 
 ```python

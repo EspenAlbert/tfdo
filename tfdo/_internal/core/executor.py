@@ -1,3 +1,4 @@
+import json
 import logging
 import shutil
 from pathlib import Path
@@ -15,6 +16,8 @@ from tfdo._internal.models import (
     InitResult,
     LifecycleInput,
     LifecycleResult,
+    OutputInput,
+    OutputResult,
     PlanInput,
     PlanResult,
 )
@@ -100,6 +103,7 @@ def init(input_model: InitInput) -> InitResult:
         cwd=settings.work_dir,
         env=input_model.env,
         allow_non_zero_exit=True,
+        ansi_content=True,
         skip_binary_check=True,
         retry_initial_wait=5,
         retry_max_wait=60,
@@ -123,10 +127,27 @@ INIT_NEEDED_PATTERNS: list[str] = [
     "Module not installed",
 ]
 
+BACKEND_CHANGED_PATTERNS: list[str] = [
+    "Backend configuration changed",
+]
 
-def _needs_init(stderr: str) -> bool:
+
+def is_backend_changed(stderr: str) -> bool:
+    lower = stderr.lower()
+    return any(p.lower() in lower for p in BACKEND_CHANGED_PATTERNS)
+
+
+def needs_init(stderr: str) -> bool:
     lower = stderr.lower()
     return any(p.lower() in lower for p in INIT_NEEDED_PATTERNS)
+
+
+def init_input_for_output_retry(stderr: str, base: InitInput) -> InitInput | None:
+    if is_backend_changed(stderr):
+        return base.model_copy(update={"extra_args": [*base.extra_args, "-reconfigure"]})
+    if needs_init(stderr):
+        return base
+    return None
 
 
 def _build_lifecycle_command(binary: str, subcommand: str, var_file: Path | None, extra_flags: list[str]) -> str:
@@ -143,6 +164,7 @@ def _run_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, result_cl
             cmd,
             cwd=settings.work_dir,
             allow_non_zero_exit=True,
+            ansi_content=True,
             skip_binary_check=True,
             user_input=settings.is_interactive,
         )
@@ -156,9 +178,15 @@ def _run_lifecycle[T: LifecycleResult](
 ) -> T:
     settings = input_model.settings
     mode = input_model.init_mode
+    force_init = mode == InitMode.ALWAYS
 
-    if mode == InitMode.ALWAYS:
-        init_result = init(InitInput(settings=settings, backend_args=input_model.init_backend_args))
+    if force_init:
+        init_result = init(
+            InitInput(
+                settings=settings,
+                backend_args=input_model.init_backend_args,
+            )
+        )
         if init_result.exit_code != 0:
             return result_cls(exit_code=init_result.exit_code)
 
@@ -166,12 +194,25 @@ def _run_lifecycle[T: LifecycleResult](
     cmd = _build_lifecycle_command(binary.resolve_binary(settings), subcommand, input_model.var_file, all_flags)
     result = _run_command(settings, cmd, result_cls)
 
-    if result.exit_code != 0 and mode == InitMode.AUTO and _needs_init(result.stderr or ""):
-        logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
-        init_result = init(InitInput(settings=settings, backend_args=input_model.init_backend_args))
-        if init_result.exit_code != 0:
-            return result_cls(exit_code=init_result.exit_code)
-        result = _run_command(settings, cmd, result_cls)
+    stderr = result.stderr or ""
+    if result.exit_code != 0 and mode != InitMode.NEVER and not force_init:
+        if is_backend_changed(stderr):
+            logger.warning(
+                f"backend configuration changed in {settings.work_dir}. "
+                "Run 'tfdo check --fix' to update backend.tf, then 'terraform init -reconfigure' to accept "
+                "the new backend, or 'terraform init -migrate-state' to migrate existing state."
+            )
+        elif needs_init(stderr):
+            logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
+            init_result = init(
+                InitInput(
+                    settings=settings,
+                    backend_args=input_model.init_backend_args,
+                )
+            )
+            if init_result.exit_code != 0:
+                return result_cls(exit_code=init_result.exit_code)
+            result = _run_command(settings, cmd, result_cls)
 
     return result
 
@@ -197,3 +238,38 @@ def destroy(input_model: DestroyInput) -> DestroyResult:
     if input_model.auto_approve:
         extra_flags.append("-auto-approve")
     return _run_lifecycle(input_model, "destroy", extra_flags, DestroyResult)
+
+
+def _parse_tf_outputs(raw: dict) -> dict[str, object]:
+    """Extract flat {name: value} from terraform output -json format."""
+    return {k: v["value"] for k, v in raw.items() if isinstance(v, dict) and "value" in v}
+
+
+def _build_output_command(bin_name: str, input_model: OutputInput) -> str:
+    parts = [bin_name, "output", "-json"]
+    if input_model.state:
+        parts.append(f"-state={input_model.state}")
+    if input_model.name:
+        parts.append(input_model.name)
+    return " ".join(parts)
+
+
+def output_json(input_model: OutputInput) -> OutputResult:
+    settings = input_model.settings
+    cmd = _build_output_command(binary.resolve_binary(settings), input_model)
+    try:
+        run = run_and_wait(
+            cmd,
+            cwd=settings.work_dir,
+            allow_non_zero_exit=True,
+            ansi_content=True,
+            skip_binary_check=True,
+        )
+        if run.exit_code and run.exit_code != 0:
+            return OutputResult(exit_code=run.exit_code, stderr=run.stderr or None)
+        raw = json.loads(run.stdout_one_line) if run.stdout_one_line else {}
+        return OutputResult(exit_code=0, outputs=_parse_tf_outputs(raw))
+    except ShellError as e:
+        return OutputResult(exit_code=e.exit_code or 1, stderr=e.stderr or None)
+    except json.JSONDecodeError as e:
+        return OutputResult(exit_code=1, stderr=f"failed to parse output JSON: {e}")

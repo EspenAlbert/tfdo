@@ -4,6 +4,8 @@ import typer
 from pydantic import BaseModel, Field
 
 from tfdo._internal import cmd_options
+from tfdo._internal.config.config_file import load_config
+from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.models import InitMode
 from tfdo._internal.run import orchestration, run_options
 from tfdo._internal.run.orchestration import FailureMode, LifecycleCommand, RunOrchestrationInput
@@ -56,11 +58,14 @@ def run_callback(
     dry_run: bool = run_options.dry_run_option(),
 ) -> None:
     parent_settings = get_settings(ctx)
+    config = load_config(parent_settings.work_dir) or TfDoConfig()
     selector_filters: dict[str, str] = {}
     if env:
         selector_filters["env"] = env
     if app_name:
-        selector_filters["app"] = app_name
+        names = config.selector_names
+        app_selector = names[1] if len(names) >= 2 else "app"
+        selector_filters[app_selector] = app_name
     if team:
         selector_filters["team"] = team
     ctx.obj = RunContext(
@@ -77,13 +82,17 @@ def run_callback(
 @run_app.command("init")
 def run_init_cmd(
     ctx: typer.Context,
+    reconfigure: bool = typer.Option(False, "--reconfigure", help="Pass -reconfigure to terraform init"),
     extra_args: list[str] | None = typer.Option(
         None, "--extra-args", help="Extra arguments forwarded to terraform init (e.g. --extra-args=-upgrade)"
     ),
 ) -> None:
     """Run init across multiple run directories."""
     run_ctx = _get_run_context(ctx)
-    inp = run_ctx.build_input(LifecycleCommand.INIT, extra_flags=extra_args or [])
+    flags = list(extra_args or [])
+    if reconfigure:
+        flags.append("-reconfigure")
+    inp = run_ctx.build_input(LifecycleCommand.INIT, extra_flags=flags)
     result = orchestration.run_orchestration(inp)
     raise typer.Exit(result.exit_code)
 

@@ -1,0 +1,421 @@
+from __future__ import annotations
+
+from pathlib import Path
+from unittest.mock import patch
+
+import yaml
+
+from tfdo._internal.config.config_model import DependencyRef, TfDoConfig
+from tfdo._internal.config.env_var_loader import LoadResult
+from tfdo._internal.config.resolver import ResolvedProvider, ResolvedRunDirConfig
+from tfdo._internal.hcl_roundtrip import HclLiteral, HclVarRef
+from tfdo._internal.new import new_run_dir as _module
+from tfdo._internal.new.new_run_dir import (
+    AttrPromotion,
+    ModuleRunDirConfig,
+    NewRunDirInput,
+    module_variable_sources,
+    new_run_dir,
+)
+from tfdo._internal.settings import TfDoSettings
+
+_EMPTY_RESOLVED = ResolvedRunDirConfig(
+    required_providers=[],
+    resolved_modules=[],
+    provider_hints={},
+    auth_variables=[],
+    loaded_env_vars=LoadResult(merged={}, loaded_paths=[], reason="skip"),
+)
+
+
+def _settings(tmp_path: Path) -> TfDoSettings:
+    return TfDoSettings.for_testing(tmp_path, work_dir=tmp_path)
+
+
+def _input(tmp_path: Path, **kwargs) -> NewRunDirInput:
+    return NewRunDirInput(
+        settings=_settings(tmp_path),
+        config=TfDoConfig(),
+        env_name="dev",
+        run_dir_name="cluster",
+        **kwargs,
+    )
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_tf_var_promotion_writes_variable_and_tfvars(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    promotion = AttrPromotion(attr_name="org_id", tf_var_name="org_id", default_value="my-org")
+    cfg = ModuleRunDirConfig(
+        source="ns/project/mongodbatlas",
+        label="project",
+        attrs={"org_id": HclVarRef(path="var.org_id")},
+        tf_var_promotions=[promotion],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "org_id"' in variables_tf
+    assert "type = string" in variables_tf
+
+    tfvars = (result.run_dir / "terraform.tfvars").read_text()
+    assert 'org_id = "my-org"' in tfvars
+
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert "var.org_id" in main_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_literal_attr_in_main_tf_no_variables_file(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    cfg = ModuleRunDirConfig(
+        source="ns/project/mongodbatlas",
+        label="project",
+        attrs={"name": HclLiteral(value="tfdo-demo")},
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert 'name = "tfdo-demo"' in main_tf
+    assert not (result.run_dir / "variables.tf").exists()
+    assert not (result.run_dir / "terraform.tfvars").exists()
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_preserved_module_hcl_keeps_comments_when_patching_attrs(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    preserved = """module \"cluster\" {
+  source = \"../..\"
+  # sizing note
+  instance_size = \"M10\"
+  project_id = var.project_id
+}
+"""
+    cfg = ModuleRunDirConfig(
+        source="terraform-mongodbatlas-modules/cluster/mongodbatlas",
+        label="cluster",
+        attrs={
+            "instance_size": HclLiteral(value="M20"),
+            "project_id": HclVarRef(path="var.project_id"),
+        },
+        preserved_module_hcl=preserved,
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert "# sizing note" in main_tf
+    assert 'instance_size = "M20"' in main_tf
+    assert "terraform-mongodbatlas-modules/cluster/mongodbatlas" in main_tf
+    assert "var.project_id" in main_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_version_constraint_written_to_module_call(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    cfg = ModuleRunDirConfig(
+        source="terraform-mongodbatlas-modules/cluster/mongodbatlas",
+        label="cluster",
+        version="0.3.1",
+        attrs={"project_id": HclVarRef(path="var.project_id")},
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert 'version = "0.3.1"' in main_tf
+    assert 'source  = "terraform-mongodbatlas-modules/cluster/mongodbatlas"' in main_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_outputs_written_for_exposed(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    cfg = ModuleRunDirConfig(
+        source="ns/project/mongodbatlas",
+        label="project",
+        exposed_outputs=["id", "project_id"],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    outputs_tf = (result.run_dir / "outputs.tf").read_text()
+    assert 'output "id"' in outputs_tf
+    assert "module.project.id" in outputs_tf
+    assert 'output "project_id"' in outputs_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir")
+def test_resolver_result_lands_in_versions_tf(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    resolved = ResolvedRunDirConfig(
+        required_providers=[ResolvedProvider(name="mongodbatlas", source="mongodb/mongodbatlas", constraint="~> 2.0")],
+        resolved_modules=[],
+        provider_hints={},
+        auth_variables=[],
+        loaded_env_vars=LoadResult(merged={}, loaded_paths=[], reason="skip"),
+    )
+    mock_resolve.return_value = resolved
+
+    result = new_run_dir(_input(tmp_path))
+
+    versions_tf = (result.run_dir / "versions.tf").read_text()
+    assert "mongodbatlas" in versions_tf
+    assert "mongodb/mongodbatlas" in versions_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_required_version_written_from_config_tf_version(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    inp = NewRunDirInput(
+        settings=_settings(tmp_path),
+        config=TfDoConfig(tf_version="1.12.1"),
+        env_name="dev",
+        run_dir_name="cluster",
+    )
+    result = new_run_dir(inp)
+
+    versions_tf = (result.run_dir / "versions.tf").read_text()
+    assert ">= 1.12" in versions_tf
+    assert result.run_dir / "versions.tf" in result.written_paths
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir")
+def test_provider_blocks_written_for_required_providers(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    resolved = ResolvedRunDirConfig(
+        required_providers=[
+            ResolvedProvider(name="mongodbatlas", source="mongodb/mongodbatlas"),
+            ResolvedProvider(name="aws", source="hashicorp/aws"),
+        ],
+        resolved_modules=[],
+        provider_hints={},
+        auth_variables=[],
+        loaded_env_vars=LoadResult(merged={}, loaded_paths=[], reason="skip"),
+    )
+    mock_resolve.return_value = resolved
+
+    result = new_run_dir(_input(tmp_path))
+
+    providers_tf = (result.run_dir / "providers.tf").read_text()
+    assert 'provider "mongodbatlas" {}' in providers_tf
+    assert 'provider "aws" {}' in providers_tf
+    assert result.run_dir / "providers.tf" in result.written_paths
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_no_providers_tf_when_no_required_providers(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    result = new_run_dir(_input(tmp_path))
+    assert not (result.run_dir / "providers.tf").exists()
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_no_terraform_dir_under_run_dir(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    result = new_run_dir(_input(tmp_path))
+    assert not (result.run_dir / ".terraform").exists()
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_backend_tf_written_when_root_config_has_backend(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    import yaml
+
+    (tmp_path / "tfdo.yaml").write_text(
+        yaml.dump(
+            {"backend": {"type": "s3", "bucket": "my-bucket", "key": "{path}/terraform.tfstate", "region": "us-east-1"}}
+        )
+    )
+    result = new_run_dir(_input(tmp_path))
+
+    backend_tf = result.run_dir / "backend.tf"
+    assert backend_tf.is_file()
+    content = backend_tf.read_text()
+    assert "my-bucket" in content
+    assert "envs/dev/cluster/terraform.tfstate" in content
+    assert backend_tf in result.written_paths
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_custom_discovery_pattern_respected(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    config = TfDoConfig(run_dir_discovery="infra/{env}/{service}")
+    inp = NewRunDirInput(
+        settings=_settings(tmp_path),
+        config=config,
+        env_name="prod",
+        run_dir_name="atlas",
+    )
+    result = new_run_dir(inp)
+
+    assert result.run_dir == tmp_path / "infra" / "prod" / "atlas"
+    mock_resolve.assert_called_once_with(tmp_path, "infra/prod/atlas", settings=inp.settings)
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_new_run_dir_writes_dependency_yaml(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    result = new_run_dir(_input(tmp_path, dependencies=[dep]))
+
+    tfdo_yaml = result.run_dir / "tfdo.yaml"
+    assert tfdo_yaml.is_file()
+    assert tfdo_yaml in result.written_paths
+    data = yaml.safe_load(tfdo_yaml.read_text())
+    loaded = [DependencyRef(**d) for d in data["dependencies"]]
+    assert loaded == [dep]
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_dependency_outputs_generate_variables(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    cfg = ModuleRunDirConfig(
+        source="terraform-mongodbatlas-modules/cluster/mongodbatlas",
+        label="cluster",
+        attrs={"project_id": HclVarRef(path="var.project_id")},
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg], dependencies=[dep]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "project_id"' in variables_tf
+    assert "type = string" in variables_tf
+    assert not (result.run_dir / "terraform.tfvars").exists()
+
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert "project_id = var.project_id" in main_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_dep_provided_promotion_excluded_from_tfvars(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    promotion = AttrPromotion(attr_name="org_id", tf_var_name="org_id", default_value="my-org")
+    dep = DependencyRef(ref="project", outputs={"id": "project_id", "org_id": "org_id"})
+    cfg = ModuleRunDirConfig(
+        source="ns/project/mongodbatlas",
+        label="project",
+        attrs={"org_id": HclVarRef(path="var.org_id"), "project_id": HclVarRef(path="var.project_id")},
+        tf_var_promotions=[promotion],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg], dependencies=[dep]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "org_id"' in variables_tf
+    assert 'variable "project_id"' in variables_tf
+    assert variables_tf.count('variable "org_id"') == 1
+    assert "default" not in variables_tf
+
+    assert not (result.run_dir / "terraform.tfvars").exists()
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_mixed_promotions_only_user_provided_in_tfvars(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    dep_promotion = AttrPromotion(attr_name="project_id", tf_var_name="project_id", default_value="dep-default")
+    user_promotion = AttrPromotion(attr_name="region", tf_var_name="region", default_value="US_EAST_1")
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    cfg = ModuleRunDirConfig(
+        source="ns/cluster/mongodbatlas",
+        label="cluster",
+        attrs={
+            "project_id": HclVarRef(path="var.project_id"),
+            "region": HclVarRef(path="var.region"),
+        },
+        tf_var_promotions=[dep_promotion, user_promotion],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg], dependencies=[dep]))
+
+    tfvars = (result.run_dir / "terraform.tfvars").read_text()
+    assert 'region = "US_EAST_1"' in tfvars
+    assert "project_id" not in tfvars
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "region"' in variables_tf
+    assert 'default = "US_EAST_1"' in variables_tf
+    assert 'variable "project_id"' in variables_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_promotion_no_default_omits_default_and_tfvars(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    promotion = AttrPromotion(attr_name="project_id", tf_var_name="project_id", default_value=None)
+    cfg = ModuleRunDirConfig(
+        source="ns/project/mongodbatlas",
+        label="project",
+        attrs={"project_id": HclVarRef(path="var.project_id")},
+        tf_var_promotions=[promotion],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "project_id"' in variables_tf
+    assert "default" not in variables_tf
+    assert not (result.run_dir / "terraform.tfvars").exists()
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_var_ref_attr_renders_as_reference(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    cfg = ModuleRunDirConfig(
+        source="ns/cluster/mongodbatlas",
+        label="cluster",
+        attrs={"tags": HclVarRef(path="var.tags")},
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    main_tf = (result.run_dir / "main.tf").read_text()
+    assert "tags = var.tags" in main_tf
+    assert '"${var.tags}"' not in main_tf
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "tags"' in variables_tf
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_passthrough_var_ref_generates_variable_block(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    promotion = AttrPromotion(attr_name="project_id", tf_var_name="project_id", default_value=None)
+    cfg = ModuleRunDirConfig(
+        source="ns/cluster/mongodbatlas",
+        label="cluster",
+        attrs={
+            "project_id": HclVarRef(path="var.project_id"),
+            "tags": HclVarRef(path="var.tags"),
+        },
+        tf_var_promotions=[promotion],
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert 'variable "project_id"' in variables_tf
+    assert 'variable "tags"' in variables_tf
+    assert variables_tf.count('variable "tags"') == 1
+
+
+def test_module_variable_sources_reads_verbatim_blocks(tmp_path: Path) -> None:
+    (tmp_path / "variables.tf").write_text(
+        'variable "tags" {\n  type        = map(string)\n  default     = {}\n  description = "Resource tags"\n}\n\n'
+        'variable "name" {\n  type = string\n}\n'
+    )
+    sources = module_variable_sources(tmp_path)
+    assert "tags" in sources
+    assert "map(string)" in sources["tags"]
+    assert "Resource tags" in sources["tags"]
+    assert "name" in sources
+    assert "type = string" in sources["name"]
+
+
+@patch(f"{_module.__name__}.terraform_fmt")
+@patch(f"{_module.__name__}.resolve_run_dir", return_value=_EMPTY_RESOLVED)
+def test_passthrough_var_uses_verbatim_source_from_module(mock_resolve, mock_fmt, tmp_path: Path) -> None:
+    tags_source = (
+        'variable "tags" {\n  type        = map(string)\n  default     = {}\n  description = "Resource tags"\n}'
+    )
+    cfg = ModuleRunDirConfig(
+        source="ns/cluster/mongodbatlas",
+        label="cluster",
+        attrs={"tags": HclVarRef(path="var.tags")},
+        variable_sources={"tags": tags_source},
+    )
+    result = new_run_dir(_input(tmp_path, module_configs=[cfg]))
+
+    variables_tf = (result.run_dir / "variables.tf").read_text()
+    assert "map(string)" in variables_tf
+    assert "Resource tags" in variables_tf
+    assert 'variable "tags"' in variables_tf

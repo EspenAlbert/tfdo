@@ -4,12 +4,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from ask_shell.shell import ShellRun
 from typer.testing import CliRunner
+from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal import settings as settings_mod
 from tfdo._internal.check import check_logic
 from tfdo._internal.check.check_logic import (
     _build_fmt_command,
     _build_validate_command,
+    _check_provider_version_drift,
+    _find_unpinned_providers,
     _parse_fmt_files,
     _run_tflint,
     check,
@@ -22,6 +25,7 @@ from tfdo._internal.models import (
     InitMode,
     TflintIssue,
     TflintOutput,
+    TflintPos,
     TflintRange,
     TflintRule,
     ValidateDiagnostic,
@@ -148,6 +152,47 @@ def test_validate_output_model():
     assert ValidateOutput().error_summaries == []
 
 
+def test_validate_diagnostic_display_includes_detail_and_range():
+    d = ValidateDiagnostic(
+        severity="error",
+        summary="Missing required argument",
+        detail='The argument "instance_size" is required, but no definition was found.',
+        source_range=TflintRange(filename="cluster.tf", start=TflintPos(line=12, column=3)),
+    )
+    assert "Missing required argument" in d.display
+    assert "instance_size" in d.display
+    assert "cluster.tf:12:3" in d.display
+
+
+def test_validate_diagnostic_parses_range_from_json_key():
+    raw = {
+        "severity": "error",
+        "summary": "Missing required argument",
+        "detail": 'The argument "foo" is required.',
+        "range": {"filename": "a.tf", "start": {"line": 2, "column": 1}},
+    }
+    d = ValidateDiagnostic.model_validate(raw)
+    assert d.source_range is not None
+    assert d.source_range.filename == "a.tf"
+    assert "foo" in d.display
+    assert "a.tf:2:1" in d.display
+
+
+def test_validate_output_error_summaries_use_full_display():
+    output = ValidateOutput(
+        valid=False,
+        diagnostics=[
+            ValidateDiagnostic(
+                severity="error",
+                summary="Missing required argument",
+                detail='The argument "x" is required.',
+                source_range=TflintRange(filename="main.tf", start=TflintPos(line=5)),
+            ),
+        ],
+    )
+    assert output.error_summaries == ['Missing required argument: The argument "x" is required. (main.tf:5)']
+
+
 # --- integration tests ---
 
 
@@ -200,6 +245,96 @@ def test_check_validation_errors(tmp_path: Path):
         result = check(CheckInput(settings=settings))
     assert result.exit_code == 1
     assert len(result.total_validation_errors) == 2
+
+
+def test_check_reports_missing_tfvars(tmp_path: Path):
+    ensure_parents_write_text(
+        tmp_path / "variables.tf",
+        'variable "org_id" {}\nvariable "base_url" {}\n',
+    )
+    ensure_parents_write_text(tmp_path / "terraform.tfvars", 'org_id = "org-123"\n')
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings))
+    assert result.exit_code == 1
+    assert result.dir_results[0].missing_tfvars == ["base_url"]
+
+
+def test_missing_tfvars_skips_dependency_output_targets(tmp_path: Path):
+    ensure_parents_write_text(tmp_path / "variables.tf", 'variable "project_id" {}\n')
+    ensure_parents_write_text(
+        tmp_path / "tfdo.yaml",
+        "dependencies:\n  - ref: project\n    outputs:\n      id: project_id\n",
+    )
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings))
+    assert result.dir_results[0].missing_tfvars == []
+    assert result.exit_code == 0
+
+
+def test_check_fix_writes_prompted_tfvars(tmp_path: Path):
+    ensure_parents_write_text(
+        tmp_path / "variables.tf",
+        'variable "slug" {}\nvariable "extra" {}\n',
+    )
+    ensure_parents_write_text(tmp_path / "terraform.tfvars", 'slug = "a"\n')
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+
+    def fake_prompt(_msg: str) -> str:
+        return "from-prompt"
+
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings, fix=True, tfvar_prompt=fake_prompt))
+    tfvars = (tmp_path / "terraform.tfvars").read_text()
+    assert 'extra = "from-prompt"' in tfvars
+    assert "slug" in tfvars
+    assert result.dir_results[0].missing_tfvars == []
+    assert result.exit_code == 0
+
+
+def test_check_fix_noninteractive_does_not_write_tfvars(tmp_path: Path):
+    ensure_parents_write_text(tmp_path / "variables.tf", 'variable "need" {}\n')
+    (tmp_path / ".terraform").mkdir()
+    settings = TfDoSettings.for_testing(tmp_path, work_dir=tmp_path, interactive=InteractiveMode.NEVER)
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings, fix=True, tfvar_prompt=lambda _m: "x"))
+    assert result.exit_code == 1
+    assert not (tmp_path / "terraform.tfvars").exists()
+
+
+def test_check_tfvars_satisfied_by_var_file_and_env_file(tmp_path: Path):
+    ensure_parents_write_text(
+        tmp_path / "variables.tf",
+        'variable "org_id" {}\nvariable "base_url" {}\n',
+    )
+    ensure_parents_write_text(
+        tmp_path / "tfdo.yaml",
+        "var_files:\n  - custom.tfvars\nenv_var_files:\n  - tf-vars.yaml\n",
+    )
+    ensure_parents_write_text(tmp_path / "custom.tfvars", 'org_id = "org-123"\n')
+    settings = _make_settings(tmp_path)
+    env_dir = settings.static_root / "env_vars"
+    env_dir.mkdir(parents=True, exist_ok=True)
+    ensure_parents_write_text(env_dir / "tf-vars.yaml", 'TF_VAR_base_url: "https://example.com"\n')
+    (tmp_path / ".terraform").mkdir()
+    fmt_run = _mock_run(exit_code=0)
+    validate_run = _mock_run(validate_output=VALID_OUTPUT)
+    with patch(_patch_run, side_effect=[fmt_run, validate_run]):
+        result = check(CheckInput(settings=settings))
+    assert result.exit_code == 0
+    assert result.dir_results[0].missing_tfvars == []
 
 
 def test_check_skips_uninitialized_dir_never_mode(tmp_path: Path):
@@ -500,3 +635,101 @@ def test_user_config_model():
     assert config.check.tflint
     empty = TfDoUserConfig()
     assert empty.check is None
+
+
+# --- provider version drift tests ---
+
+
+_VERSIONS_TF_OUTDATED = """\
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+"""
+
+_TFDO_YAML_PINNED = """\
+providers:
+  - name: aws
+    source: hashicorp/aws
+    constraint: "5.82.0"
+"""
+
+
+def test_check_provider_version_drift_detects_mismatch(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "versions.tf", _VERSIONS_TF_OUTDATED)
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
+    assert _check_provider_version_drift(tmp_path, fix=False)
+
+
+def test_check_provider_version_drift_fixes(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "versions.tf", _VERSIONS_TF_OUTDATED)
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
+    assert _check_provider_version_drift(tmp_path, fix=True)
+
+    updated = (tmp_path / "versions.tf").read_text()
+    assert "5.82.0" in updated
+    assert "~> 5.0" not in updated
+
+
+def test_check_provider_version_drift_no_drift(tmp_path: Path) -> None:
+    pinned_tf = _VERSIONS_TF_OUTDATED.replace("~> 5.0", "5.82.0")
+    ensure_parents_write_text(tmp_path / "versions.tf", pinned_tf)
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
+    assert not _check_provider_version_drift(tmp_path, fix=False)
+
+
+# --- unpinned provider tests ---
+
+_TFDO_YAML_NO_CONSTRAINT = """\
+providers:
+  - name: aws
+    source: hashicorp/aws
+"""
+
+_TFDO_YAML_LOOSE_CONSTRAINT = """\
+providers:
+  - name: aws
+    source: hashicorp/aws
+    constraint: "~> 5.0"
+"""
+
+
+def test_find_unpinned_providers_no_constraint(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_NO_CONSTRAINT)
+    assert _find_unpinned_providers(tmp_path) == ["aws"]
+
+
+def test_find_unpinned_providers_loose_constraint(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_LOOSE_CONSTRAINT)
+    assert _find_unpinned_providers(tmp_path) == ["aws"]
+
+
+def test_find_unpinned_providers_exact_constraint(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
+    assert _find_unpinned_providers(tmp_path) == []
+
+
+def test_find_unpinned_providers_no_config(tmp_path: Path) -> None:
+    assert _find_unpinned_providers(tmp_path) == []
+
+
+def test_unpinned_providers_does_not_affect_has_issues() -> None:
+    dr = DirCheckResult(directory=Path("/a"), unpinned_providers=["aws", "random"])
+    assert not dr.has_issues
+
+
+def test_unpinned_providers_does_not_cause_exit_code_1(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "main.tf", "")
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_NO_CONSTRAINT)
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    mock_run = _mock_run(exit_code=0, validate_output=VALID_OUTPUT)
+    with patch(_patch_run, return_value=mock_run):
+        result = check(CheckInput(settings=settings, skip_check_providers=True))
+    assert result.exit_code == 0
+    assert result.dir_results[0].unpinned_providers == ["aws"]
+    assert result.total_unpinned_providers == ["aws"]

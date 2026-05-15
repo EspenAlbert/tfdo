@@ -1,0 +1,90 @@
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+import yaml
+from pydantic import BaseModel, Field
+from zero_3rdparty.file_utils import ensure_parents_write_text, find_repo_root
+
+from tfdo._internal import hcl_roundtrip
+from tfdo._internal.config.backend_resolution import resolve_placeholders
+from tfdo._internal.config.config_file import CONFIG_FILENAME, load_config
+from tfdo._internal.config.config_model import S3Backend, TfDoConfig
+from tfdo._internal.models import TfDoBaseInput
+from tfdo._internal.run.run_context import RunDirContext
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_KEY_TEMPLATE = "{repo_owner}/{repo_name}/{path}/terraform.tfstate"
+_BACKEND_TF_FILENAME = "backend.tf"
+
+
+class NewBackendInput(TfDoBaseInput):
+    bucket: str
+    region: str
+    key: str = DEFAULT_KEY_TEMPLATE
+    encrypt: bool = True
+
+
+class NewBackendResult(BaseModel):
+    bucket: str
+    region: str
+    updated_yaml: Path
+    backend_tf_files: list[Path] = Field(default_factory=list)
+
+
+def update_tfdo_yaml_backend(repo_root: Path, backend: S3Backend) -> Path:
+    config_path = repo_root / CONFIG_FILENAME
+    raw: dict = {}
+    if config_path.is_file():
+        raw = yaml.safe_load(config_path.read_text()) or {}
+    raw["backend"] = backend.model_dump(mode="json", exclude_none=True)
+    ensure_parents_write_text(config_path, yaml.dump(raw, default_flow_style=False))
+    return config_path
+
+
+def _backend_tf_for_run_dir(run_dir: Path, rel_path: str, backend: S3Backend, config: TfDoConfig) -> None:
+    ctx = RunDirContext.from_config(rel_path, config)
+    resolved_key = resolve_placeholders(backend.key, ctx)
+    resolved_backend = backend.model_copy(update={"key": resolved_key})
+
+    backend_tf = run_dir / _BACKEND_TF_FILENAME
+    original = backend_tf.read_text() if backend_tf.is_file() else ""
+    updated = hcl_roundtrip.add_backend_block(original, "s3", resolved_backend.hcl_config)
+    ensure_parents_write_text(backend_tf, updated)
+
+
+def write_backend_tf_files(repo_root: Path, backend: S3Backend) -> list[Path]:
+    root_config = load_config(repo_root)
+    if root_config is None:
+        logger.warning("no tfdo.yaml found; skipping backend.tf generation")
+        return []
+
+    written: list[Path] = []
+    for rd_path in root_config.run_dirs(repo_root):
+        rel_path = str(rd_path.relative_to(repo_root))
+        _backend_tf_for_run_dir(rd_path, rel_path, backend, root_config)
+        written.append(rd_path / _BACKEND_TF_FILENAME)
+        logger.info(f"backend.tf written: {rel_path}")
+    return written
+
+
+def new_backend(input_model: NewBackendInput) -> NewBackendResult:
+    backend = S3Backend(
+        bucket=input_model.bucket,
+        key=input_model.key,
+        region=input_model.region,
+        encrypt=input_model.encrypt,
+    )
+
+    repo_root = find_repo_root(input_model.settings.work_dir)
+    updated_yaml = update_tfdo_yaml_backend(repo_root, backend)
+    backend_files = write_backend_tf_files(repo_root, backend)
+
+    return NewBackendResult(
+        bucket=input_model.bucket,
+        region=input_model.region,
+        updated_yaml=updated_yaml,
+        backend_tf_files=backend_files,
+    )

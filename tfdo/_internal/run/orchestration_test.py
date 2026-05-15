@@ -1,573 +1,133 @@
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-import yaml
 
 from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
-from tfdo._internal.config.enums import HookOnError, LifecycleEvent, TagsInject
-from tfdo._internal.core import executor
-from tfdo._internal.hooks.models import ExitEvent, HookSource
-from tfdo._internal.hooks.registry import HookRegistry
-from tfdo._internal.models import PlanInput, PlanResult
-from tfdo._internal.run.discovery import DiscoveredRunDir
-from tfdo._internal.run.orchestration import (
-    DependencyGraph,
-    FailureMode,
-    LifecycleCommand,
-    OrchestrationResult,
-    RunDirResult,
-    RunOrchestrationInput,
-    _build_effective_filters,
-    _build_hook_registry,
-    _execute_run_dir,
-    _execute_wave_sequential,
-    _fire_on_all_done,
-    _include_dependency_targets,
-    _parse_git_remote_url,
-    _resolve_ref,
-    build_dependency_graph,
-    prepare_run_dir,
-    run_orchestration,
-)
+from tfdo._internal.config.enums import TagsInject
+from tfdo._internal.core import executor as executor_core
+from tfdo._internal.models import InitInput, InitMode, InitResult, OutputInput, OutputResult
+from tfdo._internal.run import orchestration as orchestration_module
 from tfdo._internal.run.run_context import RunDirContext
 from tfdo._internal.settings import CheckConfig, TfDoSettings
 
-TF_BACKEND = 'terraform {\n  backend "s3" {\n    bucket = "test"\n  }\n}\n'
+
+def test_collect_dependency_outputs_applies_resolved_config_binary_and_tf_version(tmp_path: Path) -> None:
+    captured: list[OutputInput] = []
+
+    def fake_output(inp: OutputInput) -> OutputResult:
+        captured.append(inp)
+        return OutputResult(exit_code=0, outputs={"id": "out"})
+
+    settings = TfDoSettings(work_dir=tmp_path)
+    config = ResolvedConfig(
+        binary="terraform",
+        tf_version="1.12.1",
+        backend=None,
+        tags={},
+        var_files=[],
+        tags_inject=TagsInject.ALWAYS,
+        hook_configs=[],
+        dependencies=[],
+        check=CheckConfig(),
+    )
+    run_dir = tmp_path / "envs/dev/project"
+    run_dir.mkdir(parents=True)
+    ctx = RunDirContext(name="project", path="envs/dev/project", repo_owner="o", repo_name="r")
+
+    with patch.object(orchestration_module.executor, executor_core.output_json.__name__, side_effect=fake_output):
+        out = orchestration_module._collect_dependency_outputs(settings, run_dir, ctx, config, InitMode.AUTO, None)
+
+    assert out == {"id": "out"}
+    assert len(captured) == 1
+    assert captured[0].settings.work_dir == run_dir
+    assert captured[0].settings.tf_version == "1.12.1"
+    assert captured[0].settings.binary == "terraform"
 
 
-def _resolved_config(**overrides) -> ResolvedConfig:  # pyright: ignore[reportReturnType]
-    defaults: dict = dict(
+@pytest.mark.parametrize(
+    ("fail_stderr", "uses_reconfigure"),
+    [
+        ("Backend initialization required\n", False),
+        ("Backend configuration changed\n", True),
+    ],
+)
+def test_collect_dependency_outputs_auto_retries(tmp_path: Path, fail_stderr: str, uses_reconfigure: bool) -> None:
+    n_out = 0
+    captured_init: list[InitInput] = []
+
+    def fake_output(_inp: OutputInput) -> OutputResult:
+        nonlocal n_out
+        n_out += 1
+        if n_out == 1:
+            return OutputResult(exit_code=1, stderr=fail_stderr)
+        return OutputResult(exit_code=0, outputs={"k": "v"})
+
+    def fake_init(inp: InitInput) -> InitResult:
+        captured_init.append(inp)
+        return InitResult(exit_code=0, attempts_used=1)
+
+    settings = TfDoSettings(work_dir=tmp_path)
+    config = ResolvedConfig(
         binary="terraform",
         tf_version=None,
         backend=None,
         tags={},
         var_files=[],
-        tags_inject=TagsInject.NEVER,
+        tags_inject=TagsInject.ALWAYS,
         hook_configs=[],
         dependencies=[],
         check=CheckConfig(),
     )
-    defaults.update(overrides)
-    return ResolvedConfig(**defaults)  # pyright: ignore[reportCallIssue]
-
-
-def test_dependency_graph_no_deps():
-    graph = DependencyGraph(edges={"a": set(), "b": set(), "c": set()})
-    plan = graph.to_waves()
-    assert len(plan.waves) == 1
-    assert sorted(plan.waves[0].run_dirs) == ["a", "b", "c"]
-
-
-def test_dependency_graph_with_deps():
-    graph = DependencyGraph(edges={"a": set(), "b": {"a"}, "c": {"b"}})
-    plan = graph.to_waves()
-    assert len(plan.waves) == 3
-    assert plan.waves[0].run_dirs == ["a"]
-    assert plan.waves[1].run_dirs == ["b"]
-    assert plan.waves[2].run_dirs == ["c"]
-
-
-def test_dependency_graph_cycle_detected():
-    graph = DependencyGraph(edges={"a": {"b"}, "b": {"a"}})
-    with pytest.raises(ValueError, match="cycle"):
-        graph.to_waves()
-
-
-def test_resolve_ref_sibling():
-    all_paths = {"envs/dev/network", "envs/dev/compute"}
-    assert _resolve_ref("network", "envs/dev/compute", all_paths) == "envs/dev/network"
-
-
-def test_resolve_ref_missing_raises():
-    with pytest.raises(ValueError, match="not a discovered run_dir"):
-        _resolve_ref("missing", "envs/dev/compute", {"envs/dev/compute"})
-
-
-def test_build_dependency_graph_from_configs():
-    discovered = [
-        DiscoveredRunDir(path=Path("/r/envs/dev/net"), relative_path="envs/dev/net", selectors={}),
-        DiscoveredRunDir(path=Path("/r/envs/dev/app"), relative_path="envs/dev/app", selectors={}),
-    ]
-    configs = {
-        "envs/dev/net": _resolved_config(),
-        "envs/dev/app": _resolved_config(dependencies=[DependencyRef(ref="net")]),
-    }
-    graph = build_dependency_graph(discovered, configs)
-    assert graph.edges["envs/dev/app"] == {"envs/dev/net"}
-    assert graph.edges["envs/dev/net"] == set()
-
-
-def test_prepare_run_dir_builds_init_input(tmp_path: Path):
-    run_dir = tmp_path / "envs" / "dev" / "api"
+    run_dir = tmp_path / "envs/dev/foo"
     run_dir.mkdir(parents=True)
-    settings = TfDoSettings(work_dir=tmp_path)
-    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    config = _resolved_config()
-    prepared = prepare_run_dir(settings, run_dir, ctx, config, None)
-    assert prepared.init_input.settings.work_dir == run_dir
-    assert prepared.lifecycle_flags == []
+    ctx = RunDirContext(name="foo", path="envs/dev/foo", repo_owner="o", repo_name="r")
 
-
-def test_orchestration_result_exit_code():
-    ok = OrchestrationResult(results=[RunDirResult(run_dir="a", exit_code=0)])
-    assert ok.exit_code == 0
-    failed = OrchestrationResult(
-        results=[
-            RunDirResult(run_dir="a", exit_code=0),
-            RunDirResult(run_dir="b", exit_code=2),
-        ]
-    )
-    assert failed.exit_code == 2
-
-
-def _setup_repo(tmp_path: Path, run_dirs: list[str], discovery_pattern: str, configs: dict[str, dict] | None = None):
-    (tmp_path / ".git").mkdir()
-    root_config = {"run_dir_discovery": discovery_pattern}
-    (tmp_path / "tfdo.yaml").write_text(yaml.dump(root_config))
-    for rd in run_dirs:
-        d = tmp_path / rd
-        d.mkdir(parents=True, exist_ok=True)
-        (d / "main.tf").write_text(TF_BACKEND)
-        if configs and rd in configs:
-            (d / "tfdo.yaml").write_text(yaml.dump(configs[rd]))
-
-
-def test_run_orchestration_dry_run(tmp_path: Path):
-    _setup_repo(tmp_path, ["envs/dev/api", "envs/dev/web"], "envs/{env}/{app}")
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, dry_run=True)
-    result = run_orchestration(inp)
-    assert len(result.results) == 2
-    assert all(r.skipped for r in result.results)
-    assert result.exit_code == 0
-
-
-def test_run_orchestration_with_mocked_executor(tmp_path: Path):
-    _setup_repo(
-        tmp_path,
-        ["envs/dev/network", "envs/dev/compute"],
-        "envs/{env}/{app}",
-        configs={"envs/dev/compute": {"dependencies": [{"ref": "network"}]}},
-    )
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
-
-    executor_module = executor.__name__
-    with patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)):
-        result = run_orchestration(inp)
-
-    assert result.exit_code == 0
-    assert len(result.results) == 2
-    dirs = [r.run_dir for r in result.results]
-    assert dirs.index("envs/dev/network") < dirs.index("envs/dev/compute")
-
-
-def test_run_orchestration_continue_on_error(tmp_path: Path):
-    _setup_repo(tmp_path, ["envs/dev/a", "envs/dev/b"], "envs/{env}/{app}")
-    settings = TfDoSettings(work_dir=tmp_path)
-
-    call_count = 0
-
-    def mock_plan(input_model):
-        nonlocal call_count
-        call_count += 1
-        return PlanResult(exit_code=1, stderr="plan failed")
-
-    inp = RunOrchestrationInput(
-        settings=settings, command=LifecycleCommand.PLAN, on_failure=FailureMode.CONTINUE, parallel=1
-    )
-    executor_module = executor.__name__
-    with patch(f"{executor_module}.{executor.plan.__name__}", side_effect=mock_plan):
-        result = run_orchestration(inp)
-
-    assert result.exit_code != 0
-    assert call_count == 2
-
-
-def test_run_orchestration_stops_on_first_failure(tmp_path: Path):
-    _setup_repo(
-        tmp_path,
-        ["envs/dev/network", "envs/dev/compute"],
-        "envs/{env}/{app}",
-        configs={"envs/dev/compute": {"dependencies": [{"ref": "network"}]}},
-    )
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
-
-    executor_module = executor.__name__
-    with patch(
-        f"{executor_module}.{executor.plan.__name__}",
-        return_value=PlanResult(exit_code=1, stderr="plan failed"),
-    ):
-        result = run_orchestration(inp)
-
-    assert result.exit_code != 0
-    compute_result = next(r for r in result.results if r.run_dir == "envs/dev/compute")
-    assert compute_result.skipped
-
-
-def test_run_orchestration_selector_filter(tmp_path: Path):
-    _setup_repo(tmp_path, ["envs/dev/api", "envs/staging/api"], "envs/{env}/{app}")
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(
-        settings=settings,
-        command=LifecycleCommand.PLAN,
-        dry_run=True,
-        selector_filters={"env": "dev"},
-    )
-    result = run_orchestration(inp)
-    assert len(result.results) == 1
-    assert result.results[0].run_dir == "envs/dev/api"
-
-
-def _make_run_dir(tmp_path: Path) -> Path:
-    run_dir = tmp_path / "envs" / "dev" / "api"
-    run_dir.mkdir(parents=True)
-    (run_dir / "main.tf").write_text(TF_BACKEND)
-    return run_dir
-
-
-def test_warn_mode_before_hook_does_not_abort(tmp_path: Path):
-    run_dir = _make_run_dir(tmp_path)
-    registry = HookRegistry()
-    registry.register(
-        "soft-lint",
-        [LifecycleEvent.PLAN_BEFORE],
-        lambda inp: ExitEvent(reason="lint-warn"),
-        priority=100,
-        source=HookSource.LOCAL,
-        on_error=HookOnError.WARN,
-    )
-    config = _resolved_config()
-    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
-
-    executor_module = executor.__name__
-    module = _execute_run_dir.__module__
     with (
-        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
-        patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry),
+        patch.object(orchestration_module.executor, executor_core.output_json.__name__, side_effect=fake_output),
+        patch.object(orchestration_module.executor, executor_core.init.__name__, side_effect=fake_init),
     ):
-        result = _execute_run_dir(inp, run_dir, ctx, config)
-    assert result.exit_code == 0
+        out = orchestration_module._collect_dependency_outputs(settings, run_dir, ctx, config, InitMode.AUTO, None)
+
+    assert out == {"k": "v"}
+    assert n_out == 2
+    assert len(captured_init) == 1
+    if uses_reconfigure:
+        assert "-reconfigure" in captured_init[0].extra_args
+    else:
+        assert "-reconfigure" not in captured_init[0].extra_args
 
 
-def test_before_hook_failure_aborts_command(tmp_path: Path):
-    run_dir = _make_run_dir(tmp_path)
-    registry = HookRegistry()
-    registry.register(
-        "blocker",
-        [LifecycleEvent.PLAN_BEFORE],
-        lambda inp: ExitEvent(reason="test-abort"),
-        priority=100,
-        source=HookSource.LOCAL,
+def test_resolve_dep_outputs_requires_all_keys_when_collected() -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    assert orchestration_module._resolve_dep_outputs(dep, {}) is None
+    assert orchestration_module._resolve_dep_outputs(dep, {"other": "x"}) is None
+
+
+def test_resolve_dep_outputs_rejects_null_values() -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    assert orchestration_module._resolve_dep_outputs(dep, {"id": None}) is None
+
+
+def test_resolve_dep_outputs_full_collected_map() -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    assert orchestration_module._resolve_dep_outputs(dep, {"id": "proj-1"}) == {"project_id": "proj-1"}
+
+
+def test_resolve_dep_outputs_mock_requires_all_keys() -> None:
+    dep = DependencyRef(
+        ref="project",
+        outputs={"id": "project_id"},
+        outputs_mock={"id": "mock-id"},
     )
-    config = _resolved_config()
-    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
-
-    module = _execute_run_dir.__module__
-    with patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry):
-        result = _execute_run_dir(inp, run_dir, ctx, config)
-    assert result.exit_code == 1
-    assert "test-abort" in result.stderr
+    assert orchestration_module._resolve_dep_outputs(dep, None) == {"project_id": "mock-id"}
 
 
-def test_after_hook_failure_does_not_change_exit_code(tmp_path: Path):
-    run_dir = _make_run_dir(tmp_path)
-
-    def _raise_hook(inp):
-        raise RuntimeError("after hook failure")
-
-    registry = HookRegistry()
-    registry.register(
-        "flaky-after",
-        [LifecycleEvent.PLAN_AFTER],
-        _raise_hook,
-        priority=100,
-        source=HookSource.LOCAL,
+def test_resolve_dep_outputs_mock_incomplete_returns_none() -> None:
+    dep = DependencyRef(
+        ref="project",
+        outputs={"id": "project_id", "region": "region"},
+        outputs_mock={"id": "mock-id"},
     )
-    config = _resolved_config()
-    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
-
-    executor_module = executor.__name__
-    module = _execute_run_dir.__module__
-    with (
-        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
-        patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry),
-    ):
-        result = _execute_run_dir(inp, run_dir, ctx, config)
-    assert result.exit_code == 0
-
-
-def test_on_ok_fires_on_success(tmp_path: Path):
-    run_dir = _make_run_dir(tmp_path)
-    calls: list[str] = []
-    registry = HookRegistry()
-    registry.register(
-        "on-ok",
-        [LifecycleEvent.ON_OK],
-        lambda inp: calls.append("fired"),
-        priority=100,
-        source=HookSource.LOCAL,
-    )
-    config = _resolved_config()
-    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
-
-    executor_module = executor.__name__
-    module = _execute_run_dir.__module__
-    with (
-        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
-        patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry),
-    ):
-        _execute_run_dir(inp, run_dir, ctx, config)
-    assert len(calls) == 1
-
-
-def test_on_error_fires_on_failure(tmp_path: Path):
-    run_dir = _make_run_dir(tmp_path)
-    calls: list[str] = []
-    registry = HookRegistry()
-    registry.register(
-        "on-error",
-        [LifecycleEvent.ON_ERROR],
-        lambda inp: calls.append("fired"),
-        priority=100,
-        source=HookSource.LOCAL,
-    )
-    config = _resolved_config()
-    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
-
-    executor_module = executor.__name__
-    module = _execute_run_dir.__module__
-    with (
-        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=1, stderr="fail")),
-        patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry),
-    ):
-        result = _execute_run_dir(inp, run_dir, ctx, config)
-    assert result.exit_code == 1
-    assert len(calls) == 1
-
-
-def test_before_hook_abort_fires_on_error(tmp_path: Path):
-    run_dir = _make_run_dir(tmp_path)
-    calls: list[str] = []
-    registry = HookRegistry()
-    registry.register(
-        "blocker",
-        [LifecycleEvent.PLAN_BEFORE],
-        lambda inp: ExitEvent(reason="abort"),
-        priority=100,
-        source=HookSource.LOCAL,
-    )
-    registry.register(
-        "notifier",
-        [LifecycleEvent.ON_ERROR],
-        lambda inp: calls.append("notified"),
-        priority=100,
-        source=HookSource.LOCAL,
-    )
-    config = _resolved_config()
-    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    inp = RunOrchestrationInput(settings=TfDoSettings(work_dir=tmp_path), command=LifecycleCommand.PLAN)
-
-    module = _execute_run_dir.__module__
-    with patch(f"{module}.{_build_hook_registry.__name__}", return_value=registry):
-        result = _execute_run_dir(inp, run_dir, ctx, config)
-    assert result.exit_code == 1
-    assert len(calls) == 1
-
-
-def test_parse_git_remote_url_https():
-    assert _parse_git_remote_url("https://github.com/Owner/Repo.git") == ("Owner", "Repo")
-
-
-def test_parse_git_remote_url_ssh():
-    assert _parse_git_remote_url("git@github.com:Owner/Repo.git") == ("Owner", "Repo")
-
-
-def test_parse_git_remote_url_https_no_suffix():
-    assert _parse_git_remote_url("https://github.com/Owner/Repo") == ("Owner", "Repo")
-
-
-def test_parse_git_remote_url_fallback():
-    assert _parse_git_remote_url("not-a-url") is None
-
-
-def test_parallel_1_runs_sequentially(tmp_path: Path):
-    _setup_repo(tmp_path, ["envs/dev/api", "envs/dev/web"], "envs/{env}/{app}")
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
-
-    executor_module = executor.__name__
-    module = run_orchestration.__module__
-    with (
-        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
-        patch(f"{module}.{_execute_wave_sequential.__name__}", wraps=_execute_wave_sequential) as seq_mock,
-    ):
-        result = run_orchestration(inp)
-
-    assert result.exit_code == 0
-    assert seq_mock.call_count >= 1
-
-
-def test_prepare_run_dir_applies_binary_override(tmp_path: Path):
-    run_dir = tmp_path / "envs" / "dev" / "api"
-    run_dir.mkdir(parents=True)
-    settings = TfDoSettings(work_dir=tmp_path)
-    ctx = RunDirContext(name="api", path="envs/dev/api", repo_owner="o", repo_name="r")
-    config = _resolved_config(binary="tofu", tf_version="1.6.0")
-    prepared = prepare_run_dir(settings, run_dir, ctx, config, None)
-    assert prepared.init_input.settings.binary == "tofu"
-    assert prepared.init_input.settings.tf_version == "1.6.0"
-
-
-def test_tag_filter_matches_per_dir_config_tags(tmp_path: Path):
-    _setup_repo(
-        tmp_path,
-        ["envs/dev/api", "envs/dev/web"],
-        "envs/{env}/{app}",
-        configs={"envs/dev/api": {"tags": {"tier": "critical"}}},
-    )
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(
-        settings=settings,
-        command=LifecycleCommand.PLAN,
-        dry_run=True,
-        tag_filters=["tier=critical"],
-    )
-    result = run_orchestration(inp)
-    assert len(result.results) == 1
-    assert result.results[0].run_dir == "envs/dev/api"
-
-
-def test_include_dependency_targets_pulls_in_missing_deps():
-    all_discovered = [
-        DiscoveredRunDir(path=Path("/r/envs/dev/app1"), relative_path="envs/dev/app1", selectors={}),
-        DiscoveredRunDir(path=Path("/r/envs/dev/app2"), relative_path="envs/dev/app2", selectors={}),
-    ]
-    filtered = [all_discovered[1]]
-    configs = {
-        "envs/dev/app1": _resolved_config(),
-        "envs/dev/app2": _resolved_config(dependencies=[DependencyRef(ref="app1")]),
-    }
-    result = _include_dependency_targets(filtered, all_discovered, configs)
-    paths = [d.relative_path for d in result]
-    assert "envs/dev/app1" in paths
-    assert "envs/dev/app2" in paths
-
-
-def test_filter_with_deps_auto_includes_targets(tmp_path: Path):
-    _setup_repo(
-        tmp_path,
-        ["envs/dev/net", "envs/dev/app"],
-        "envs/{env}/{svc}",
-        configs={"envs/dev/app": {"dependencies": [{"ref": "net"}]}},
-    )
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(
-        settings=settings,
-        command=LifecycleCommand.PLAN,
-        dry_run=True,
-        selector_filters={"svc": "app"},
-    )
-    result = run_orchestration(inp)
-    dirs = [r.run_dir for r in result.results]
-    assert "envs/dev/net" in dirs
-    assert "envs/dev/app" in dirs
-    assert dirs.index("envs/dev/net") < dirs.index("envs/dev/app")
-
-
-def test_orchestration_plan_passes_backend_args(tmp_path: Path):
-    _setup_repo(
-        tmp_path,
-        ["envs/dev/api"],
-        "envs/{env}/{app}",
-        configs={"envs/dev/api": {"backend": {"type": "s3", "bucket": "my-bucket", "key": "state.tfstate"}}},
-    )
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
-
-    captured_inputs: list[PlanInput] = []
-
-    def mock_plan(input_model: PlanInput) -> PlanResult:
-        captured_inputs.append(input_model)
-        return PlanResult(exit_code=0)
-
-    executor_module = executor.__name__
-    with patch(f"{executor_module}.{executor.plan.__name__}", side_effect=mock_plan):
-        result = run_orchestration(inp)
-
-    assert result.exit_code == 0
-    assert len(captured_inputs) == 1
-    assert any("bucket" in arg for arg in captured_inputs[0].init_backend_args)
-
-
-def test_team_fallback_to_tag_filter():
-    discovered = [
-        DiscoveredRunDir(
-            path=Path("/r/envs/dev/api"), relative_path="envs/dev/api", selectors={"env": "dev", "app": "api"}
-        ),
-    ]
-    inp = RunOrchestrationInput(
-        settings=TfDoSettings(work_dir=Path("/r")),
-        command=LifecycleCommand.PLAN,
-        selector_filters={"team": "infra"},
-    )
-    sel, tags = _build_effective_filters(inp, discovered)
-    assert sel is None or "team" not in sel
-    assert tags
-    assert any(t.key == "team" for t in tags)
-
-
-def test_team_stays_as_selector_when_in_pattern():
-    discovered = [
-        DiscoveredRunDir(
-            path=Path("/r/envs/dev/infra"),
-            relative_path="envs/dev/infra",
-            selectors={"env": "dev", "team": "infra"},
-        ),
-    ]
-    inp = RunOrchestrationInput(
-        settings=TfDoSettings(work_dir=Path("/r")),
-        command=LifecycleCommand.PLAN,
-        selector_filters={"team": "infra"},
-    )
-    sel, tags = _build_effective_filters(inp, discovered)
-    assert sel and "team" in sel
-
-
-def test_changed_filter_integration(tmp_path: Path):
-    _setup_repo(tmp_path, ["envs/dev/api", "envs/dev/web"], "envs/{env}/{app}")
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, dry_run=True, changed=True)
-
-    module = run_orchestration.__module__
-    with patch(f"{module}._get_changed_files", return_value=["envs/dev/api/main.tf"]):
-        result = run_orchestration(inp)
-
-    assert len(result.results) == 1
-    assert result.results[0].run_dir == "envs/dev/api"
-
-
-def test_on_all_done_fires_after_execution(tmp_path: Path):
-    _setup_repo(tmp_path, ["envs/dev/api"], "envs/{env}/{app}")
-    settings = TfDoSettings(work_dir=tmp_path)
-    inp = RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
-
-    executor_module = executor.__name__
-    module = run_orchestration.__module__
-    with (
-        patch(f"{executor_module}.{executor.plan.__name__}", return_value=PlanResult(exit_code=0)),
-        patch(f"{module}.{_fire_on_all_done.__name__}") as fire_mock,
-    ):
-        run_orchestration(inp)
-
-    assert fire_mock.call_count == 1
+    assert orchestration_module._resolve_dep_outputs(dep, None) is None

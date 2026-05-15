@@ -45,3 +45,12 @@ def tflint_option() -> bool | None:
     return typer.Option(
         None, "--tflint/--no-tflint", envvar="TFDO_TFLINT", help="Run tflint linter alongside fmt+validate"
     )
+
+
+def skip_check_providers_option() -> bool | None:
+    return typer.Option(
+        None,
+        "--skip-check-providers/--no-skip-check-providers",
+        envvar="TFDO_SKIP_CHECK_PROVIDERS",
+        help="Skip provider declaration and credential checks",
+    )

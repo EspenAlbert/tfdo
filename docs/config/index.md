@@ -5,14 +5,17 @@
 
 <!-- === DO_NOT_EDIT: pkg-ext symbols === -->
 - [`BackendType`](#backendtype_def)
-- [`DependencyRef`](#dependencyref_def)
+- [`CiConfig`](#ciconfig_def)
+- [DependencyRef](./dependencyref.md)
 - [`HookConfig`](#hookconfig_def)
 - [`HookOnError`](#hookonerror_def)
 - [`LifecycleEvent`](#lifecycleevent_def)
 - [`LocalBackend`](#localbackend_def)
-- [`S3Backend`](#s3backend_def)
+- [`ModuleConstraint`](#moduleconstraint_def)
+- [`ProviderConstraint`](#providerconstraint_def)
+- [S3Backend](./s3backend.md)
 - [`TagsInject`](#tagsinject_def)
-- [`TfDoConfig`](#tfdoconfig_def)
+- [TfDoConfig](./tfdoconfig.md)
 - [`init_cmd`](#init_cmd_def)
 - [`show_cmd`](#show_cmd_def)
 <!-- === OK_EDIT: pkg-ext symbols === -->
@@ -39,35 +42,11 @@ class BackendType(StrEnum):
 |---------|--------|
 | 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext backendtype_def === -->
-<!-- === DO_NOT_EDIT: pkg-ext dependencyref_def === -->
-<a id="dependencyref_def"></a>
-
-### class: `DependencyRef`
-- [source](../../tfdo/_internal/config/config_model.py#L68)
-> **Since:** 0.6.0
-
-```python
-class DependencyRef(BaseModel):
-    ref: str
-    outputs: bool = True
-```
-
-| Field | Type | Default | Since |
-|---|---|---|---|
-| ref | `str` | - | 0.6.0 |
-| outputs | `bool` | `True` | 0.6.0 |
-
-### Changes
-
-| Version | Change |
-|---------|--------|
-| 0.6.0 | Made public |
-<!-- === OK_EDIT: pkg-ext dependencyref_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext hookconfig_def === -->
 <a id="hookconfig_def"></a>
 
 ### class: `HookConfig`
-- [source](../../tfdo/_internal/config/config_model.py#L50)
+- [source](../../tfdo/_internal/config/config_model.py#L81)
 > **Since:** 0.6.0
 
 ```python
@@ -137,7 +116,7 @@ class LifecycleEvent(StrEnum):
 <a id="localbackend_def"></a>
 
 ### class: `LocalBackend`
-- [source](../../tfdo/_internal/config/config_model.py#L38)
+- [source](../../tfdo/_internal/config/config_model.py#L69)
 > **Since:** 0.6.0
 
 ```python
@@ -157,38 +136,6 @@ class LocalBackend(BaseModel):
 |---------|--------|
 | 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext localbackend_def === -->
-<!-- === DO_NOT_EDIT: pkg-ext s3backend_def === -->
-<a id="s3backend_def"></a>
-
-### class: `S3Backend`
-- [source](../../tfdo/_internal/config/config_model.py#L15)
-> **Since:** 0.6.0
-
-```python
-class S3Backend(BaseModel):
-    type: Literal[s3] = <BackendType.S3: 's3'>
-    bucket: str
-    key: str
-    region: str | None = None
-    dynamodb_table: str | None = None
-    encrypt: bool | None = None
-```
-
-| Field | Type | Default | Since |
-|---|---|---|---|
-| type | `Literal[s3]` | `<BackendType.S3: 's3'>` | 0.6.0 |
-| bucket | `str` | - | 0.6.0 |
-| key | `str` | - | 0.6.0 |
-| region | `str | None` | `None` | 0.6.0 |
-| dynamodb_table | `str | None` | `None` | 0.6.0 |
-| encrypt | `bool | None` | `None` | 0.6.0 |
-
-### Changes
-
-| Version | Change |
-|---------|--------|
-| 0.6.0 | Made public |
-<!-- === OK_EDIT: pkg-ext s3backend_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext tagsinject_def === -->
 <a id="tagsinject_def"></a>
 
@@ -207,46 +154,6 @@ class TagsInject(StrEnum):
 |---------|--------|
 | 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tagsinject_def === -->
-<!-- === DO_NOT_EDIT: pkg-ext tfdoconfig_def === -->
-<a id="tfdoconfig_def"></a>
-
-### class: `TfDoConfig`
-- [source](../../tfdo/_internal/config/config_model.py#L73)
-> **Since:** 0.6.0
-
-```python
-class TfDoConfig(BaseModel):
-    binary: str | None = None
-    tf_version: str | None = None
-    backend: Annotated[S3Backend | LocalBackend, annotation=NoneType required=True discriminator='type'] | None = None
-    check: CheckConfig | None = None
-    tags_inject: TagsInject | None = None
-    tags: dict[str, str] = ...
-    hook_configs: list[HookConfig] = ...
-    dependencies: list[DependencyRef] = ...
-    var_files: list[str] = ...
-    run_dir_discovery: str | None = None
-```
-
-| Field | Type | Default | Since |
-|---|---|---|---|
-| binary | `str | None` | `None` | 0.6.0 |
-| tf_version | `str | None` | `None` | 0.6.0 |
-| backend | `Annotated[S3Backend | LocalBackend, annotation=NoneType required=True discriminator='type'] | None` | `None` | 0.6.0 |
-| check | `CheckConfig | None` | `None` | 0.6.0 |
-| tags_inject | `TagsInject | None` | `None` | 0.6.0 |
-| tags | `dict[str, str]` | `...` | 0.6.0 |
-| hook_configs | `list[HookConfig]` | `...` | 0.6.0 |
-| dependencies | `list[DependencyRef]` | `...` | 0.6.0 |
-| var_files | `list[str]` | `...` | 0.6.0 |
-| run_dir_discovery | `str | None` | `None` | 0.6.0 |
-
-### Changes
-
-| Version | Change |
-|---------|--------|
-| 0.6.0 | Made public |
-<!-- === OK_EDIT: pkg-ext tfdoconfig_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext show_cmd_def === -->
 <a id="show_cmd_def"></a>
 
@@ -293,3 +200,83 @@ Detect run directories and generate a starter tfdo.yaml.
 |---------|--------|
 | 0.6.0 | Made public |
 <!-- === OK_EDIT: pkg-ext init_cmd_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext ciconfig_def === -->
+<a id="ciconfig_def"></a>
+
+### class: `CiConfig`
+- [source](../../tfdo/_internal/config/config_model.py#L128)
+> **Since:** unreleased
+
+```python
+class CiConfig(BaseModel):
+    oidc: bool = False
+    repo_org: str | None = None
+    repo_name: str | None = None
+    oidc_roles: dict[str, str] = ...
+    tfdo_install: str = 'git+https://github.com/EspenAlbert/tfdo.git@main'
+```
+
+| Field | Type | Default | Since |
+|---|---|---|---|
+| oidc | `bool` | `False` | unreleased |
+| repo_org | `str | None` | `None` | unreleased |
+| repo_name | `str | None` | `None` | unreleased |
+| oidc_roles | `dict[str, str]` | `...` | unreleased |
+| tfdo_install | `str` | `'git+https://github.com/EspenAlbert/tfdo.git@main'` | unreleased |
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| unreleased | Made public |
+<!-- === OK_EDIT: pkg-ext ciconfig_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext moduleconstraint_def === -->
+<a id="moduleconstraint_def"></a>
+
+### class: `ModuleConstraint`
+- [source](../../tfdo/_internal/config/config_model.py#L114)
+> **Since:** unreleased
+
+```python
+class ModuleConstraint(BaseModel):
+    source: str
+    constraint: str | None = None
+```
+
+| Field | Type | Default | Since |
+|---|---|---|---|
+| source | `str` | - | unreleased |
+| constraint | `str | None` | `None` | unreleased |
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| unreleased | Made public |
+<!-- === OK_EDIT: pkg-ext moduleconstraint_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext providerconstraint_def === -->
+<a id="providerconstraint_def"></a>
+
+### class: `ProviderConstraint`
+- [source](../../tfdo/_internal/config/config_model.py#L108)
+> **Since:** unreleased
+
+```python
+class ProviderConstraint(BaseModel):
+    name: str
+    source: str | None = None
+    constraint: str | None = None
+```
+
+| Field | Type | Default | Since |
+|---|---|---|---|
+| name | `str` | - | unreleased |
+| source | `str | None` | `None` | unreleased |
+| constraint | `str | None` | `None` | unreleased |
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| unreleased | Made public |
+<!-- === OK_EDIT: pkg-ext providerconstraint_def === -->

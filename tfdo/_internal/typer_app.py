@@ -1,6 +1,8 @@
+import os
 from pathlib import Path
 
 import typer
+from ask_shell.settings import AskShellSettings, ShellRunSummary
 
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
@@ -34,13 +36,25 @@ def main_callback(
     passthrough: bool = typer.Option(
         False, "--passthrough", help="Disable parsed output, pass raw ANSI from terraform"
     ),
+    verbose_shell: bool = typer.Option(
+        False, "--verbose-shell", envvar="TFDO_VERBOSE_SHELL", help="Log successful shell command completions"
+    ),
 ) -> None:
     kwargs: dict = dict(
-        binary=binary, tf_version=tf_version, interactive=interactive, log_level=log_level, passthrough=passthrough
+        binary=binary,
+        tf_version=tf_version,
+        interactive=interactive,
+        log_level=log_level,
+        passthrough=passthrough,
+        verbose_shell=verbose_shell,
     )
     if work_dir is not None:
         kwargs["work_dir"] = work_dir
-    ctx.obj = TfDoSettings(**kwargs)
+    settings = TfDoSettings(**kwargs)
+    ctx.obj = settings
+    os.environ[AskShellSettings.ENV_NAME_SHELL_RUN_SUMMARY] = (
+        ShellRunSummary.ALL if settings.verbose_shell else ShellRunSummary.ERRORS_ONLY
+    )
 
 
 def get_settings(ctx: typer.Context) -> TfDoSettings:

@@ -9,7 +9,7 @@ from model_lib import parse
 from pydantic import BaseModel, Field
 
 from tfdo._internal.core.tf_files import iter_tf_files
-from tfdo._internal.hcl_compat import hcl2_load
+from tfdo._internal.hcl_read import hcl2_load
 from tfdo._internal.inspect import hcl_resource_paths as hrp
 from tfdo._internal.inspect.description_search_logic import (
     MatchingSchemaResource,

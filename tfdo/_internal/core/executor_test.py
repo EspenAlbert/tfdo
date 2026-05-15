@@ -13,14 +13,27 @@ from tfdo._internal.core.executor import (
     _clean_terraform_cache,
     _is_checksum_error,
     _is_transient,
-    _needs_init,
+    _parse_tf_outputs,
     apply,
     destroy,
     init,
+    init_input_for_output_retry,
+    is_backend_changed,
+    needs_init,
+    output_json,
     plan,
     terraform_init_should_retry,
 )
-from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, InitResult, PlanInput, PlanResult
+from tfdo._internal.models import (
+    ApplyInput,
+    DestroyInput,
+    InitInput,
+    InitMode,
+    InitResult,
+    OutputInput,
+    PlanInput,
+    PlanResult,
+)
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 module_name = init.__module__
@@ -260,11 +273,23 @@ def test_lifecycle_always_init_then_command(tmp_path: Path):
 
 
 def test_needs_init_detection():
-    assert _needs_init('Error: Could not load plugin\n\nPlease run "terraform init"')
-    assert _needs_init("Error: Missing required provider")
-    assert _needs_init("Error: Backend initialization required")
-    assert _needs_init("Error: Module not installed")
-    assert not _needs_init("Error: Invalid HCL syntax")
+    assert needs_init('Error: Could not load plugin\n\nPlease run "terraform init"')
+    assert needs_init("Error: Missing required provider")
+    assert needs_init("Error: Backend initialization required")
+    assert needs_init("Error: Module not installed")
+    assert not needs_init("Error: Backend configuration changed")
+    assert not needs_init("Error: Invalid HCL syntax")
+
+
+def test_init_input_for_output_retry(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    base = InitInput(settings=settings, backend_args=["-backend-config=a"])
+    changed = init_input_for_output_retry("Backend configuration changed", base)
+    assert changed is not None
+    assert "-reconfigure" in changed.extra_args
+    assert changed.backend_args == base.backend_args
+    assert init_input_for_output_retry("Backend initialization required", base) is base
+    assert init_input_for_output_retry("Invalid HCL", base) is None
 
 
 def test_auto_init_retries_on_init_needed_error(tmp_path: Path):
@@ -407,3 +432,71 @@ def test_auto_init_uses_backend_args(tmp_path: Path):
     assert result.exit_code == 0
     assert len(init_calls) == 1
     assert init_calls[0].backend_args == backend_args
+
+
+def test_backend_changed_warns_without_auto_reconfigure(tmp_path: Path):
+    """Backend configuration changed should warn, not silently auto-reconfigure."""
+    settings = _make_settings(tmp_path)
+    input_model = PlanInput(settings=settings, init_backend_args=["-backend-config=key=new"])
+
+    module = plan.__module__
+    with (
+        patch(
+            f"{module}.{executor._run_command.__name__}",
+            return_value=PlanResult(exit_code=1, stderr="Backend configuration changed"),
+        ),
+        patch(f"{module}.{init.__name__}") as mock_init,
+    ):
+        result = plan(input_model)
+
+    assert result.exit_code == 1
+    mock_init.assert_not_called()
+
+
+def test_is_backend_changed_detection():
+    assert is_backend_changed("Error: Backend configuration changed")
+    assert is_backend_changed("BACKEND CONFIGURATION CHANGED for module foo")
+    assert not is_backend_changed("Error: Missing required provider")
+    assert not is_backend_changed("")
+
+
+# --- output_json tests ---
+
+
+def test_parse_tf_outputs():
+    raw = {
+        "id": {"value": "abc123", "type": "string"},
+        "name": {"value": "my-project", "type": "string"},
+    }
+    assert _parse_tf_outputs(raw) == {"id": "abc123", "name": "my-project"}
+    assert _parse_tf_outputs({}) == {}
+
+
+def test_output_json_success(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    tf_output = '{"id": {"value": "abc123", "type": "string"}}'
+    run = _mock_run(exit_code=0, stdout=tf_output)
+    run.stdout_one_line = tf_output
+    with patch(_patch_run, return_value=run):
+        result = output_json(OutputInput(settings=settings))
+    assert result.exit_code == 0
+    assert result.outputs == {"id": "abc123"}
+
+
+def test_output_json_failure(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=1, stderr="No state file found")
+    with patch(_patch_run, return_value=run):
+        result = output_json(OutputInput(settings=settings))
+    assert result.exit_code == 1
+
+
+def test_output_json_with_state_path(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    tf_output = '{"id": {"value": "abc123", "type": "string"}}'
+    run = _mock_run(exit_code=0, stdout=tf_output)
+    run.stdout_one_line = tf_output
+    with patch(_patch_run, return_value=run) as mock_raw:
+        output_json(OutputInput(settings=settings, state=Path("custom.tfstate")))
+    cmd = mock_raw.call_args[0][0]
+    assert "-state=custom.tfstate" in cmd
