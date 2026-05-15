@@ -15,6 +15,8 @@ TOOL_NAME = "tfdo"
 SECTION_ID = "ci-targets"
 JUSTFILE_COMMENT_CONFIG = CommentConfig("#")
 JUSTFILE_NAME = "justfile"
+# Forwards *args to the shell as "$@" so flags like --auto-approve reach terraform/tofu.
+POSITIONAL_ARGUMENTS_LINE = "set positional-arguments"
 
 
 class SyncJustfileInput(TfDoBaseInput):
@@ -56,7 +58,10 @@ def _discover_targets(config: TfDoConfig, work_dir: Path) -> list[tuple[str, dic
 
 
 def _render_section(targets: list[tuple[str, dict[str, str]]]) -> str:
-    return "\n\n".join(_render_target(name, selectors) for name, selectors in targets)
+    body = "\n\n".join(_render_target(name, selectors) for name, selectors in targets)
+    if not body:
+        return POSITIONAL_ARGUMENTS_LINE
+    return f"{POSITIONAL_ARGUMENTS_LINE}\n\n{body}"
 
 
 def sync_justfile(input_model: SyncJustfileInput) -> SyncJustfileResult:

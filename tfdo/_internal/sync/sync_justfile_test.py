@@ -7,6 +7,7 @@ from zero_3rdparty.sections import CommentConfig, extract_sections
 
 from tfdo._internal.settings import TfDoSettings
 from tfdo._internal.sync.sync_justfile import (
+    POSITIONAL_ARGUMENTS_LINE,
     SECTION_ID,
     TOOL_NAME,
     SyncJustfileInput,
@@ -40,6 +41,8 @@ def test_env_only_targets(tmp_path: Path) -> None:
 
     assert result.target_names == ["dev", "prod"]
     section = _section(result.justfile_path)
+    assert section.startswith(POSITIONAL_ARGUMENTS_LINE)
+    assert '"$@"' in section
     assert "dev cmd *args:" in section
     assert "prod cmd *args:" in section
     assert "tfdo run --env dev {{cmd}}" in section
@@ -52,6 +55,8 @@ def test_run_dir_targets_use_app_flag(tmp_path: Path) -> None:
 
     assert result.target_names == ["dev", "dev-app", "dev-networking"]
     section = _section(result.justfile_path)
+    assert section.startswith(POSITIONAL_ARGUMENTS_LINE)
+    assert '"$@"' in section
     assert "dev cmd *args:" in section
     assert "tfdo run --env dev {{cmd}}" in section
     assert "dev-networking cmd *args:" in section
@@ -89,3 +94,5 @@ def test_no_envs_produces_empty_targets(tmp_path: Path, layout: dict, expected: 
     _make_env_dirs(tmp_path, layout)
     result = sync_justfile(SyncJustfileInput(settings=_settings(tmp_path)))
     assert result.target_names == expected
+    section = _section(result.justfile_path)
+    assert section.startswith(POSITIONAL_ARGUMENTS_LINE)

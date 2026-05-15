@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import NamedTuple
 
@@ -27,6 +28,7 @@ def is_git_repo(work_dir: Path) -> bool:
     return (work_dir / ".git").is_dir()
 
 
+@lru_cache(maxsize=32)
 def parse_git_remote(work_dir: Path) -> GitRemote | None:
     try:
         run = run_and_wait("git remote get-url origin", cwd=work_dir)
