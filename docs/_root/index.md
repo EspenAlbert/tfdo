@@ -21,7 +21,7 @@
 <a id="get_settings_def"></a>
 
 ### cli_command: `get_settings`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/typer_app.py#L60)
+- [source](../../tfdo/_internal/typer_app.py#L60)
 > **Since:** 0.1.0
 
 ```python
@@ -39,7 +39,7 @@ def get_settings() -> TfDoSettings:
 <a id="main_callback_def"></a>
 
 ### cli_command: `main_callback`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/typer_app.py#L17)
+- [source](../../tfdo/_internal/typer_app.py#L17)
 > **Since:** 0.1.0
 
 ```python
@@ -69,7 +69,7 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = None, w
 <a id="interactivemode_def"></a>
 
 ### class: `InteractiveMode`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/settings.py#L24)
+- [source](../../tfdo/_internal/settings.py#L24)
 > **Since:** 0.2.0
 
 ```python
@@ -87,7 +87,7 @@ class InteractiveMode(StrEnum):
 <a id="tfdouserconfig_def"></a>
 
 ### class: `TfDoUserConfig`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/settings.py#L138)
+- [source](../../tfdo/_internal/settings.py#L138)
 > **Since:** 0.3.0
 
 ```python
@@ -109,7 +109,7 @@ class TfDoUserConfig(BaseModel):
 <a id="info_cmd_def"></a>
 
 ### cli_command: `info_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/core/cmd_info.py#L39)
+- [source](../../tfdo/_internal/core/cmd_info.py#L39)
 > **Since:** 0.3.0
 
 ```python

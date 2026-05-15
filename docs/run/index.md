@@ -19,7 +19,7 @@
 <a id="run_apply_cmd_def"></a>
 
 ### cli_command: `run_apply_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/run/cmd_run.py#L121)
+- [source](../../tfdo/_internal/run/cmd_run.py#L121)
 > **Since:** 0.6.0
 
 ```python
@@ -47,7 +47,7 @@ Run apply across multiple run directories.
 <a id="run_callback_def"></a>
 
 ### cli_command: `run_callback`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/run/cmd_run.py#L48)
+- [source](../../tfdo/_internal/run/cmd_run.py#L48)
 > **Since:** 0.6.0
 
 ```python
@@ -78,7 +78,7 @@ def run_callback(*, env: str | None = None, app_name: str | None = None, team: s
 <a id="run_destroy_cmd_def"></a>
 
 ### cli_command: `run_destroy_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/run/cmd_run.py#L136)
+- [source](../../tfdo/_internal/run/cmd_run.py#L136)
 > **Since:** 0.6.0
 
 ```python
@@ -106,7 +106,7 @@ Run destroy across multiple run directories.
 <a id="run_init_cmd_def"></a>
 
 ### cli_command: `run_init_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/run/cmd_run.py#L82)
+- [source](../../tfdo/_internal/run/cmd_run.py#L82)
 > **Since:** 0.6.0
 
 ```python
@@ -133,7 +133,7 @@ Run init across multiple run directories.
 <a id="run_plan_cmd_def"></a>
 
 ### cli_command: `run_plan_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/run/cmd_run.py#L100)
+- [source](../../tfdo/_internal/run/cmd_run.py#L100)
 > **Since:** 0.6.0
 
 ```python

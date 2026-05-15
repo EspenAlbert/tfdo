@@ -21,7 +21,7 @@
 <a id="inspect_hcl_paths_cmd_def"></a>
 
 ### cli_command: `inspect_hcl_paths_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/inspect/cmd_inspect.py#L31)
+- [source](../../tfdo/_internal/inspect/cmd_inspect.py#L31)
 > **Since:** 0.4.0
 
 ```python
@@ -48,7 +48,7 @@ def inspect_hcl_paths_cmd(*, path: Path = Path('.'), hidden: bool = False, as_js
 <a id="inspect_resource_usage_cmd_def"></a>
 
 ### cli_command: `inspect_resource_usage_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/inspect/cmd_inspect.py#L56)
+- [source](../../tfdo/_internal/inspect/cmd_inspect.py#L56)
 > **Since:** 0.4.0
 
 ```python
@@ -84,7 +84,7 @@ def inspect_resource_usage_cmd(*, path: Path = Path('.'), mode: str = 'all', inp
 <a id="matchingattributedescription_def"></a>
 
 ### class: `MatchingAttributeDescription`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/inspect/description_search_logic.py#L10)
+- [source](../../tfdo/_internal/inspect/description_search_logic.py#L10)
 > **Since:** 0.5.0
 
 ```python
@@ -110,7 +110,7 @@ class MatchingAttributeDescription(BaseModel):
 <a id="matchingschemaresource_def"></a>
 
 ### class: `MatchingSchemaResource`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/inspect/description_search_logic.py#L16)
+- [source](../../tfdo/_internal/inspect/description_search_logic.py#L16)
 > **Since:** 0.5.0
 
 ```python
@@ -136,7 +136,7 @@ class MatchingSchemaResource(BaseModel):
 <a id="schemasearch_def"></a>
 
 ### class: `SchemaSearch`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/inspect/resource_usage_logic.py#L52)
+- [source](../../tfdo/_internal/inspect/resource_usage_logic.py#L52)
 > **Since:** 0.5.0
 
 ```python
@@ -164,7 +164,7 @@ class SchemaSearch(BaseModel):
 <a id="schemasearchrowsbehavior_def"></a>
 
 ### class: `SchemaSearchRowsBehavior`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/inspect/resource_usage_logic.py#L46)
+- [source](../../tfdo/_internal/inspect/resource_usage_logic.py#L46)
 > **Since:** 0.5.0
 
 ```python
@@ -182,7 +182,7 @@ class SchemaSearchRowsBehavior(StrEnum):
 <a id="inspect_api_coverage_cmd_def"></a>
 
 ### cli_command: `inspect_api_coverage_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/inspect/cmd_inspect.py#L138)
+- [source](../../tfdo/_internal/inspect/cmd_inspect.py#L138)
 > **Since:** 0.5.0
 
 ```python

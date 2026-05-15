@@ -20,7 +20,7 @@
 <a id="apply_cmd_def"></a>
 
 ### cli_command: `apply_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/core/cmd_apply.py#L11)
+- [source](../../tfdo/_internal/core/cmd_apply.py#L11)
 > **Since:** 0.1.0
 
 ```python
@@ -48,7 +48,7 @@ Run terraform apply.
 <a id="check_cmd_def"></a>
 
 ### cli_command: `check_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/check/cmd_check.py#L120)
+- [source](../../tfdo/_internal/check/cmd_check.py#L120)
 > **Since:** 0.1.0
 
 ```python
@@ -80,7 +80,7 @@ Run terraform fmt check + validate (ruff-style).
 <a id="destroy_cmd_def"></a>
 
 ### cli_command: `destroy_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/core/cmd_destroy.py#L11)
+- [source](../../tfdo/_internal/core/cmd_destroy.py#L11)
 > **Since:** 0.1.0
 
 ```python
@@ -108,7 +108,7 @@ Run terraform destroy.
 <a id="init_cmd_def"></a>
 
 ### cli_command: `init_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/core/cmd_init.py#L12)
+- [source](../../tfdo/_internal/core/cmd_init.py#L12)
 > **Since:** 0.1.0
 
 ```python
@@ -135,7 +135,7 @@ Run terraform init with retry on transient errors.
 <a id="plan_cmd_def"></a>
 
 ### cli_command: `plan_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/core/cmd_plan.py#L11)
+- [source](../../tfdo/_internal/core/cmd_plan.py#L11)
 > **Since:** 0.1.0
 
 ```python
@@ -164,7 +164,7 @@ Run terraform plan.
 <a id="initmode_def"></a>
 
 ### class: `InitMode`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/models.py#L17)
+- [source](../../tfdo/_internal/models.py#L17)
 > **Since:** 0.2.0
 
 ```python

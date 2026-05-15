@@ -19,7 +19,7 @@
 <a id="exitevent_def"></a>
 
 ### class: `ExitEvent`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/hooks/models.py#L26)
+- [source](../../tfdo/_internal/hooks/models.py#L26)
 > **Since:** 0.6.0
 
 ```python
@@ -41,7 +41,7 @@ class ExitEvent(BaseModel):
 <a id="hookenvvars_def"></a>
 
 ### class: `HookEnvVars`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/hooks/models.py#L9)
+- [source](../../tfdo/_internal/hooks/models.py#L9)
 > **Since:** 0.6.0
 
 ```python
@@ -59,7 +59,7 @@ class HookEnvVars(dict):
 <a id="hookinput_def"></a>
 
 ### class: `HookInput`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/hooks/models.py#L19)
+- [source](../../tfdo/_internal/hooks/models.py#L19)
 > **Since:** 0.6.0
 
 ```python
@@ -81,7 +81,7 @@ class HookInput(BaseModel):
 <a id="inputmodification_def"></a>
 
 ### class: `InputModification`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/hooks/models.py#L30)
+- [source](../../tfdo/_internal/hooks/models.py#L30)
 > **Since:** 0.6.0
 
 ```python
@@ -107,7 +107,7 @@ class InputModification(BaseModel):
 <a id="retryevent_def"></a>
 
 ### class: `RetryEvent`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/hooks/models.py#L36)
+- [source](../../tfdo/_internal/hooks/models.py#L36)
 > **Since:** 0.6.0
 
 ```python

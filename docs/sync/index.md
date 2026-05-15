@@ -16,7 +16,7 @@
 <a id="github_cmd_def"></a>
 
 ### cli_command: `github_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/sync/cmd_sync.py#L86)
+- [source](../../tfdo/_internal/sync/cmd_sync.py#L86)
 > **Since:** unreleased
 
 ```python
@@ -45,7 +45,7 @@ Scaffold GitHub Actions workflows and sync secrets/variables per environment.
 <a id="justfile_cmd_def"></a>
 
 ### cli_command: `justfile_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/sync/cmd_sync.py#L29)
+- [source](../../tfdo/_internal/sync/cmd_sync.py#L29)
 > **Since:** unreleased
 
 ```python

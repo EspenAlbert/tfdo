@@ -2,7 +2,7 @@
 
 <!-- === DO_NOT_EDIT: pkg-ext s3backend_def === -->
 ## class: S3Backend
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/config_model.py#L24)
+- [source](../../tfdo/_internal/config/config_model.py#L24)
 > **Since:** 0.6.0
 
 ```python

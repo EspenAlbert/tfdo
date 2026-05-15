@@ -15,7 +15,7 @@
 <a id="boot_cmd_def"></a>
 
 ### cli_command: `boot_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/boot/cmd_boot.py#L13)
+- [source](../../tfdo/_internal/boot/cmd_boot.py#L13)
 > **Since:** unreleased
 
 ```python

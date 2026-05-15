@@ -15,7 +15,7 @@
 <a id="env_cmd_def"></a>
 
 ### cli_command: `env_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/copy/cmd_copy.py#L99)
+- [source](../../tfdo/_internal/copy/cmd_copy.py#L99)
 > **Since:** unreleased
 
 ```python

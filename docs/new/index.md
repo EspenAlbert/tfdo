@@ -16,7 +16,7 @@
 <a id="backend_cmd_def"></a>
 
 ### cli_command: `backend_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/new/cmd_new.py#L44)
+- [source](../../tfdo/_internal/new/cmd_new.py#L44)
 > **Since:** unreleased
 
 ```python
@@ -44,7 +44,7 @@ Write backend.tf to all run-dirs.
 <a id="run_dir_cmd_def"></a>
 
 ### cli_command: `run_dir_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/new/cmd_new.py#L268)
+- [source](../../tfdo/_internal/new/cmd_new.py#L268)
 > **Since:** unreleased
 
 ```python

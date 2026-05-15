@@ -2,7 +2,7 @@
 
 <!-- === DO_NOT_EDIT: pkg-ext tfdoconfig_def === -->
 ## class: TfDoConfig
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/config_model.py#L136)
+- [source](../../tfdo/_internal/config/config_model.py#L136)
 > **Since:** 0.6.0
 
 ```python

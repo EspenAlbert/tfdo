@@ -2,7 +2,7 @@
 
 <!-- === DO_NOT_EDIT: pkg-ext dependencyref_def === -->
 ## class: DependencyRef
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/config_model.py#L99)
+- [source](../../tfdo/_internal/config/config_model.py#L99)
 > **Since:** 0.6.0
 
 ```python

@@ -28,7 +28,7 @@
 <a id="backendtype_def"></a>
 
 ### class: `BackendType`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/enums.py#L29)
+- [source](../../tfdo/_internal/config/enums.py#L29)
 > **Since:** 0.6.0
 
 ```python
@@ -46,7 +46,7 @@ class BackendType(StrEnum):
 <a id="hookconfig_def"></a>
 
 ### class: `HookConfig`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/config_model.py#L81)
+- [source](../../tfdo/_internal/config/config_model.py#L81)
 > **Since:** 0.6.0
 
 ```python
@@ -80,7 +80,7 @@ class HookConfig(BaseModel):
 <a id="hookonerror_def"></a>
 
 ### class: `HookOnError`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/enums.py#L6)
+- [source](../../tfdo/_internal/config/enums.py#L6)
 > **Since:** 0.6.0
 
 ```python
@@ -98,7 +98,7 @@ class HookOnError(StrEnum):
 <a id="lifecycleevent_def"></a>
 
 ### class: `LifecycleEvent`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/enums.py#L11)
+- [source](../../tfdo/_internal/config/enums.py#L11)
 > **Since:** 0.6.0
 
 ```python
@@ -116,7 +116,7 @@ class LifecycleEvent(StrEnum):
 <a id="localbackend_def"></a>
 
 ### class: `LocalBackend`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/config_model.py#L69)
+- [source](../../tfdo/_internal/config/config_model.py#L69)
 > **Since:** 0.6.0
 
 ```python
@@ -140,7 +140,7 @@ class LocalBackend(BaseModel):
 <a id="tagsinject_def"></a>
 
 ### class: `TagsInject`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/enums.py#L41)
+- [source](../../tfdo/_internal/config/enums.py#L41)
 > **Since:** 0.6.0
 
 ```python
@@ -158,7 +158,7 @@ class TagsInject(StrEnum):
 <a id="show_cmd_def"></a>
 
 ### cli_command: `show_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/cmd_config.py#L59)
+- [source](../../tfdo/_internal/config/cmd_config.py#L59)
 > **Since:** 0.6.0
 
 ```python
@@ -178,7 +178,7 @@ Print resolved tfdo.yaml config layers and merged result for current work direct
 <a id="init_cmd_def"></a>
 
 ### cli_command: `init_cmd`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/cmd_config.py#L73)
+- [source](../../tfdo/_internal/config/cmd_config.py#L73)
 > **Since:** 0.6.0
 
 ```python
@@ -204,7 +204,7 @@ Detect run directories and generate a starter tfdo.yaml.
 <a id="ciconfig_def"></a>
 
 ### class: `CiConfig`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/config_model.py#L128)
+- [source](../../tfdo/_internal/config/config_model.py#L128)
 > **Since:** unreleased
 
 ```python
@@ -234,7 +234,7 @@ class CiConfig(BaseModel):
 <a id="moduleconstraint_def"></a>
 
 ### class: `ModuleConstraint`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/config_model.py#L114)
+- [source](../../tfdo/_internal/config/config_model.py#L114)
 > **Since:** unreleased
 
 ```python
@@ -258,7 +258,7 @@ class ModuleConstraint(BaseModel):
 <a id="providerconstraint_def"></a>
 
 ### class: `ProviderConstraint`
-- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/config/config_model.py#L108)
+- [source](../../tfdo/_internal/config/config_model.py#L108)
 > **Since:** unreleased
 
 ```python
