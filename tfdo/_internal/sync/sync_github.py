@@ -137,13 +137,23 @@ def collect_requirements(
     )
 
 
+def _missing_secret_values_message(missing: list[str]) -> str:
+    msg = (
+        f"missing secret values for: {', '.join(missing)}. "
+        "Set them in env_var files or shell environment before retrying."
+    )
+    if "AWS_ROLE_ARN" in missing:
+        msg += (
+            " For AWS_ROLE_ARN with an S3 backend, run `tfdo sync gh --oidc` to provision IAM roles "
+            "for GitHub Actions, this will save their ARNs in tfdo.yaml, or set AWS_ROLE_ARN yourself."
+        )
+    return msg
+
+
 def resolve_secret_values(secret_names: list[str], env_vars: dict[str, str]) -> list[SecretEntry]:
     missing = [name for name in secret_names if name not in env_vars]
     if missing:
-        raise ValueError(
-            f"missing secret values for: {', '.join(missing)}. "
-            "Set them in env_var files or shell environment before retrying."
-        )
+        raise ValueError(_missing_secret_values_message(missing))
     return [SecretEntry(name, env_vars[name]) for name in secret_names]
 
 
@@ -174,10 +184,7 @@ def _planned_secret_writes(
         pending_names.append(name)
     missing = [n for n in pending_names if n not in env_vars]
     if missing:
-        raise ValueError(
-            f"missing secret values for: {', '.join(missing)}. "
-            "Set them in env_var files or shell environment before retrying."
-        )
+        raise ValueError(_missing_secret_values_message(missing))
     return [SecretEntry(n, env_vars[n]) for n in pending_names], skipped
 
 
