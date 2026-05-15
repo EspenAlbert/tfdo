@@ -31,6 +31,15 @@ exclude = [
   "test_*.json",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["tfdo"]
+exclude = [
+  "*_examples.py",
+  "*_test.py",
+  "conftest.py",
+  "*_test/",
+]
+
 # === DO_NOT_EDIT: path-sync pkg-ext ===
 [tool.pkg-ext]
 tag_prefix = "v"
