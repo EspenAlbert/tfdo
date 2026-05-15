@@ -611,15 +611,13 @@ providers:
 def test_check_provider_version_drift_detects_mismatch(tmp_path: Path) -> None:
     ensure_parents_write_text(tmp_path / "versions.tf", _VERSIONS_TF_OUTDATED)
     ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
-    settings = _make_settings(tmp_path)
-    assert _check_provider_version_drift(tmp_path, settings, fix=False)
+    assert _check_provider_version_drift(tmp_path, fix=False)
 
 
 def test_check_provider_version_drift_fixes(tmp_path: Path) -> None:
     ensure_parents_write_text(tmp_path / "versions.tf", _VERSIONS_TF_OUTDATED)
     ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
-    settings = _make_settings(tmp_path)
-    assert _check_provider_version_drift(tmp_path, settings, fix=True)
+    assert _check_provider_version_drift(tmp_path, fix=True)
 
     updated = (tmp_path / "versions.tf").read_text()
     assert "5.82.0" in updated
@@ -630,8 +628,7 @@ def test_check_provider_version_drift_no_drift(tmp_path: Path) -> None:
     pinned_tf = _VERSIONS_TF_OUTDATED.replace("~> 5.0", "5.82.0")
     ensure_parents_write_text(tmp_path / "versions.tf", pinned_tf)
     ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
-    settings = _make_settings(tmp_path)
-    assert not _check_provider_version_drift(tmp_path, settings, fix=False)
+    assert not _check_provider_version_drift(tmp_path, fix=False)
 
 
 # --- unpinned provider tests ---

@@ -235,6 +235,10 @@ class DirCheckResult(BaseModel):
             or self.provider_version_drift
         )
 
+    @property
+    def has_warnings(self) -> bool:
+        return bool(self.unpinned_providers)
+
     def __lt__(self, other: Self) -> bool:
         if not isinstance(other, DirCheckResult):
             raise NotImplementedError

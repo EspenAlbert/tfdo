@@ -49,28 +49,26 @@ def _log_dir(dr: DirCheckResult) -> None:
     if dr.skipped:
         logger.warning(f"  {d}: skipped (not initialized)")
         return
-    has_warnings = bool(dr.unpinned_providers)
-    if not dr.has_issues and not has_warnings:
-        logger.info(f"  {d}: ok")
-        return
-    if not dr.has_issues and has_warnings:
-        logger.warning(f"  {d}: {len(dr.unpinned_providers)} unpinned")
-        _log_dir_issues(dr)
-        return
     issues: list[str] = []
     if dr.fmt_files:
-        issues.append(f"{len(dr.fmt_files)} fmt")
+        issues.append(f"fmt: {', '.join(dr.fmt_files)}")
     if dr.validation_errors:
-        issues.append(f"{len(dr.validation_errors)} validate")
+        issues.append(f"validate: {', '.join(dr.validation_errors)}")
     if dr.tflint_issues:
-        issues.append(f"{len(dr.tflint_issues)} tflint")
+        issues.append(f"tflint: {', '.join(i.display for i in dr.tflint_issues)}")
     if dr.missing_tfvars:
-        issues.append(f"{len(dr.missing_tfvars)} tfvars")
+        issues.append(f"tfvars: {', '.join(dr.missing_tfvars)}")
     if dr.backend_drift:
-        issues.append("backend")
+        issues.append("backend drift")
     if dr.provider_result is not None and not dr.provider_result.is_ok:
         issues.append("providers")
-    logger.error(f"  {d}: {', '.join(issues)}")
+    if dr.unpinned_providers:
+        issues.append(f"unpinned: {', '.join(dr.unpinned_providers)}")
+    if not issues:
+        logger.info(f"  {d}: ok")
+        return
+    log = logger.error if dr.has_issues else logger.warning
+    log(f"  {d}: {'; '.join(issues)}")
     _log_dir_issues(dr)
 
 

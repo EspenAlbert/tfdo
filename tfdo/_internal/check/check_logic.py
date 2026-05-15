@@ -217,7 +217,7 @@ def _check_directory(
         logger.warning(f"backend drift check failed for {tf_dir}: {exc}")
         bd = False
     try:
-        vd = _check_provider_version_drift(tf_dir, settings, fix)
+        vd = _check_provider_version_drift(tf_dir, fix)
     except Exception as exc:
         logger.warning(f"provider version drift check failed for {tf_dir}: {exc}")
         vd = False
@@ -294,7 +294,7 @@ def _find_unpinned_providers(tf_dir: Path) -> list[str]:
     return sorted(p.name for p in merged if not p.constraint or not _is_exact_version(p.constraint))
 
 
-def _check_provider_version_drift(tf_dir: Path, settings: TfDoSettings, fix: bool) -> bool:
+def _check_provider_version_drift(tf_dir: Path, fix: bool) -> bool:
     """Check if versions.tf provider constraints differ from tfdo.yaml pinned versions.
 
     Returns True if drift was detected (and fixed when fix=True).
