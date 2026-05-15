@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
+from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
 from tfdo._internal.config.enums import TagsInject
 from tfdo._internal.models import OutputInput, OutputResult
@@ -38,3 +39,37 @@ def test_collect_dependency_outputs_applies_resolved_config_binary_and_tf_versio
     assert captured[0].settings.work_dir == run_dir
     assert captured[0].settings.tf_version == "1.12.1"
     assert captured[0].settings.binary == "terraform"
+
+
+def test_resolve_dep_outputs_requires_all_keys_when_collected() -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    assert orchestration_module._resolve_dep_outputs(dep, {}) is None
+    assert orchestration_module._resolve_dep_outputs(dep, {"other": "x"}) is None
+
+
+def test_resolve_dep_outputs_rejects_null_values() -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    assert orchestration_module._resolve_dep_outputs(dep, {"id": None}) is None
+
+
+def test_resolve_dep_outputs_full_collected_map() -> None:
+    dep = DependencyRef(ref="project", outputs={"id": "project_id"})
+    assert orchestration_module._resolve_dep_outputs(dep, {"id": "proj-1"}) == {"project_id": "proj-1"}
+
+
+def test_resolve_dep_outputs_mock_requires_all_keys() -> None:
+    dep = DependencyRef(
+        ref="project",
+        outputs={"id": "project_id"},
+        outputs_mock={"id": "mock-id"},
+    )
+    assert orchestration_module._resolve_dep_outputs(dep, None) == {"project_id": "mock-id"}
+
+
+def test_resolve_dep_outputs_mock_incomplete_returns_none() -> None:
+    dep = DependencyRef(
+        ref="project",
+        outputs={"id": "project_id", "region": "region"},
+        outputs_mock={"id": "mock-id"},
+    )
+    assert orchestration_module._resolve_dep_outputs(dep, None) is None

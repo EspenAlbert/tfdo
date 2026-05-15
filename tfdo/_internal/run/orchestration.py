@@ -207,13 +207,22 @@ def _resolve_dep_outputs(dep_ref: DependencyRef, collected: dict[str, object] | 
     if not dep_ref.outputs:
         return None
     if collected is not None:
-        return {
-            local_var: str(collected[out_name])
-            for out_name, local_var in dep_ref.outputs.items()
-            if out_name in collected
-        }
+        mapped: dict[str, str] = {}  # pyright: ignore[reportRedeclaration]
+        for out_name, local_var in dep_ref.outputs.items():
+            if out_name not in collected:
+                return None
+            val = collected[out_name]
+            if val is None:
+                return None
+            mapped[local_var] = str(val)
+        return mapped
     if dep_ref.outputs_mock:
-        return {dep_ref.outputs[k]: v for k, v in dep_ref.outputs_mock.items() if k in dep_ref.outputs}
+        mapped: dict[str, str] = {}
+        for out_name, local_var in dep_ref.outputs.items():
+            if out_name not in dep_ref.outputs_mock:
+                return None
+            mapped[local_var] = dep_ref.outputs_mock[out_name]
+        return mapped
     return None
 
 
