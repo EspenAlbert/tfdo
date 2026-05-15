@@ -15,7 +15,7 @@ from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal.boot.oidc_bootstrap import provision_oidc_provider, provision_oidc_role
 from tfdo._internal.boot.s3_bootstrap import check_tf_version, provision_s3_bucket
-from tfdo._internal.cache import module_cache
+from tfdo._internal.cache import module_cache, provider_version_cache
 from tfdo._internal.cache.module_cache import UNRESOLVED
 from tfdo._internal.config.config_file import CONFIG_FILENAME
 from tfdo._internal.config.config_model import (
@@ -285,6 +285,7 @@ def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
 
         providers = resolve_providers(settings, config, input_model.providers)
         if providers:
+            providers = provider_version_cache.resolve_provider_versions(providers, settings)
             config.providers = providers
 
         modules = resolve_modules(input_model.modules, providers, settings)

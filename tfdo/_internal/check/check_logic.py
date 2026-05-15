@@ -18,12 +18,15 @@ from tfdo._internal.config.config_file import (
     load_optional_env_vars_from_files,
     resolve_var_file_paths,
 )
+from tfdo._internal.config.config_model import merge_providers
 from tfdo._internal.config.config_resolution import resolve_config
 from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
 from tfdo._internal.core.tf_files import TERRAFORM_DIR, find_tf_directories
 from tfdo._internal.git_utils import parse_git_remote
+from tfdo._internal.hcl_entity_parser import TfRequiredProviders, parse_dir_entities
 from tfdo._internal.hcl_read import hcl2_load
+from tfdo._internal.hcl_roundtrip import update_required_providers
 from tfdo._internal.models import (
     CheckInput,
     CheckResult,
@@ -243,6 +246,57 @@ def _check_backend_drift(tf_dir: Path, settings: TfDoSettings, fix: bool) -> boo
     return backend_resolution.has_backend_drift(tf_dir, cfg.backend, ctx)
 
 
+def _read_hcl_provider_versions(tf_dir: Path) -> dict[str, str]:
+    """Read current provider version constraints from .tf files in the directory."""
+    result: dict[str, str] = {}
+    for entity in parse_dir_entities(tf_dir, recursive=False):
+        if not isinstance(entity, TfRequiredProviders):
+            continue
+        for p in entity.providers:
+            if p.version:
+                result[p.name] = p.version
+    return result
+
+
+def _check_provider_version_drift(tf_dir: Path, settings: TfDoSettings, fix: bool) -> bool:
+    """Check if versions.tf provider constraints differ from tfdo.yaml pinned versions.
+
+    Returns True if drift was detected (and fixed when fix=True).
+    """
+    layers = load_config_layers(tf_dir)
+    if not layers:
+        return False
+    configs = [layer.config for layer in layers]
+    parent_cfgs = configs[:-1] if len(configs) > 1 else []
+    child_cfg = configs[-1]
+    merged = merge_providers(parent_cfgs, child_cfg)
+    pinned = {p.name: p for p in merged if p.constraint and p.source}
+    if not pinned:
+        return False
+
+    versions_tf = tf_dir / "versions.tf"
+    if not versions_tf.is_file():
+        return False
+
+    current_versions = _read_hcl_provider_versions(tf_dir)
+    drifted = {name: pc for name, pc in pinned.items() if current_versions.get(name) != pc.constraint}
+    if not drifted:
+        return False
+
+    if fix:
+        original = versions_tf.read_text()
+        providers_patch: dict[str, dict[str, str]] = {}
+        for name, pc in drifted.items():
+            providers_patch[name] = {"source": pc.source, "version": pc.constraint}  # type: ignore[dict-item]
+        try:
+            updated = update_required_providers(original, providers_patch)
+            versions_tf.write_text(updated)
+            logger.info(f"fixed provider version drift in {versions_tf}")
+        except Exception:
+            logger.debug(f"failed to update provider versions in {versions_tf}", exc_info=True)
+    return True
+
+
 def check(input_model: CheckInput) -> CheckResult:
     settings = input_model.settings
     resolved_binary = binary.resolve_binary(settings)
@@ -285,12 +339,18 @@ def check(input_model: CheckInput) -> CheckResult:
             run_results[tf_dir] = future.result()
 
     backend_drift: dict[Path, bool] = {}
+    version_drift: dict[Path, bool] = {}
     for tf_dir in tf_dirs:
         try:
             backend_drift[tf_dir] = _check_backend_drift(tf_dir, settings, input_model.fix)
         except Exception as exc:
             logger.warning(f"backend drift check failed for {tf_dir}: {exc}")
             backend_drift[tf_dir] = False
+        try:
+            version_drift[tf_dir] = _check_provider_version_drift(tf_dir, settings, input_model.fix)
+        except Exception as exc:
+            logger.warning(f"provider version drift check failed for {tf_dir}: {exc}")
+            version_drift[tf_dir] = False
 
     dir_results = [
         DirCheckResult(
@@ -302,6 +362,7 @@ def check(input_model: CheckInput) -> CheckResult:
             provider_result=run_result.provider_result,
             skipped=run_result.skipped,
             backend_drift=backend_drift.get(tf_dir, False) and not input_model.fix,
+            provider_version_drift=version_drift.get(tf_dir, False) and not input_model.fix,
         )
         for tf_dir, run_result in run_results.items()
     ]
@@ -312,6 +373,7 @@ def check(input_model: CheckInput) -> CheckResult:
     has_missing_tfvars = any(d.missing_tfvars for d in dir_results)
     has_provider_failures = any(d.provider_result is not None and not d.provider_result.is_ok for d in dir_results)
     has_backend_drift = any(d.backend_drift for d in dir_results)
+    has_version_drift = any(d.provider_version_drift for d in dir_results)
     exit_code = (
         1
         if has_fmt_issues
@@ -320,6 +382,7 @@ def check(input_model: CheckInput) -> CheckResult:
         or has_missing_tfvars
         or has_provider_failures
         or has_backend_drift
+        or has_version_drift
         else 0
     )
 

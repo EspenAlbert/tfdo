@@ -219,6 +219,7 @@ class DirCheckResult(BaseModel):
     provider_result: RunDirProviderResult | None = None
     skipped: bool = False
     backend_drift: bool = False
+    provider_version_drift: bool = False
 
     @property
     def has_issues(self) -> bool:
@@ -230,6 +231,7 @@ class DirCheckResult(BaseModel):
             or bool(self.missing_tfvars)
             or provider_fail
             or self.backend_drift
+            or self.provider_version_drift
         )
 
     def __lt__(self, other: Self) -> bool:

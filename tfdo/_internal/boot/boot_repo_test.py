@@ -9,6 +9,7 @@ import yaml
 from tfdo._internal.boot import boot_repo as _module
 from tfdo._internal.boot.boot_repo import CachedModule, OidcWizardResult, TfdoBootInput, boot_repo, select_modules
 from tfdo._internal.cache import module_cache as _cache_module
+from tfdo._internal.cache import provider_version_cache as _pvc_module
 from tfdo._internal.config.config_file import load_config
 from tfdo._internal.config.config_model import ModuleConstraint, ProviderConstraint, S3Backend
 from tfdo._internal.config.provider_hints import ProviderHints
@@ -17,6 +18,7 @@ from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 _MODULE = _module.__name__
 _CACHE_MODULE = _cache_module.__name__
+_PVC_MODULE = _pvc_module.__name__
 
 
 def _settings(tmp_path: Path, interactive: InteractiveMode = InteractiveMode.NEVER) -> TfDoSettings:
@@ -229,6 +231,10 @@ def _fake_init(input_model):
     return InitResult(exit_code=0, attempts_used=1)
 
 
+def _passthrough_resolve(providers, _settings):
+    return providers
+
+
 def test_scaffold_wizard_runs_when_interactive_fresh_repo(tmp_path: Path) -> None:
     hints_path = _write_hints(tmp_path, {"aws": {"source": "hashicorp/aws"}})
     settings = TfDoSettings.for_testing(
@@ -238,6 +244,10 @@ def test_scaffold_wizard_runs_when_interactive_fresh_repo(tmp_path: Path) -> Non
         patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
         patch(f"{_MODULE}.select_list", return_value="skip") as mock_backend,
         patch(f"{_MODULE}.select_list_multiple_choices", return_value=["aws"]) as mock_providers,
+        patch(
+            f"{_MODULE}.provider_version_cache.{_pvc_module.resolve_provider_versions.__name__}",
+            side_effect=_passthrough_resolve,
+        ),
     ):
         result = boot_repo(TfdoBootInput(settings=settings))
 
@@ -343,3 +353,23 @@ def test_boot_repo_oidc_false_does_not_write_ci(tmp_path: Path) -> None:
 
     raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
     assert "ci" not in raw
+
+
+def test_boot_pins_provider_versions(tmp_path: Path) -> None:
+    providers = [
+        ProviderConstraint(name="aws", source="hashicorp/aws"),
+        ProviderConstraint(name="mongodbatlas", source="mongodb/mongodbatlas"),
+    ]
+    pinned = [
+        ProviderConstraint(name="aws", source="hashicorp/aws", constraint="5.82.0"),
+        ProviderConstraint(name="mongodbatlas", source="mongodb/mongodbatlas", constraint="1.23.0"),
+    ]
+    with (
+        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
+        patch(f"{_PVC_MODULE}.resolve_provider_versions", return_value=pinned),
+    ):
+        boot_repo(TfdoBootInput(settings=_settings(tmp_path), providers=providers))
+
+    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
+    constraints = {p["name"]: p.get("constraint") for p in raw["providers"]}
+    assert constraints == {"aws": "5.82.0", "mongodbatlas": "1.23.0"}

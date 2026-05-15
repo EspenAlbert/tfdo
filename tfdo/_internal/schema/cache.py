@@ -4,11 +4,9 @@ import json
 import logging
 from pathlib import Path
 
-from tfdo._internal.hcl_read import hcl2_load
+from tfdo._internal.hcl_read import LOCK_FILENAME, REGISTRY_HOST_PREFIX, lock_provider_version
 
 logger = logging.getLogger(__name__)
-
-REGISTRY_HOST_PREFIX = "registry.terraform.io/"
 
 
 def lock_provider_address(source: str) -> str:
@@ -16,40 +14,10 @@ def lock_provider_address(source: str) -> str:
 
 
 def read_resolved_version_from_lock(*, workspace_root: Path, source: str) -> str:
-    lock_path = workspace_root / ".terraform.lock.hcl"
+    lock_path = workspace_root / LOCK_FILENAME
     if not lock_path.is_file():
-        raise ValueError(f".terraform.lock.hcl missing under {workspace_root}")
-    addr = lock_provider_address(source)
-    try:
-        with lock_path.open(encoding="utf-8") as f:
-            data = hcl2_load(f)
-    except Exception as e:
-        raise ValueError(f"failed to parse .terraform.lock.hcl at {lock_path}") from e
-    blocks = data.get("provider")
-    if not isinstance(blocks, list):
-        raise ValueError(f".terraform.lock.hcl at {lock_path} has no provider block list")
-    for block in blocks:
-        if not isinstance(block, dict):
-            continue
-        if addr not in block:
-            continue
-        inner = block[addr]
-        if not isinstance(inner, dict):
-            raise ValueError(f"provider {addr!r} in {lock_path} is not an object")
-        raw_ver = inner.get("version")
-        ver = _coerce_version_string(raw_ver)
-        if ver:
-            return ver
-        raise ValueError(f"provider {addr!r} in {lock_path} has missing or invalid version: {raw_ver!r}")
-    raise ValueError(f"provider {addr!r} not found in {lock_path}")
-
-
-def _coerce_version_string(raw_ver: object) -> str | None:
-    if isinstance(raw_ver, str) and raw_ver.strip():
-        return raw_ver.strip()
-    if isinstance(raw_ver, list) and len(raw_ver) == 1 and isinstance(raw_ver[0], str) and raw_ver[0].strip():
-        return raw_ver[0].strip()
-    return None
+        raise ValueError(f"{LOCK_FILENAME} missing under {workspace_root}")
+    return lock_provider_version(lock_path, source)
 
 
 def cache_relative_path(*, local_name: str, source: str, resolved_version: str) -> Path:

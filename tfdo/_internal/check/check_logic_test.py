@@ -11,6 +11,7 @@ from tfdo._internal.check import check_logic
 from tfdo._internal.check.check_logic import (
     _build_fmt_command,
     _build_validate_command,
+    _check_provider_version_drift,
     _parse_fmt_files,
     _run_tflint,
     check,
@@ -582,3 +583,51 @@ def test_user_config_model():
     assert config.check.tflint
     empty = TfDoUserConfig()
     assert empty.check is None
+
+
+# --- provider version drift tests ---
+
+
+_VERSIONS_TF_OUTDATED = """\
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+"""
+
+_TFDO_YAML_PINNED = """\
+providers:
+  - name: aws
+    source: hashicorp/aws
+    constraint: "5.82.0"
+"""
+
+
+def test_check_provider_version_drift_detects_mismatch(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "versions.tf", _VERSIONS_TF_OUTDATED)
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
+    settings = _make_settings(tmp_path)
+    assert _check_provider_version_drift(tmp_path, settings, fix=False)
+
+
+def test_check_provider_version_drift_fixes(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "versions.tf", _VERSIONS_TF_OUTDATED)
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
+    settings = _make_settings(tmp_path)
+    assert _check_provider_version_drift(tmp_path, settings, fix=True)
+
+    updated = (tmp_path / "versions.tf").read_text()
+    assert "5.82.0" in updated
+    assert "~> 5.0" not in updated
+
+
+def test_check_provider_version_drift_no_drift(tmp_path: Path) -> None:
+    pinned_tf = _VERSIONS_TF_OUTDATED.replace("~> 5.0", "5.82.0")
+    ensure_parents_write_text(tmp_path / "versions.tf", pinned_tf)
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
+    settings = _make_settings(tmp_path)
+    assert not _check_provider_version_drift(tmp_path, settings, fix=False)

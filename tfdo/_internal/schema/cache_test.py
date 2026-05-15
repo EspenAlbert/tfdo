@@ -57,7 +57,7 @@ def test_read_resolved_version_unparseable_lock_raises(tmp_path: Path) -> None:
 
 def test_read_resolved_version_provider_blocks_not_list(tmp_path: Path) -> None:
     (tmp_path / ".terraform.lock.hcl").write_text('x = "y"\n', encoding="utf-8")
-    with pytest.raises(ValueError, match="no provider block list"):
+    with pytest.raises(ValueError, match="not found"):
         schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
 
 
@@ -71,7 +71,7 @@ provider "{addr}" {{
 """,
         encoding="utf-8",
     )
-    with pytest.raises(ValueError, match="missing or invalid version"):
+    with pytest.raises(ValueError, match="not found"):
         schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
 
 
@@ -85,7 +85,7 @@ provider "{addr}" {{
 """,
         encoding="utf-8",
     )
-    with pytest.raises(ValueError, match="missing or invalid version"):
+    with pytest.raises(ValueError, match="not found"):
         schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
 
 
