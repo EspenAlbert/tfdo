@@ -442,6 +442,7 @@ def _tfdo_install_expr(tfdo_install: str) -> str:
 
 def _render_setup_action(config: TfDoConfig) -> dict[str, str]:
     tf_version_default = config.tf_version or "latest"
+    tf_gh = "${{ inputs.terraform-version == '*' && 'latest' || inputs.terraform-version }}"
     tfdo_install = config.ci.tfdo_install if config.ci else TFDO_DEFAULT_INSTALL
     install_expr = _tfdo_install_expr(tfdo_install)
     setup_lines = [
@@ -465,7 +466,9 @@ def _render_setup_action(config: TfDoConfig) -> dict[str, str]:
         "        just-version: ${{ inputs.just-version }}",
         f"    - uses: {ACTION_MISE}",
         "      with:",
-        "        install_args: terraform@${{ inputs.terraform-version == '*' && 'latest' || inputs.terraform-version }}",
+        f"        install_args: terraform@{tf_gh}",
+        f"    - run: mise use -g terraform@{tf_gh}",
+        "      shell: bash",
         f"    - uses: {ACTION_SETUP_UV}",
         "      with:",
         "        version: ${{ inputs.uv-version }}",

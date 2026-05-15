@@ -192,8 +192,10 @@ def prepare_run_dir(
 DEP_TFVARS_SUFFIX = TfDoSettings.DEP_TFVARS_SUFFIX
 
 
-def _collect_dependency_outputs(settings: TfDoSettings, run_dir_path: Path) -> dict[str, object] | None:
-    dir_settings = settings.with_overrides(run_dir_path, None, None)
+def _collect_dependency_outputs(
+    settings: TfDoSettings, run_dir_path: Path, config: ResolvedConfig
+) -> dict[str, object] | None:
+    dir_settings = settings.with_overrides(run_dir_path, config.binary, config.tf_version)
     result = executor.output_json(OutputInput(settings=dir_settings))
     if result.exit_code != 0:
         logger.warning(f"terraform output failed in {run_dir_path}: {result.stderr}")
@@ -429,7 +431,9 @@ def _execute_wave_sequential(
         results.append(result)
         _log_run_dir_output(result, inp.command)
         if result.exit_code == 0 and collected_outputs is not None and inp.command != LifecycleCommand.DESTROY:
-            collected_outputs[rel_path] = _collect_dependency_outputs(inp.settings, repo_root / rel_path)
+            collected_outputs[rel_path] = _collect_dependency_outputs(
+                inp.settings, repo_root / rel_path, configs[rel_path]
+            )
         if result.exit_code != 0:
             has_failure = True
     return results, has_failure
@@ -464,7 +468,9 @@ def _execute_wave_parallel(
         results.append(result)
         _log_run_dir_output(result, inp.command)
         if result.exit_code == 0 and collected_outputs is not None and inp.command != LifecycleCommand.DESTROY:
-            collected_outputs[rel_path] = _collect_dependency_outputs(inp.settings, repo_root / rel_path)
+            collected_outputs[rel_path] = _collect_dependency_outputs(
+                inp.settings, repo_root / rel_path, configs[rel_path]
+            )
         if result.exit_code != 0:
             has_failure = True
     return results, has_failure
@@ -488,7 +494,9 @@ def _execute_plan(
     if collected_outputs is not None and inp.command == LifecycleCommand.DESTROY:
         for wave in plan.waves:
             for rel_path in wave.run_dirs:
-                collected_outputs[rel_path] = _collect_dependency_outputs(inp.settings, repo_root / rel_path)
+                collected_outputs[rel_path] = _collect_dependency_outputs(
+                    inp.settings, repo_root / rel_path, configs[rel_path]
+                )
     all_results: list[RunDirResult] = []
     for wave in plan.waves:
         use_sequential = sequential or len(wave.run_dirs) <= 1
