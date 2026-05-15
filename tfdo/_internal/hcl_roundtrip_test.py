@@ -366,6 +366,16 @@ def test_update_required_providers_with_required_version() -> None:
     assert "required_providers {" in output
 
 
+def test_update_required_providers_quotes_exact_semver_without_constraint_operators() -> None:
+    output = hcl_roundtrip.update_required_providers(
+        "",
+        providers={"mongodbatlas": {"source": "mongodb/mongodbatlas", "version": "2.12.0"}},
+        required_version=">= 1.12",
+    )
+    assert 'version = "2.12.0"' in output
+    assert "version = 2.12.0" not in output
+
+
 def test_update_required_providers_preserves_existing_required_version() -> None:
     fixture = """terraform {
   required_providers {

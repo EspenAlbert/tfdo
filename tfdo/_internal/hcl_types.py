@@ -7,9 +7,12 @@ helper without pulling in the full roundtrip machinery.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic import BaseModel
+
+_HCL_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class HclLiteral(BaseModel, frozen=True):
@@ -44,9 +47,9 @@ def _is_hcl_string(value: str) -> bool:
 def _is_hcl_expression(value: str) -> bool:
     if value.startswith("${") and value.endswith("}"):
         return True
-    if "." in value and " " not in value and "/" not in value:
-        return True
-    return False
+    if "." not in value or " " in value or "/" in value:
+        return False
+    return all(_HCL_IDENT.match(part) for part in value.split("."))
 
 
 def _is_attr_reference_path(value: str) -> bool:
