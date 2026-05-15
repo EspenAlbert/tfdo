@@ -58,10 +58,18 @@ def _collect_interactive_input(
     src_dir: Path, config: TfDoConfig, work_dir: Path
 ) -> tuple[list[str], list[ModuleCallEdit | ResourceEdit]]:
     run_dir_names = [p.name for p in config.run_dirs(work_dir, src_dir.name)]
+    if not run_dir_names:
+        logger.error(
+            f"No run directories found under {src_dir} for env {src_dir.name} (discovery pattern {config.run_dir_discovery})."
+        )
+        raise typer.Exit(1)
     all_choices = [ChoiceTyped(name=n, value=n, checked=True) for n in run_dir_names]
     selected: list[str] = select_list_multiple_choices(
         "Select run-dirs to copy:", all_choices, default=[c.value for c in all_choices]
     )
+    if not selected:
+        logger.error("No run directories selected.")
+        raise typer.Exit(1)
 
     edit_choices = [ChoiceTyped(name=n, value=n, checked=False) for n in selected]
     to_edit: list[str] = select_list_multiple_choices(
@@ -70,9 +78,13 @@ def _collect_interactive_input(
 
     edits: list[ModuleCallEdit | ResourceEdit] = []
     for run_dir_name in to_edit:
+        entity_choices = _entity_choices(src_dir, run_dir_name)
+        if not entity_choices:
+            logger.warning("No module or resource blocks to edit in %s/%s.", src_dir.name, run_dir_name)
+            continue
         chosen = select_list_multiple_choices(
             f"[{run_dir_name}] Select entities to edit:",
-            _entity_choices(src_dir, run_dir_name),
+            entity_choices,
             default=[],
         )
         for entity in chosen:
@@ -95,7 +107,9 @@ def env_cmd(
     work_dir = settings.work_dir
     config = load_config(work_dir) or TfDoConfig()
     src_dir = config.env_base_dir(work_dir) / src
-
+    if not src_dir.is_dir():
+        logger.error(f"Source env not found: {src_dir}")
+        raise typer.Exit(1)
     if settings.is_interactive:
         selected_run_dirs, edits = _collect_interactive_input(src_dir, config, work_dir)
     else:
