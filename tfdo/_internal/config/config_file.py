@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import NamedTuple
 
 import yaml
+from model_lib import dump as model_dump
 from model_lib.serialize.parse import parse_dict
-from zero_3rdparty.file_utils import find_repo_root
+from zero_3rdparty.file_utils import ensure_parents_write_text, find_repo_root
 
 from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.settings import TfDoSettings
@@ -14,6 +15,13 @@ from tfdo._internal.settings import TfDoSettings
 logger = logging.getLogger(__name__)
 
 CONFIG_FILENAME = "tfdo.yaml"
+
+
+def save_config(work_dir: Path, config: TfDoConfig) -> Path:
+    config_path = work_dir / CONFIG_FILENAME
+    data = config.model_dump(mode="json", exclude_none=True)
+    ensure_parents_write_text(config_path, model_dump.dump_as_str(data, "yaml"))
+    return config_path
 
 
 def load_config(dir_path: Path) -> TfDoConfig | None:

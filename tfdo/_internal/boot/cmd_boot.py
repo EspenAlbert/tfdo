@@ -13,9 +13,8 @@ logger = logging.getLogger(__name__)
 @app.command("boot")
 def boot_cmd(
     ctx: typer.Context,
-    oidc: bool = typer.Option(False, "--oidc/--no-oidc", help="Provision GitHub OIDC provider and per-env IAM roles"),
 ) -> None:
     """Bootstrap a new tfdo-managed Terraform repo."""
     settings = get_settings(ctx)
-    result = boot_repo(TfdoBootInput(settings=settings, oidc=oidc))
+    result = boot_repo(TfdoBootInput(settings=settings))
     logger.info(f"Written: {', '.join(str(p) for p in result.written_paths)}")

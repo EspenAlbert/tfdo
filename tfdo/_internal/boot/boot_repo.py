@@ -8,12 +8,10 @@ from typing import Annotated, NamedTuple
 
 import yaml
 from ask_shell._internal.interactive import ChoiceTyped, select_list, select_list_multiple_choices, text
-from ask_shell.shell import run_and_wait
 from model_lib import dump as model_dump
 from pydantic import BaseModel, Field, TypeAdapter
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
-from tfdo._internal.boot.oidc_bootstrap import provision_oidc_provider, provision_oidc_role
 from tfdo._internal.boot.s3_bootstrap import check_tf_version, provision_s3_bucket
 from tfdo._internal.cache import module_cache, provider_version_cache
 from tfdo._internal.cache.module_cache import UNRESOLVED
@@ -48,12 +46,6 @@ class BackendResult(NamedTuple):
     region: str | None
 
 
-class OidcWizardResult(NamedTuple):
-    repo_org: str
-    repo_name: str
-    oidc_roles: dict[str, str]
-
-
 _TFDO_GITIGNORE_LINES = [
     ".tfdo/",
     ".terraform/",
@@ -70,7 +62,6 @@ class TfdoBootInput(TfDoBaseInput):
     region: str | None = None
     providers: list[ProviderConstraint] = Field(default_factory=list)
     modules: list[ModuleConstraint] = Field(default_factory=list)
-    oidc: bool = False
 
 
 class TfdoBootResult(BaseModel):
@@ -180,31 +171,6 @@ def _populate_module_cache(
     return cached, pinned
 
 
-def _run_oidc_wizard(
-    settings: TfDoSettings, org: str, repo: str, bucket: str | None = None, backend_bucket: str | None = None
-) -> OidcWizardResult:
-    work_dir = settings.work_dir
-    bucket_default = bucket or backend_bucket or ""
-    bucket = bucket or text("S3 bucket name for IAM policy scope", default=bucket_default)
-
-    run = run_and_wait("aws sts get-caller-identity", cwd=work_dir)
-    account_id = run.parse_output(dict)["Account"]
-
-    provision_oidc_provider(account_id)
-
-    envs_dir = work_dir / "envs"
-    env_names = sorted(d.name for d in envs_dir.iterdir() if d.is_dir()) if envs_dir.is_dir() else []
-    if not env_names:
-        logger.info("No envs found under envs/; skipping IAM role provisioning")
-        return OidcWizardResult(repo_org=org, repo_name=repo, oidc_roles={})
-
-    oidc_roles: dict[str, str] = {}
-    for env in env_names:
-        role_name = text(f"IAM role name for env '{env}'", default=f"tfdo-{repo}-{env}")
-        oidc_roles[env] = provision_oidc_role(account_id, org, repo, env, role_name, bucket)
-    return OidcWizardResult(repo_org=org, repo_name=repo, oidc_roles=oidc_roles)
-
-
 def resolve_backend(
     settings: TfDoSettings, config: TfDoConfig, choice: str, bucket: str | None, region: str | None
 ) -> BackendResult:
@@ -266,20 +232,6 @@ def resolve_repo_identity(settings: TfDoSettings, config: TfDoConfig) -> None:
     config.ci = ci
 
 
-def add_oidc(settings: TfDoSettings, config: TfDoConfig, bucket: str | None, oidc: bool) -> OidcWizardResult | None:
-    if not oidc:
-        return None
-    ci = config.ci or CiConfig()
-    match config.backend:
-        case S3Backend(bucket=backend_bucket):
-            pass
-        case _:
-            backend_bucket = None
-    return _run_oidc_wizard(
-        settings, org=ci.repo_org or "", repo=ci.repo_name or "", bucket=bucket, backend_bucket=backend_bucket
-    )
-
-
 def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
     settings = input_model.settings
     config_path = settings.work_dir / CONFIG_FILENAME
@@ -311,15 +263,6 @@ def boot_repo(input_model: TfdoBootInput) -> TfdoBootResult:
             config.modules = pinned_modules
 
         resolve_repo_identity(settings, config)
-
-        if oidc_result := add_oidc(settings, config, backend.bucket, input_model.oidc):
-            ci = config.ci or CiConfig()
-            ci.oidc = True
-            ci.repo_org = oidc_result.repo_org
-            ci.repo_name = oidc_result.repo_name
-            if oidc_result.oidc_roles:
-                ci.oidc_roles = oidc_result.oidc_roles
-            config.ci = ci
 
     gitignore_path = _ensure_gitignore_lines(settings.work_dir)
     logger.info("tfdo boot complete! run `tfdo new run-dir` to get started!")

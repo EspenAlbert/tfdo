@@ -15,8 +15,9 @@ from pydantic import BaseModel, Field
 from zero_3rdparty import file_utils
 from zero_3rdparty.sections import CommentConfig, replace_sections
 
-from tfdo._internal.config.config_file import load_optional_env_vars_from_files
-from tfdo._internal.config.config_model import TFDO_DEFAULT_INSTALL, S3Backend, TfDoConfig
+from tfdo._internal.boot.oidc_bootstrap import OidcWizardResult, run_oidc_wizard
+from tfdo._internal.config.config_file import load_optional_env_vars_from_files, save_config
+from tfdo._internal.config.config_model import TFDO_DEFAULT_INSTALL, CiConfig, S3Backend, TfDoConfig
 from tfdo._internal.config.provider_hints import (
     AuthBundle,
     ProviderHints,
@@ -81,6 +82,7 @@ class SyncGithubInput(TfDoBaseInput):
     run_gh: Callable[[str], tuple[bool, str]] | None = None
     replace_existing_github_secrets: bool = False
     github_variable_changed: Callable[[str, str, str], bool] = prompt_github_variable_update
+    oidc: bool = False
 
 
 class SyncGithubResult(BaseModel):
@@ -613,6 +615,26 @@ def sync_env_secrets_and_variables(
     return result
 
 
+def _needs_oidc_setup(config: TfDoConfig, reqs: CollectedRequirements, env_names: list[str]) -> bool:
+    """Check if OIDC setup is needed: S3 backend requires AWS_ROLE_ARN but roles are missing."""
+    if "AWS_ROLE_ARN" not in reqs.secrets:
+        return False
+    ci = config.ci
+    if ci is None:
+        return True
+    return any(env not in ci.oidc_roles for env in env_names)
+
+
+def _apply_oidc_result(config: TfDoConfig, oidc_result: OidcWizardResult) -> None:
+    ci = config.ci or CiConfig()
+    ci.oidc = True
+    ci.repo_org = oidc_result.repo_org
+    ci.repo_name = oidc_result.repo_name
+    if oidc_result.oidc_roles:
+        ci.oidc_roles = oidc_result.oidc_roles
+    config.ci = ci
+
+
 def sync_github(input_model: SyncGithubInput) -> SyncGithubResult:
     work_dir = input_model.settings.work_dir
     config = input_model.config
@@ -620,6 +642,22 @@ def sync_github(input_model: SyncGithubInput) -> SyncGithubResult:
     run_gh = input_model.run_gh or _default_run_gh
 
     reqs = collect_requirements(config, input_model.provider_hints_registry, input_model.selected_bundles)
+
+    if input_model.oidc and _needs_oidc_setup(config, reqs, env_names):
+        ci = config.ci or CiConfig()
+        match config.backend:
+            case S3Backend(bucket=backend_bucket):
+                pass
+            case _:
+                backend_bucket = None
+        oidc_result = run_oidc_wizard(
+            input_model.settings,
+            org=ci.repo_org or "",
+            repo=ci.repo_name or "",
+            backend_bucket=backend_bucket,
+        )
+        _apply_oidc_result(config, oidc_result)
+        save_config(work_dir, config)
 
     result = SyncGithubResult(dry_run=input_model.dry_run)
 

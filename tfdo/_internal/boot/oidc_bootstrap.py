@@ -3,8 +3,12 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import NamedTuple
 
+from ask_shell._internal.interactive import text
 from ask_shell.shell import ShellError, run_and_wait
+
+from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +101,34 @@ def provision_oidc_role(account_id: str, org: str, repo: str, env: str, role_nam
     )
     logger.info(f"Attached S3 inline policy to {role_name}")
     return role_arn
+
+
+class OidcWizardResult(NamedTuple):
+    repo_org: str
+    repo_name: str
+    oidc_roles: dict[str, str]
+
+
+def run_oidc_wizard(
+    settings: TfDoSettings, org: str, repo: str, bucket: str | None = None, backend_bucket: str | None = None
+) -> OidcWizardResult:
+    work_dir = settings.work_dir
+    bucket_default = bucket or backend_bucket or ""
+    bucket = bucket or text("S3 bucket name for IAM policy scope", default=bucket_default)
+
+    run = run_and_wait("aws sts get-caller-identity", cwd=work_dir)
+    account_id = run.parse_output(dict)["Account"]
+
+    provision_oidc_provider(account_id)
+
+    envs_dir = work_dir / "envs"
+    env_names = sorted(d.name for d in envs_dir.iterdir() if d.is_dir()) if envs_dir.is_dir() else []
+    if not env_names:
+        logger.info("No envs found under envs/; skipping IAM role provisioning")
+        return OidcWizardResult(repo_org=org, repo_name=repo, oidc_roles={})
+
+    oidc_roles: dict[str, str] = {}
+    for env in env_names:
+        role_name = text(f"IAM role name for env '{env}'", default=f"tfdo-{repo}-{env}")
+        oidc_roles[env] = provision_oidc_role(account_id, org, repo, env, role_name, bucket)
+    return OidcWizardResult(repo_org=org, repo_name=repo, oidc_roles=oidc_roles)

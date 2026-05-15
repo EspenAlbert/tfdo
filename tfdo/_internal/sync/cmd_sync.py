@@ -92,6 +92,9 @@ def github_cmd(
         help="Overwrite Actions environment secrets that already exist on GitHub (default only creates missing ones)",
     ),
     env: str | None = typer.Option(None, "--env", help="Sync only this environment"),
+    oidc: bool = typer.Option(
+        False, "--oidc/--no-oidc", help="Provision GitHub OIDC provider and per-env IAM roles for S3 backend"
+    ),
 ) -> None:
     """Scaffold GitHub Actions workflows and sync secrets/variables per environment."""
     settings = get_settings(ctx)
@@ -113,6 +116,7 @@ def github_cmd(
         os_env=dict(os.environ),
         dry_run=dry_run,
         replace_existing_github_secrets=replace_existing_github_secrets,
+        oidc=oidc,
     )
     result = _sync_github_mod.sync_github(input_model)
 

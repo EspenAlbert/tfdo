@@ -9,7 +9,6 @@ import yaml
 from tfdo._internal.boot import boot_repo as _module
 from tfdo._internal.boot.boot_repo import (
     CachedModule,
-    OidcWizardResult,
     TfdoBootInput,
     boot_repo,
     resolve_repo_identity,
@@ -73,22 +72,6 @@ def test_boot_backend_type_survives_round_trip(tmp_path: Path) -> None:
     assert config is not None
     assert isinstance(config.backend, S3Backend)
     assert config.backend.bucket == "round-trip"
-
-
-def test_boot_rerun_with_oidc_merges_ci_into_existing(tmp_path: Path) -> None:
-    (tmp_path / "tfdo.yaml").write_text(yaml.dump({"tf_version": "1.11.0", "providers": [{"name": "aws"}]}))
-    (tmp_path / "envs" / "dev").mkdir(parents=True)
-    oidc_roles = {"dev": "arn:aws:iam::123:role/tfdo-repo-dev"}
-    oidc_result = OidcWizardResult(repo_org="my-org", repo_name="my-repo", oidc_roles=oidc_roles)
-    with patch(f"{_MODULE}._run_oidc_wizard", return_value=oidc_result):
-        boot_repo(TfdoBootInput(settings=_settings(tmp_path), oidc=True))
-
-    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
-    assert raw["ci"]["oidc_roles"] == oidc_roles
-    assert raw["ci"]["repo_org"] == "my-org"
-    assert raw["ci"]["repo_name"] == "my-repo"
-    assert raw["ci"]["oidc"]
-    assert raw["providers"] == [{"name": "aws"}]
 
 
 def test_boot_rerun_applies_explicit_flags(tmp_path: Path) -> None:
@@ -308,59 +291,6 @@ def test_scaffold_wizard_skipped_when_fields_pre_populated(tmp_path: Path) -> No
 def test_select_modules_returns_empty_when_no_hints() -> None:
     registry: dict[str, ProviderHints] = {"aws": ProviderHints()}
     assert select_modules(["aws"], registry) == []
-
-
-def test_boot_repo_oidc_true_writes_ci_oidc_roles(tmp_path: Path) -> None:
-    (tmp_path / "envs" / "dev").mkdir(parents=True)
-    _oidc_roles = {"dev": "arn:aws:iam::123:role/tfdo-repo-dev"}
-    _oidc_result = OidcWizardResult(repo_org="my-org", repo_name="my-repo", oidc_roles=_oidc_roles)
-    with (
-        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
-        patch(f"{_MODULE}._run_oidc_wizard", return_value=_oidc_result),
-    ):
-        boot_repo(TfdoBootInput(settings=_settings(tmp_path), oidc=True))
-
-    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
-    assert raw["ci"]["oidc_roles"] == _oidc_roles
-    assert raw["ci"]["repo_org"] == "my-org"
-    assert raw["ci"]["repo_name"] == "my-repo"
-    assert raw["ci"]["oidc"]
-
-
-def test_boot_repo_oidc_true_no_envs_stores_org_and_repo(tmp_path: Path) -> None:
-    _oidc_result = OidcWizardResult(repo_org="acme", repo_name="infra", oidc_roles={})
-    with (
-        patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
-        patch(f"{_MODULE}._run_oidc_wizard", return_value=_oidc_result),
-    ):
-        boot_repo(TfdoBootInput(settings=_settings(tmp_path), oidc=True))
-
-    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
-    assert raw["ci"]["oidc"]
-    assert raw["ci"]["repo_org"] == "acme"
-    assert raw["ci"]["repo_name"] == "infra"
-    assert raw["ci"]["oidc_roles"] == {}
-
-
-def test_boot_repo_oidc_true_passes_backend_bucket(tmp_path: Path) -> None:
-    (tmp_path / "tfdo.yaml").write_text(
-        yaml.dump({"tf_version": "1.11.0", "backend": {"type": "s3", "bucket": "state-bucket", "key": "state.tfstate"}})
-    )
-    _oidc_result = OidcWizardResult(repo_org="acme", repo_name="infra", oidc_roles={})
-    with patch(f"{_MODULE}._run_oidc_wizard", return_value=_oidc_result) as mock_wizard:
-        boot_repo(TfdoBootInput(settings=_settings(tmp_path), oidc=True))
-
-    mock_wizard.assert_called_once()
-    _, kwargs = mock_wizard.call_args
-    assert kwargs["backend_bucket"] == "state-bucket"
-
-
-def test_boot_repo_oidc_false_does_not_write_ci(tmp_path: Path) -> None:
-    with patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"):
-        boot_repo(TfdoBootInput(settings=_settings(tmp_path)))
-
-    raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())
-    assert "ci" not in raw
 
 
 def test_boot_pins_provider_versions(tmp_path: Path) -> None:
