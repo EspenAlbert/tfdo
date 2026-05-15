@@ -12,6 +12,7 @@ from tfdo._internal.check.check_logic import (
     _build_fmt_command,
     _build_validate_command,
     _check_provider_version_drift,
+    _find_unpinned_providers,
     _parse_fmt_files,
     _run_tflint,
     check,
@@ -631,3 +632,56 @@ def test_check_provider_version_drift_no_drift(tmp_path: Path) -> None:
     ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
     settings = _make_settings(tmp_path)
     assert not _check_provider_version_drift(tmp_path, settings, fix=False)
+
+
+# --- unpinned provider tests ---
+
+_TFDO_YAML_NO_CONSTRAINT = """\
+providers:
+  - name: aws
+    source: hashicorp/aws
+"""
+
+_TFDO_YAML_LOOSE_CONSTRAINT = """\
+providers:
+  - name: aws
+    source: hashicorp/aws
+    constraint: "~> 5.0"
+"""
+
+
+def test_find_unpinned_providers_no_constraint(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_NO_CONSTRAINT)
+    assert _find_unpinned_providers(tmp_path) == ["aws"]
+
+
+def test_find_unpinned_providers_loose_constraint(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_LOOSE_CONSTRAINT)
+    assert _find_unpinned_providers(tmp_path) == ["aws"]
+
+
+def test_find_unpinned_providers_exact_constraint(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_PINNED)
+    assert _find_unpinned_providers(tmp_path) == []
+
+
+def test_find_unpinned_providers_no_config(tmp_path: Path) -> None:
+    assert _find_unpinned_providers(tmp_path) == []
+
+
+def test_unpinned_providers_does_not_affect_has_issues() -> None:
+    dr = DirCheckResult(directory=Path("/a"), unpinned_providers=["aws", "random"])
+    assert not dr.has_issues
+
+
+def test_unpinned_providers_does_not_cause_exit_code_1(tmp_path: Path) -> None:
+    ensure_parents_write_text(tmp_path / "main.tf", "")
+    ensure_parents_write_text(tmp_path / "tfdo.yaml", _TFDO_YAML_NO_CONSTRAINT)
+    (tmp_path / ".terraform").mkdir()
+    settings = _make_settings(tmp_path)
+    mock_run = _mock_run(exit_code=0, validate_output=VALID_OUTPUT)
+    with patch(_patch_run, return_value=mock_run):
+        result = check(CheckInput(settings=settings, skip_check_providers=True))
+    assert result.exit_code == 0
+    assert result.dir_results[0].unpinned_providers == ["aws"]
+    assert result.total_unpinned_providers == ["aws"]

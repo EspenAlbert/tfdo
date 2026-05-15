@@ -220,6 +220,7 @@ class DirCheckResult(BaseModel):
     skipped: bool = False
     backend_drift: bool = False
     provider_version_drift: bool = False
+    unpinned_providers: list[str] = Field(default_factory=list)
 
     @property
     def has_issues(self) -> bool:
@@ -264,6 +265,10 @@ class CheckResult(BaseModel):
     @property
     def total_provider_failures(self) -> int:
         return sum(1 for d in self.dir_results if d.provider_result is not None and not d.provider_result.is_ok)
+
+    @property
+    def total_unpinned_providers(self) -> list[str]:
+        return [name for d in self.dir_results for name in d.unpinned_providers]
 
     @property
     def directories_checked(self) -> int:

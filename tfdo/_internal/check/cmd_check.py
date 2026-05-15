@@ -37,6 +37,8 @@ def _log_dir_issues(dr: DirCheckResult) -> None:
         logger.error(f"    tfvars: missing {', '.join(dr.missing_tfvars)}")
     if dr.backend_drift:
         logger.error("    backend: backend.tf is out of sync, run 'tfdo check --fix' to update")
+    if dr.unpinned_providers:
+        logger.warning(f"    unpinned: {', '.join(dr.unpinned_providers)}. Run 'tfdo boot' to resolve.")
     if dr.provider_result is not None:
         for p in dr.provider_result.providers:
             _log_provider(p)
@@ -47,8 +49,13 @@ def _log_dir(dr: DirCheckResult) -> None:
     if dr.skipped:
         logger.warning(f"  {d}: skipped (not initialized)")
         return
-    if not dr.has_issues:
+    has_warnings = bool(dr.unpinned_providers)
+    if not dr.has_issues and not has_warnings:
         logger.info(f"  {d}: ok")
+        return
+    if not dr.has_issues and has_warnings:
+        logger.warning(f"  {d}: {len(dr.unpinned_providers)} unpinned")
+        _log_dir_issues(dr)
         return
     issues: list[str] = []
     if dr.fmt_files:
@@ -90,6 +97,9 @@ def _log_result(result: CheckResult) -> None:
         parts.append(f"{backend_drift} backend drift")
     if provider_failures:
         parts.append(f"{provider_failures} provider issues")
+    unpinned = len(result.total_unpinned_providers)
+    if unpinned:
+        parts.append(f"{unpinned} unpinned")
     if skipped:
         parts.append(f"{skipped} skipped")
     log = logger.error if result.exit_code else logger.info

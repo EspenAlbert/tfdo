@@ -10,6 +10,7 @@ from typing import NamedTuple
 from ask_shell._internal.run_pool import run_pool
 from ask_shell.shell import run_and_wait
 
+from tfdo._internal.cache.provider_version_cache import _is_exact_version
 from tfdo._internal.check.check_run_dir import check_run_dir
 from tfdo._internal.check.models import CheckResult as RunDirProviderResult
 from tfdo._internal.config import backend_resolution
@@ -18,7 +19,7 @@ from tfdo._internal.config.config_file import (
     load_optional_env_vars_from_files,
     resolve_var_file_paths,
 )
-from tfdo._internal.config.config_model import merge_providers
+from tfdo._internal.config.config_model import ProviderConstraint, merge_providers
 from tfdo._internal.config.config_resolution import resolve_config
 from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
@@ -76,6 +77,8 @@ class _DirRunResult(NamedTuple):
     skipped: bool
     provider_result: RunDirProviderResult | None = None
     backend_drift: bool = False
+    version_drift: bool = False
+    unpinned_providers: list[str] = []
 
 
 def _run_fmt(resolved_binary: str, cwd: Path, fix: bool, diff: bool) -> _FmtResult:
@@ -208,6 +211,21 @@ def _check_directory(
         except ValueError:
             rel = str(tf_dir)
         provider_result = check_run_dir(work_dir, rel, os_env or os.environ, settings)
+    try:
+        bd = _check_backend_drift(tf_dir, settings, fix)
+    except Exception as exc:
+        logger.warning(f"backend drift check failed for {tf_dir}: {exc}")
+        bd = False
+    try:
+        vd = _check_provider_version_drift(tf_dir, settings, fix)
+    except Exception as exc:
+        logger.warning(f"provider version drift check failed for {tf_dir}: {exc}")
+        vd = False
+    try:
+        unpinned = _find_unpinned_providers(tf_dir)
+    except Exception as exc:
+        logger.warning(f"unpinned provider check failed for {tf_dir}: {exc}")
+        unpinned = []
     return _DirRunResult(
         fmt=fmt,
         validation_errors=errors,
@@ -215,6 +233,9 @@ def _check_directory(
         missing_tfvars=missing_tfvars,
         skipped=False,
         provider_result=provider_result,
+        backend_drift=bd,
+        version_drift=vd,
+        unpinned_providers=unpinned,
     )
 
 
@@ -258,18 +279,27 @@ def _read_hcl_provider_versions(tf_dir: Path) -> dict[str, str]:
     return result
 
 
+def _merged_provider_constraints(tf_dir: Path) -> list[ProviderConstraint]:
+    layers = load_config_layers(tf_dir)
+    if not layers:
+        return []
+    configs = [layer.config for layer in layers]
+    parent_cfgs = configs[:-1] if len(configs) > 1 else []
+    child_cfg = configs[-1]
+    return merge_providers(parent_cfgs, child_cfg)
+
+
+def _find_unpinned_providers(tf_dir: Path) -> list[str]:
+    merged = _merged_provider_constraints(tf_dir)
+    return sorted(p.name for p in merged if not p.constraint or not _is_exact_version(p.constraint))
+
+
 def _check_provider_version_drift(tf_dir: Path, settings: TfDoSettings, fix: bool) -> bool:
     """Check if versions.tf provider constraints differ from tfdo.yaml pinned versions.
 
     Returns True if drift was detected (and fixed when fix=True).
     """
-    layers = load_config_layers(tf_dir)
-    if not layers:
-        return False
-    configs = [layer.config for layer in layers]
-    parent_cfgs = configs[:-1] if len(configs) > 1 else []
-    child_cfg = configs[-1]
-    merged = merge_providers(parent_cfgs, child_cfg)
+    merged = _merged_provider_constraints(tf_dir)
     pinned = {p.name: p for p in merged if p.constraint and p.source}
     if not pinned:
         return False
@@ -338,20 +368,6 @@ def check(input_model: CheckInput) -> CheckResult:
         for tf_dir, future in futures.items():
             run_results[tf_dir] = future.result()
 
-    backend_drift: dict[Path, bool] = {}
-    version_drift: dict[Path, bool] = {}
-    for tf_dir in tf_dirs:
-        try:
-            backend_drift[tf_dir] = _check_backend_drift(tf_dir, settings, input_model.fix)
-        except Exception as exc:
-            logger.warning(f"backend drift check failed for {tf_dir}: {exc}")
-            backend_drift[tf_dir] = False
-        try:
-            version_drift[tf_dir] = _check_provider_version_drift(tf_dir, settings, input_model.fix)
-        except Exception as exc:
-            logger.warning(f"provider version drift check failed for {tf_dir}: {exc}")
-            version_drift[tf_dir] = False
-
     dir_results = [
         DirCheckResult(
             directory=tf_dir,
@@ -361,8 +377,9 @@ def check(input_model: CheckInput) -> CheckResult:
             missing_tfvars=run_result.missing_tfvars,
             provider_result=run_result.provider_result,
             skipped=run_result.skipped,
-            backend_drift=backend_drift.get(tf_dir, False) and not input_model.fix,
-            provider_version_drift=version_drift.get(tf_dir, False) and not input_model.fix,
+            backend_drift=run_result.backend_drift and not input_model.fix,
+            provider_version_drift=run_result.version_drift and not input_model.fix,
+            unpinned_providers=run_result.unpinned_providers,
         )
         for tf_dir, run_result in run_results.items()
     ]
