@@ -15,6 +15,9 @@ runs:
         python-version: "${{ inputs.python-version }}"
     - uses: astral-sh/setup-uv@v7
     - uses: extractions/setup-just@v2
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_wrapper: false
     - name: git-configure
       shell: bash
       run: |
