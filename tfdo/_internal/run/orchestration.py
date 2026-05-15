@@ -192,15 +192,63 @@ def prepare_run_dir(
 DEP_TFVARS_SUFFIX = TfDoSettings.DEP_TFVARS_SUFFIX
 
 
-def _collect_dependency_outputs(
-    settings: TfDoSettings, run_dir_path: Path, config: ResolvedConfig
+def _dependency_outputs_or_log(
+    init_input: InitInput, run_dir_path: Path, *, log_suffix: str = ""
 ) -> dict[str, object] | None:
-    dir_settings = settings.with_overrides(run_dir_path, config.binary, config.tf_version)
-    result = executor.output_json(OutputInput(settings=dir_settings))
+    result = executor.output_json(OutputInput(settings=init_input.settings))
     if result.exit_code != 0:
-        logger.warning(f"terraform output failed in {run_dir_path}: {result.stderr}")
+        extra = f" {log_suffix}" if log_suffix else ""
+        logger.warning(f"terraform output failed in {run_dir_path}{extra}: {result.stderr}")
         return None
     return result.outputs
+
+
+def _outputs_after_prereq_init(init_input: InitInput, run_dir_path: Path) -> dict[str, object] | None:
+    if (ir := executor.init(init_input)).exit_code != 0:
+        logger.warning(f"terraform init before output failed in {run_dir_path}: {ir.stderr}")
+        return None
+    return _dependency_outputs_or_log(init_input, run_dir_path)
+
+
+def _outputs_retry_after_auto_init(
+    init_input: InitInput,
+    run_dir_path: Path,
+    stderr: str,
+) -> dict[str, object] | None:
+    init_for_retry = executor.init_input_for_output_retry(stderr, init_input)
+    if init_for_retry is None:
+        logger.warning(f"terraform output failed in {run_dir_path}: {stderr}")
+        return None
+    if (ir := executor.init(init_for_retry)).exit_code != 0:
+        logger.warning(f"terraform init before output retry failed in {run_dir_path}: {ir.stderr}")
+        return None
+    return _dependency_outputs_or_log(init_input, run_dir_path, log_suffix="after init")
+
+
+def _collect_dependency_outputs(
+    settings: TfDoSettings,
+    run_dir_path: Path,
+    ctx: RunDirContext,
+    config: ResolvedConfig,
+    init_mode: InitMode,
+    var_file: Path | None,
+) -> dict[str, object] | None:
+    try:
+        prepared = prepare_run_dir(settings, run_dir_path, ctx, config, var_file)
+    except Exception as e:
+        logger.warning(f"dependency output prepare failed in {run_dir_path}: {e}")
+        return None
+    init_input = prepared.init_input
+    if init_mode == InitMode.ALWAYS:
+        return _outputs_after_prereq_init(init_input, run_dir_path)
+
+    first = executor.output_json(OutputInput(settings=init_input.settings))
+    if first.exit_code == 0:
+        return first.outputs
+    if init_mode == InitMode.NEVER:
+        logger.warning(f"terraform output failed in {run_dir_path}: {first.stderr}")
+        return None
+    return _outputs_retry_after_auto_init(init_input, run_dir_path, first.stderr or "")
 
 
 def _resolve_dep_outputs(dep_ref: DependencyRef, collected: dict[str, object] | None) -> dict[str, str] | None:
@@ -441,7 +489,12 @@ def _execute_wave_sequential(
         _log_run_dir_output(result, inp.command)
         if result.exit_code == 0 and collected_outputs is not None and inp.command != LifecycleCommand.DESTROY:
             collected_outputs[rel_path] = _collect_dependency_outputs(
-                inp.settings, repo_root / rel_path, configs[rel_path]
+                inp.settings,
+                repo_root / rel_path,
+                contexts[rel_path],
+                configs[rel_path],
+                inp.init_mode,
+                inp.var_file,
             )
         if result.exit_code != 0:
             has_failure = True
@@ -478,7 +531,12 @@ def _execute_wave_parallel(
         _log_run_dir_output(result, inp.command)
         if result.exit_code == 0 and collected_outputs is not None and inp.command != LifecycleCommand.DESTROY:
             collected_outputs[rel_path] = _collect_dependency_outputs(
-                inp.settings, repo_root / rel_path, configs[rel_path]
+                inp.settings,
+                repo_root / rel_path,
+                contexts[rel_path],
+                configs[rel_path],
+                inp.init_mode,
+                inp.var_file,
             )
         if result.exit_code != 0:
             has_failure = True
@@ -504,7 +562,12 @@ def _execute_plan(
         for wave in plan.waves:
             for rel_path in wave.run_dirs:
                 collected_outputs[rel_path] = _collect_dependency_outputs(
-                    inp.settings, repo_root / rel_path, configs[rel_path]
+                    inp.settings,
+                    repo_root / rel_path,
+                    contexts[rel_path],
+                    configs[rel_path],
+                    inp.init_mode,
+                    inp.var_file,
                 )
     all_results: list[RunDirResult] = []
     for wave in plan.waves:

@@ -132,14 +132,22 @@ BACKEND_CHANGED_PATTERNS: list[str] = [
 ]
 
 
-def _is_backend_changed(stderr: str) -> bool:
+def is_backend_changed(stderr: str) -> bool:
     lower = stderr.lower()
     return any(p.lower() in lower for p in BACKEND_CHANGED_PATTERNS)
 
 
-def _needs_init(stderr: str) -> bool:
+def needs_init(stderr: str) -> bool:
     lower = stderr.lower()
     return any(p.lower() in lower for p in INIT_NEEDED_PATTERNS)
+
+
+def init_input_for_output_retry(stderr: str, base: InitInput) -> InitInput | None:
+    if is_backend_changed(stderr):
+        return base.model_copy(update={"extra_args": [*base.extra_args, "-reconfigure"]})
+    if needs_init(stderr):
+        return base
+    return None
 
 
 def _build_lifecycle_command(binary: str, subcommand: str, var_file: Path | None, extra_flags: list[str]) -> str:
@@ -188,13 +196,13 @@ def _run_lifecycle[T: LifecycleResult](
 
     stderr = result.stderr or ""
     if result.exit_code != 0 and mode != InitMode.NEVER and not force_init:
-        if _is_backend_changed(stderr):
+        if is_backend_changed(stderr):
             logger.warning(
                 f"backend configuration changed in {settings.work_dir}. "
                 "Run 'tfdo check --fix' to update backend.tf, then 'terraform init -reconfigure' to accept "
                 "the new backend, or 'terraform init -migrate-state' to migrate existing state."
             )
-        elif _needs_init(stderr):
+        elif needs_init(stderr):
             logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
             init_result = init(
                 InitInput(

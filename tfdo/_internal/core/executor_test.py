@@ -11,14 +11,15 @@ from tfdo._internal.core.executor import (
     _build_init_command,
     _build_lifecycle_command,
     _clean_terraform_cache,
-    _is_backend_changed,
     _is_checksum_error,
     _is_transient,
-    _needs_init,
     _parse_tf_outputs,
     apply,
     destroy,
     init,
+    init_input_for_output_retry,
+    is_backend_changed,
+    needs_init,
     output_json,
     plan,
     terraform_init_should_retry,
@@ -272,12 +273,23 @@ def test_lifecycle_always_init_then_command(tmp_path: Path):
 
 
 def test_needs_init_detection():
-    assert _needs_init('Error: Could not load plugin\n\nPlease run "terraform init"')
-    assert _needs_init("Error: Missing required provider")
-    assert _needs_init("Error: Backend initialization required")
-    assert _needs_init("Error: Module not installed")
-    assert not _needs_init("Error: Backend configuration changed")
-    assert not _needs_init("Error: Invalid HCL syntax")
+    assert needs_init('Error: Could not load plugin\n\nPlease run "terraform init"')
+    assert needs_init("Error: Missing required provider")
+    assert needs_init("Error: Backend initialization required")
+    assert needs_init("Error: Module not installed")
+    assert not needs_init("Error: Backend configuration changed")
+    assert not needs_init("Error: Invalid HCL syntax")
+
+
+def test_init_input_for_output_retry(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    base = InitInput(settings=settings, backend_args=["-backend-config=a"])
+    changed = init_input_for_output_retry("Backend configuration changed", base)
+    assert changed is not None
+    assert "-reconfigure" in changed.extra_args
+    assert changed.backend_args == base.backend_args
+    assert init_input_for_output_retry("Backend initialization required", base) is base
+    assert init_input_for_output_retry("Invalid HCL", base) is None
 
 
 def test_auto_init_retries_on_init_needed_error(tmp_path: Path):
@@ -442,10 +454,10 @@ def test_backend_changed_warns_without_auto_reconfigure(tmp_path: Path):
 
 
 def test_is_backend_changed_detection():
-    assert _is_backend_changed("Error: Backend configuration changed")
-    assert _is_backend_changed("BACKEND CONFIGURATION CHANGED for module foo")
-    assert not _is_backend_changed("Error: Missing required provider")
-    assert not _is_backend_changed("")
+    assert is_backend_changed("Error: Backend configuration changed")
+    assert is_backend_changed("BACKEND CONFIGURATION CHANGED for module foo")
+    assert not is_backend_changed("Error: Missing required provider")
+    assert not is_backend_changed("")
 
 
 # --- output_json tests ---
