@@ -21,7 +21,7 @@ from tfdo._internal.config.config_file import (
     load_optional_env_vars_from_files,
     resolve_var_file_paths,
 )
-from tfdo._internal.config.config_model import ProviderConstraint, merge_providers
+from tfdo._internal.config.config_model import BackendConfig, ProviderConstraint, merge_providers
 from tfdo._internal.config.config_resolution import resolve_config
 from tfdo._internal.core import binary
 from tfdo._internal.core.executor import init
@@ -309,18 +309,16 @@ def _check_directory(
     )
 
 
-def _check_backend_drift(tf_dir: Path, settings: TfDoSettings, fix: bool) -> bool:
-    """Check if backend.tf is out of sync with the resolved backend config.
-
-    Returns True if drift was detected (and fixed when fix=True).
-    """
+def _resolve_run_dir_backend_context(
+    tf_dir: Path, settings: TfDoSettings
+) -> tuple[BackendConfig, RunDirContext] | None:
     work_dir = settings.work_dir
     rel = str(tf_dir.relative_to(work_dir))
     layers = load_config_layers(tf_dir)
     user_config = load_user_config(settings)
     cfg = resolve_config(layers, user_config, settings)
     if cfg.backend is None:
-        return False
+        return None
     remote = parse_git_remote(work_dir)
     owner = remote.org if remote else "unknown"
     repo_name = remote.repo if remote else work_dir.name
@@ -332,9 +330,29 @@ def _check_backend_drift(tf_dir: Path, settings: TfDoSettings, fix: bool) -> boo
         repo_name=repo_name,
         tags=cfg.tags,
     )
+    return cfg.backend, ctx
+
+
+def ensure_run_dir_backend(tf_dir: Path, settings: TfDoSettings) -> bool:
+    resolved = _resolve_run_dir_backend_context(tf_dir, settings)
+    if resolved is None:
+        return False
+    backend, ctx = resolved
+    return backend_resolution.ensure_backend_tf(tf_dir, backend, ctx)
+
+
+def _check_backend_drift(tf_dir: Path, settings: TfDoSettings, fix: bool) -> bool:
+    """Check if backend.tf is out of sync with the resolved backend config.
+
+    Returns True if drift was detected (and fixed when fix=True).
+    """
+    resolved = _resolve_run_dir_backend_context(tf_dir, settings)
+    if resolved is None:
+        return False
+    backend, ctx = resolved
     if fix:
-        return backend_resolution.ensure_backend_tf(tf_dir, cfg.backend, ctx)
-    return backend_resolution.has_backend_drift(tf_dir, cfg.backend, ctx)
+        return backend_resolution.ensure_backend_tf(tf_dir, backend, ctx)
+    return backend_resolution.has_backend_drift(tf_dir, backend, ctx)
 
 
 def _read_hcl_provider_versions(tf_dir: Path) -> dict[str, str]:

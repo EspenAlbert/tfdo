@@ -55,8 +55,9 @@ def _input(tmp_path: Path, selected: list[str], **kwargs) -> CopyEnvInput:
     )
 
 
+@patch(f"{_module.__name__}.check_logic.ensure_run_dir_backend", return_value=False)
 @patch(f"{_module.__name__}.terraform_fmt")
-def test_pure_clone_byte_identical(mock_fmt, tmp_path: Path) -> None:
+def test_pure_clone_byte_identical(mock_fmt, mock_ensure, tmp_path: Path) -> None:
     _build_env(tmp_path, "dev", {"atlas-project": _MODULE_TF, "networking": "# empty\n"})
     result = copy_env(_input(tmp_path, ["atlas-project", "networking"]))
 
@@ -67,18 +68,24 @@ def test_pure_clone_byte_identical(mock_fmt, tmp_path: Path) -> None:
         dst = tmp_path / "envs" / "prod" / rd_name / "main.tf"
         assert filecmp.cmp(src, dst, shallow=False)
 
+    assert mock_ensure.call_count == 2
 
+
+@patch(f"{_module.__name__}.check_logic.ensure_run_dir_backend", return_value=False)
 @patch(f"{_module.__name__}.terraform_fmt")
-def test_deselected_run_dir_not_copied(mock_fmt, tmp_path: Path) -> None:
+def test_deselected_run_dir_not_copied(mock_fmt, mock_ensure, tmp_path: Path) -> None:
     _build_env(tmp_path, "dev", {"keep": _MODULE_TF, "skip": _MODULE_TF})
     copy_env(_input(tmp_path, ["keep"]))
 
     assert (tmp_path / "envs" / "prod" / "keep").is_dir()
     assert not (tmp_path / "envs" / "prod" / "skip").exists()
 
+    assert mock_ensure.call_count == 1
 
+
+@patch(f"{_module.__name__}.check_logic.ensure_run_dir_backend", return_value=False)
 @patch(f"{_module.__name__}.terraform_fmt")
-def test_module_call_edit_rewrites_attr(mock_fmt, tmp_path: Path) -> None:
+def test_module_call_edit_rewrites_attr(mock_fmt, mock_ensure, tmp_path: Path) -> None:
     _build_env(tmp_path, "dev", {"atlas-project": _MODULE_TF})
     edit = ModuleCallEdit(
         run_dir="atlas-project",
@@ -91,9 +98,12 @@ def test_module_call_edit_rewrites_attr(mock_fmt, tmp_path: Path) -> None:
     assert '"tfdo-demo-prod"' in dst_tf
     assert result.edited_run_dirs == [tmp_path / "envs" / "prod" / "atlas-project"]
 
+    assert mock_ensure.call_count == 1
 
+
+@patch(f"{_module.__name__}.check_logic.ensure_run_dir_backend", return_value=False)
 @patch(f"{_module.__name__}.terraform_fmt")
-def test_resource_edit_rewrites_attr(mock_fmt, tmp_path: Path) -> None:
+def test_resource_edit_rewrites_attr(mock_fmt, mock_ensure, tmp_path: Path) -> None:
     _build_env(tmp_path, "dev", {"atlas-project": _RESOURCE_TF})
     edit = ResourceEdit(
         run_dir="atlas-project",
@@ -106,6 +116,8 @@ def test_resource_edit_rewrites_attr(mock_fmt, tmp_path: Path) -> None:
     dst_tf = (tmp_path / "envs" / "prod" / "atlas-project" / "main.tf").read_text()
     assert '"tfdo-demo-prod"' in dst_tf
     assert result.edited_run_dirs == [tmp_path / "envs" / "prod" / "atlas-project"]
+
+    assert mock_ensure.call_count == 1
 
 
 def test_missing_src_env_raises(tmp_path: Path) -> None:
@@ -124,8 +136,9 @@ def test_existing_dst_env_raises(tmp_path: Path) -> None:
         copy_env(_input(tmp_path, ["rd"]))
 
 
+@patch(f"{_module.__name__}.check_logic.ensure_run_dir_backend", return_value=False)
 @patch(f"{_module.__name__}.terraform_fmt")
-def test_fmt_called_only_on_edited_run_dirs(mock_fmt, tmp_path: Path) -> None:
+def test_fmt_called_only_on_edited_run_dirs(mock_fmt, mock_ensure, tmp_path: Path) -> None:
     _build_env(tmp_path, "dev", {"run-a": _MODULE_TF, "run-b": _MODULE_TF})
     edit = ModuleCallEdit(
         run_dir="run-a",
@@ -137,3 +150,5 @@ def test_fmt_called_only_on_edited_run_dirs(mock_fmt, tmp_path: Path) -> None:
     assert mock_fmt.call_count == 1
     mock_fmt.assert_called_once_with(tmp_path / "envs" / "prod" / "run-a", "terraform")
     assert result.edited_run_dirs == [tmp_path / "envs" / "prod" / "run-a"]
+
+    assert mock_ensure.call_count == 2

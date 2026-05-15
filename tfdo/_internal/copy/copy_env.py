@@ -8,10 +8,12 @@ from typing import Any
 from pydantic import BaseModel, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
+from tfdo._internal.check import check_logic
 from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.hcl_roundtrip import HclValue, update_module_block, update_resource_block
 from tfdo._internal.hcl_run_dir_gen import hcl_value_to_attr_raw, terraform_fmt
 from tfdo._internal.models import TfDoBaseInput
+from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,19 @@ def _apply_run_dir_edits(dst_dir: Path, edits_by_run_dir: dict[str, list[ModuleC
     return edited
 
 
+def _ensure_backends_and_fmt(copied: list[Path], edited: list[Path], settings: TfDoSettings) -> None:
+    backend_touched: list[Path] = []
+    for run_dir in copied:
+        try:
+            if check_logic.ensure_run_dir_backend(run_dir, settings):
+                backend_touched.append(run_dir)
+        except Exception as exc:
+            logger.warning(f"ensure backend failed for {run_dir}: {exc}")
+
+    for path in sorted(set(edited) | set(backend_touched), key=lambda p: str(p)):
+        terraform_fmt(path, settings.binary)
+
+
 def copy_env(input_model: CopyEnvInput) -> CopyEnvResult:
     settings = input_model.settings
     work_dir = settings.work_dir
@@ -113,8 +128,7 @@ def copy_env(input_model: CopyEnvInput) -> CopyEnvResult:
 
     edited = _apply_run_dir_edits(dst_dir, edits_by_run_dir)
 
-    for edited_dir in edited:
-        terraform_fmt(edited_dir, settings.binary)
+    _ensure_backends_and_fmt(copied, edited, settings)
 
     logger.info("Env copied. Run `tfdo check` to ensure it is ready!")
     return CopyEnvResult(copied_run_dirs=copied, edited_run_dirs=edited)
