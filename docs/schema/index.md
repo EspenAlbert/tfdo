@@ -18,7 +18,7 @@
 <a id="resourceschemachange_def"></a>
 
 ### class: `ResourceSchemaChange`
-- [source](../../tfdo/_internal/schema/diff.py#L38)
+- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/schema/diff.py#L38)
 > **Since:** 0.4.0
 
 ```python
@@ -46,7 +46,7 @@ class ResourceSchemaChange(BaseModel):
 <a id="schemadiffresult_def"></a>
 
 ### class: `SchemaDiffResult`
-- [source](../../tfdo/_internal/schema/diff.py#L45)
+- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/schema/diff.py#L45)
 > **Since:** 0.4.0
 
 ```python
@@ -78,7 +78,7 @@ class SchemaDiffResult(BaseModel):
 <a id="schema_diff_cmd_def"></a>
 
 ### cli_command: `schema_diff_cmd`
-- [source](../../tfdo/_internal/schema/cmd_schema.py#L76)
+- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/schema/cmd_schema.py#L76)
 > **Since:** 0.4.0
 
 ```python
@@ -120,7 +120,7 @@ Examples:
 <a id="schema_show_cmd_def"></a>
 
 ### cli_command: `schema_show_cmd`
-- [source](../../tfdo/_internal/schema/cmd_schema.py#L25)
+- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/schema/cmd_schema.py#L25)
 > **Since:** 0.4.0
 
 ```python

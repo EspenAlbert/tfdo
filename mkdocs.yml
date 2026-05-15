@@ -15,13 +15,22 @@ nav:
   - Home: index.md
   - tfdo:
     - Overview: _root/index.md
+    - CheckConfig: _root/checkconfig.md
     - TfDoSettings: _root/tfdosettings.md
-  - config: config/index.md
+  - boot: boot/index.md
+  - config:
+    - Overview: config/index.md
+    - DependencyRef: config/dependencyref.md
+    - S3Backend: config/s3backend.md
+    - TfDoConfig: config/tfdoconfig.md
+  - copy: copy/index.md
   - core: core/index.md
   - hooks: hooks/index.md
   - inspect: inspect/index.md
+  - new: new/index.md
   - run: run/index.md
   - schema: schema/index.md
+  - sync: sync/index.md
 # === OK_EDIT: pkg-ext nav ===
 
 # === DO_NOT_EDIT: pkg-ext extensions ===

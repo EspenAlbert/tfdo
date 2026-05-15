@@ -4,7 +4,7 @@
 <!-- === OK_EDIT: pkg-ext header === -->
 
 <!-- === DO_NOT_EDIT: pkg-ext symbols === -->
-- [`CheckConfig`](#checkconfig_def)
+- [CheckConfig](./checkconfig.md)
 - [`InteractiveMode`](#interactivemode_def)
 - [TfDoSettings](./tfdosettings.md)
 - [`TfDoUserConfig`](#tfdouserconfig_def)
@@ -21,7 +21,7 @@
 <a id="get_settings_def"></a>
 
 ### cli_command: `get_settings`
-- [source](../../tfdo/_internal/typer_app.py#L46)
+- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/typer_app.py#L60)
 > **Since:** 0.1.0
 
 ```python
@@ -39,11 +39,11 @@ def get_settings() -> TfDoSettings:
 <a id="main_callback_def"></a>
 
 ### cli_command: `main_callback`
-- [source](../../tfdo/_internal/typer_app.py#L15)
+- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/typer_app.py#L17)
 > **Since:** 0.1.0
 
 ```python
-def main_callback(*, binary: str = 'terraform', tf_version: str | None = None, work_dir: Path | None = None, interactive: InteractiveMode = <InteractiveMode.AUTO: 'auto'>, log_level: str = 'INFO', passthrough: bool = False) -> None:
+def main_callback(*, binary: str = 'terraform', tf_version: str | None = None, work_dir: Path | None = None, interactive: InteractiveMode = <InteractiveMode.AUTO: 'auto'>, log_level: str = 'INFO', passthrough: bool = False, verbose_shell: bool = False) -> None:
     ...
 ```
 
@@ -57,6 +57,7 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = None, w
 | `--interactive` | `InteractiveMode` | `<InteractiveMode.AUTO: 'auto'>` | `TFDO_INTERACTIVE` | Interactive mode: auto (detect TTY), always (force stdin), never (no stdin) [auto, always, never] |
 | `--log-level` | `str` | `'INFO'` | - | Log level for tfdo |
 | `--passthrough` | `bool` | `False` | - | Disable parsed output, pass raw ANSI from terraform |
+| `--verbose-shell` | `bool` | `False` | `TFDO_VERBOSE_SHELL` | Log successful shell command completions |
 
 ### Changes
 
@@ -68,7 +69,7 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = None, w
 <a id="interactivemode_def"></a>
 
 ### class: `InteractiveMode`
-- [source](../../tfdo/_internal/settings.py#L21)
+- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/settings.py#L24)
 > **Since:** 0.2.0
 
 ```python
@@ -82,33 +83,11 @@ class InteractiveMode(StrEnum):
 |---------|--------|
 | 0.2.0 | Made public |
 <!-- === OK_EDIT: pkg-ext interactivemode_def === -->
-<!-- === DO_NOT_EDIT: pkg-ext checkconfig_def === -->
-<a id="checkconfig_def"></a>
-
-### class: `CheckConfig`
-- [source](../../tfdo/_internal/settings.py#L89)
-> **Since:** 0.3.0
-
-```python
-class CheckConfig(BaseModel):
-    tflint: bool = False
-```
-
-| Field | Type | Default | Since |
-|---|---|---|---|
-| tflint | `bool` | `False` | 0.3.0 |
-
-### Changes
-
-| Version | Change |
-|---------|--------|
-| 0.3.0 | Made public |
-<!-- === OK_EDIT: pkg-ext checkconfig_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext tfdouserconfig_def === -->
 <a id="tfdouserconfig_def"></a>
 
 ### class: `TfDoUserConfig`
-- [source](../../tfdo/_internal/settings.py#L93)
+- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/settings.py#L138)
 > **Since:** 0.3.0
 
 ```python
@@ -130,7 +109,7 @@ class TfDoUserConfig(BaseModel):
 <a id="info_cmd_def"></a>
 
 ### cli_command: `info_cmd`
-- [source](../../tfdo/_internal/core/cmd_info.py#L39)
+- [source](https://github.com/EspenAlbert/tfdo/blob/main/tfdo/_internal/core/cmd_info.py#L39)
 > **Since:** 0.3.0
 
 ```python

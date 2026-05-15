@@ -13,6 +13,11 @@ groups:
   - _internal.settings.TfDoUserConfig
   - _internal.typer_app.get_settings
   - _internal.typer_app.main_callback
+- name: boot
+  owned_modules:
+  - _internal.boot.cmd_boot
+  owned_refs:
+  - _internal.boot.cmd_boot.boot_cmd
 - name: config
   owned_modules:
   - _internal.config.cmd_config
@@ -21,15 +26,23 @@ groups:
   owned_refs:
   - _internal.config.cmd_config.init_cmd
   - _internal.config.cmd_config.show_cmd
+  - _internal.config.config_model.CiConfig
   - _internal.config.config_model.DependencyRef
   - _internal.config.config_model.HookConfig
   - _internal.config.config_model.LocalBackend
+  - _internal.config.config_model.ModuleConstraint
+  - _internal.config.config_model.ProviderConstraint
   - _internal.config.config_model.S3Backend
   - _internal.config.config_model.TfDoConfig
   - _internal.config.enums.BackendType
   - _internal.config.enums.HookOnError
   - _internal.config.enums.LifecycleEvent
   - _internal.config.enums.TagsInject
+- name: copy
+  owned_modules:
+  - _internal.copy.cmd_copy
+  owned_refs:
+  - _internal.copy.cmd_copy.env_cmd
 - name: core
   owned_modules:
   - _internal.check.cmd_check
@@ -67,6 +80,12 @@ groups:
   - _internal.inspect.description_search_logic.MatchingSchemaResource
   - _internal.inspect.resource_usage_logic.SchemaSearch
   - _internal.inspect.resource_usage_logic.SchemaSearchRowsBehavior
+- name: new
+  owned_modules:
+  - _internal.new.cmd_new
+  owned_refs:
+  - _internal.new.cmd_new.backend_cmd
+  - _internal.new.cmd_new.run_dir_cmd
 - name: run
   owned_modules:
   - _internal.run.cmd_run
@@ -85,3 +104,9 @@ groups:
   - _internal.schema.cmd_schema.schema_show_cmd
   - _internal.schema.diff.ResourceSchemaChange
   - _internal.schema.diff.SchemaDiffResult
+- name: sync
+  owned_modules:
+  - _internal.sync.cmd_sync
+  owned_refs:
+  - _internal.sync.cmd_sync.github_cmd
+  - _internal.sync.cmd_sync.justfile_cmd

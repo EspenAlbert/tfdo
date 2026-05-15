@@ -2,7 +2,7 @@
 
 tfdo maintains a per-user cache for two purposes: avoiding repeated provider plugin downloads across repos, and storing module source trees so `tfdo new run-dir` can read module schemas without running `terraform init` inside the run-dir.
 
-Both caches live under `cache_root`, resolved by [`TfDoSettings.cache_root`](../_root/tfdosettings.md). To see the exact path on your machine:
+Both caches live under `cache_root`, resolved by [`TfDoSettings.cache_root`](./_root/tfdosettings.md). To see the exact path on your machine:
 
 ```sh
 tfdo info
