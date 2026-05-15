@@ -271,6 +271,20 @@ def _batch_gh_via_dotenv_tempfile(
         path.unlink(missing_ok=True)
 
 
+def _gha_secret_and_var_env_entries(
+    key_indent: str,
+    secrets: list[str],
+    variables: list[str],
+    optional_variables: list[str],
+) -> list[str]:
+    lines: list[str] = []
+    for s in secrets:
+        lines.append(f"{key_indent}{s}: ${{{{ secrets.{s} }}}}")
+    for v in dict.fromkeys([*variables, *optional_variables]):
+        lines.append(f"{key_indent}{v}: ${{{{ vars.{v} }}}}")
+    return lines
+
+
 def _render_env_workflow(
     env: str,
     config: TfDoConfig,
@@ -292,12 +306,8 @@ def _render_env_workflow(
         f"    paths: ['{prefix}/{env}/**']",
     ]
 
-    env_lines: list[str] = []
-    for s in secrets:
-        env_lines.append(f"  {s}: ${{{{ secrets.{s} }}}}")
-    for v in dict.fromkeys([*variables, *optional_variables]):
-        env_lines.append(f"  {v}: ${{{{ vars.{v} }}}}")
-    env_block = "env:\n" + "\n".join(env_lines) if env_lines else ""
+    env_entries = _gha_secret_and_var_env_entries("  ", secrets, variables, optional_variables)
+    env_block = "env:\n" + "\n".join(env_entries) if env_entries else ""
 
     aws_step = ""
     if has_s3_backend:
@@ -359,7 +369,13 @@ def _render_env_workflow(
     }
 
 
-def _render_manual_workflow(env_names: list[str], config: TfDoConfig) -> dict[str, str]:
+def _render_manual_workflow(
+    env_names: list[str],
+    config: TfDoConfig,
+    secrets: list[str],
+    variables: list[str],
+    optional_variables: list[str],
+) -> dict[str, str]:
     has_s3_backend = isinstance(config.backend, S3Backend)
     env_choices = ", ".join(env_names)
 
@@ -411,17 +427,26 @@ def _render_manual_workflow(env_names: list[str], config: TfDoConfig) -> dict[st
     run_cmd += " ${{ github.event.inputs.extra_args }}"
     steps.append(f"      - run: {run_cmd}")
 
+    manual_env_entries = _gha_secret_and_var_env_entries("      ", secrets, variables, optional_variables)
+
     job_lines = [
         "jobs:",
         "  manual:",
         "    runs-on: ubuntu-latest",
         "    environment: ${{ github.event.inputs.env }}",
-        "    permissions:",
-        "      id-token: write",
-        "      contents: read",
-        "    steps:",
-        *steps,
     ]
+    if manual_env_entries:
+        job_lines.append("    env:")
+        job_lines.extend(manual_env_entries)
+    job_lines.extend(
+        [
+            "    permissions:",
+            "      id-token: write",
+            "      contents: read",
+            "    steps:",
+            *steps,
+        ]
+    )
 
     return {
         "dispatch": "\n".join(dispatch_lines),
@@ -683,7 +708,7 @@ def sync_github(input_model: SyncGithubInput) -> SyncGithubResult:
         result.workflow_files.append(path)
         logger.info(f"workflow: {path}")
 
-    manual_sections = _render_manual_workflow(env_names, config)
+    manual_sections = _render_manual_workflow(env_names, config, reqs.secrets, reqs.variables, reqs.optional_variables)
     manual_path = work_dir / GH_WORKFLOWS_DIR / "tfdo-manual.yml"
     _write_workflow_file(manual_path, manual_sections, input_model.dry_run)
     result.manual_workflow_path = manual_path
