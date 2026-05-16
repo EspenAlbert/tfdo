@@ -1,8 +1,17 @@
 # tfdo
 
+[![PyPI](https://img.shields.io/pypi/v/tfdo)](https://pypi.org/project/tfdo/)
+[![GitHub](https://img.shields.io/github/license/EspenAlbert/tfdo)](https://github.com/EspenAlbert/tfdo)
+[![codecov](https://codecov.io/gh/EspenAlbert/tfdo/graph/badge.svg)](https://codecov.io/gh/EspenAlbert/tfdo)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://espenalbert.github.io/tfdo/)
+
 The outer layer [Terraform](https://developer.hashicorp.com/terraform) and [OpenTofu](https://opentofu.org/) are missing.
 
 `tfdo` replaces the shell scripts, retry hacks, and copy-pasted CI workflows that every Terraform repo accumulates with a single CLI that handles init reliability, plan readability, run-directory orchestration, and CI scaffolding out of the box.
+
+## Project status
+
+`tfdo` is in early development. Interfaces and behavior can change without notice. Plan rendering, `apply`, and rendering across multiple run directories (multi run-dir) are work in progress (WIP), along with other gaps the docs may not call out yet. Verify behavior on your stacks before you rely on it in production pipelines.
 
 Full reference docs: [espenalbert.github.io/tfdo](https://espenalbert.github.io/tfdo/).
 
