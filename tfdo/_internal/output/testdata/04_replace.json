@@ -1,0 +1,448 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.12.1",
+  "planned_values": {
+    "outputs": {
+      "token_length": {
+        "sensitive": false,
+        "type": "number",
+        "value": 32
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "local_file.credentials",
+          "mode": "managed",
+          "type": "local_file",
+          "name": "credentials",
+          "provider_name": "registry.terraform.io/hashicorp/local",
+          "schema_version": 0,
+          "values": {
+            "content_base64": null,
+            "directory_permission": "0777",
+            "file_permission": "0777",
+            "filename": "./output/creds.txt",
+            "sensitive_content": null,
+            "source": null
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "random_pet.service",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "service",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 0,
+          "values": {
+            "keepers": null,
+            "length": 3,
+            "prefix": "app",
+            "separator": "_"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "random_string.token",
+          "mode": "managed",
+          "type": "random_string",
+          "name": "token",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 2,
+          "values": {
+            "keepers": null,
+            "length": 32,
+            "lower": true,
+            "min_lower": 0,
+            "min_numeric": 0,
+            "min_special": 0,
+            "min_upper": 0,
+            "number": true,
+            "numeric": true,
+            "override_special": null,
+            "special": false,
+            "upper": true
+          },
+          "sensitive_values": {}
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "local_file.credentials",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "credentials",
+      "provider_name": "registry.terraform.io/hashicorp/local",
+      "change": {
+        "actions": [
+          "delete",
+          "create"
+        ],
+        "before": {
+          "content": "service = svc-shining-akita\ntoken = h0Vy>e=oA_-(bwX(\n",
+          "content_base64": null,
+          "content_base64sha256": "WWQF7FydPy5joqI1orFznXMwiies0Dqugii27Z9OLu0=",
+          "content_base64sha512": "Wi0ENrXfKUqVM73Jv1O37CfKRysiootVS7pRcF9OkNmyoR3o6vUrN1W+mqZgBA9jKKWU6aHVCrj+zrxiMn3Mgg==",
+          "content_md5": "fed21e6b1bd6fcb1aaf82ba160f330fc",
+          "content_sha1": "14386913d5e9d514400441273bc7bc0b427dce8f",
+          "content_sha256": "596405ec5c9d3f2e63a2a235a2b1739d73308a27acd03aae8228b6ed9f4e2eed",
+          "content_sha512": "5a2d0436b5df294a9533bdc9bf53b7ec27ca472b22a28b554bba51705f4e90d9b2a11de8eaf52b3755be9aa660040f6328a594e9a1d50ab8fecebc62327dcc82",
+          "directory_permission": "0777",
+          "file_permission": "0777",
+          "filename": "./output/creds.txt",
+          "id": "14386913d5e9d514400441273bc7bc0b427dce8f",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after": {
+          "content_base64": null,
+          "directory_permission": "0777",
+          "file_permission": "0777",
+          "filename": "./output/creds.txt",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after_unknown": {
+          "content": true,
+          "content_base64sha256": true,
+          "content_base64sha512": true,
+          "content_md5": true,
+          "content_sha1": true,
+          "content_sha256": true,
+          "content_sha512": true,
+          "id": true
+        },
+        "before_sensitive": {
+          "sensitive_content": true
+        },
+        "after_sensitive": {
+          "sensitive_content": true
+        },
+        "replace_paths": [
+          [
+            "content"
+          ]
+        ]
+      },
+      "action_reason": "replace_because_cannot_update"
+    },
+    {
+      "address": "random_pet.service",
+      "mode": "managed",
+      "type": "random_pet",
+      "name": "service",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "delete",
+          "create"
+        ],
+        "before": {
+          "id": "svc-shining-akita",
+          "keepers": null,
+          "length": 2,
+          "prefix": "svc",
+          "separator": "-"
+        },
+        "after": {
+          "keepers": null,
+          "length": 3,
+          "prefix": "app",
+          "separator": "_"
+        },
+        "after_unknown": {
+          "id": true
+        },
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "replace_paths": [
+          [
+            "separator"
+          ],
+          [
+            "prefix"
+          ],
+          [
+            "length"
+          ]
+        ]
+      },
+      "action_reason": "replace_because_cannot_update"
+    },
+    {
+      "address": "random_string.token",
+      "mode": "managed",
+      "type": "random_string",
+      "name": "token",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "delete",
+          "create"
+        ],
+        "before": {
+          "id": "h0Vy>e=oA_-(bwX(",
+          "keepers": null,
+          "length": 16,
+          "lower": true,
+          "min_lower": 0,
+          "min_numeric": 0,
+          "min_special": 0,
+          "min_upper": 0,
+          "number": true,
+          "numeric": true,
+          "override_special": null,
+          "result": "h0Vy>e=oA_-(bwX(",
+          "special": true,
+          "upper": true
+        },
+        "after": {
+          "keepers": null,
+          "length": 32,
+          "lower": true,
+          "min_lower": 0,
+          "min_numeric": 0,
+          "min_special": 0,
+          "min_upper": 0,
+          "number": true,
+          "numeric": true,
+          "override_special": null,
+          "special": false,
+          "upper": true
+        },
+        "after_unknown": {
+          "id": true,
+          "result": true
+        },
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "replace_paths": [
+          [
+            "length"
+          ],
+          [
+            "special"
+          ]
+        ]
+      },
+      "action_reason": "replace_because_cannot_update"
+    }
+  ],
+  "output_changes": {
+    "token_length": {
+      "actions": [
+        "update"
+      ],
+      "before": 16,
+      "after": 32,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.12.1",
+    "values": {
+      "outputs": {
+        "token_length": {
+          "sensitive": false,
+          "value": 32,
+          "type": "number"
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "local_file.credentials",
+            "mode": "managed",
+            "type": "local_file",
+            "name": "credentials",
+            "provider_name": "registry.terraform.io/hashicorp/local",
+            "schema_version": 0,
+            "values": {
+              "content": "service = svc-shining-akita\ntoken = h0Vy>e=oA_-(bwX(\n",
+              "content_base64": null,
+              "content_base64sha256": "WWQF7FydPy5joqI1orFznXMwiies0Dqugii27Z9OLu0=",
+              "content_base64sha512": "Wi0ENrXfKUqVM73Jv1O37CfKRysiootVS7pRcF9OkNmyoR3o6vUrN1W+mqZgBA9jKKWU6aHVCrj+zrxiMn3Mgg==",
+              "content_md5": "fed21e6b1bd6fcb1aaf82ba160f330fc",
+              "content_sha1": "14386913d5e9d514400441273bc7bc0b427dce8f",
+              "content_sha256": "596405ec5c9d3f2e63a2a235a2b1739d73308a27acd03aae8228b6ed9f4e2eed",
+              "content_sha512": "5a2d0436b5df294a9533bdc9bf53b7ec27ca472b22a28b554bba51705f4e90d9b2a11de8eaf52b3755be9aa660040f6328a594e9a1d50ab8fecebc62327dcc82",
+              "directory_permission": "0777",
+              "file_permission": "0777",
+              "filename": "./output/creds.txt",
+              "id": "14386913d5e9d514400441273bc7bc0b427dce8f",
+              "sensitive_content": null,
+              "source": null
+            },
+            "sensitive_values": {
+              "sensitive_content": true
+            },
+            "depends_on": [
+              "random_pet.service",
+              "random_string.token"
+            ]
+          },
+          {
+            "address": "random_pet.service",
+            "mode": "managed",
+            "type": "random_pet",
+            "name": "service",
+            "provider_name": "registry.terraform.io/hashicorp/random",
+            "schema_version": 0,
+            "values": {
+              "id": "svc-shining-akita",
+              "keepers": null,
+              "length": 2,
+              "prefix": "svc",
+              "separator": "-"
+            },
+            "sensitive_values": {}
+          },
+          {
+            "address": "random_string.token",
+            "mode": "managed",
+            "type": "random_string",
+            "name": "token",
+            "provider_name": "registry.terraform.io/hashicorp/random",
+            "schema_version": 2,
+            "values": {
+              "id": "h0Vy>e=oA_-(bwX(",
+              "keepers": null,
+              "length": 16,
+              "lower": true,
+              "min_lower": 0,
+              "min_numeric": 0,
+              "min_special": 0,
+              "min_upper": 0,
+              "number": true,
+              "numeric": true,
+              "override_special": null,
+              "result": "h0Vy>e=oA_-(bwX(",
+              "special": true,
+              "upper": true
+            },
+            "sensitive_values": {}
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "local": {
+        "name": "local",
+        "full_name": "registry.terraform.io/hashicorp/local",
+        "version_constraint": "~> 2.5"
+      },
+      "random": {
+        "name": "random",
+        "full_name": "registry.terraform.io/hashicorp/random",
+        "version_constraint": "~> 3.6"
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "token_length": {
+          "expression": {
+            "references": [
+              "random_string.token.length",
+              "random_string.token"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "local_file.credentials",
+          "mode": "managed",
+          "type": "local_file",
+          "name": "credentials",
+          "provider_config_key": "local",
+          "expressions": {
+            "content": {
+              "references": [
+                "random_pet.service.id",
+                "random_pet.service",
+                "random_string.token.result",
+                "random_string.token"
+              ]
+            },
+            "filename": {
+              "references": [
+                "path.module"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "random_pet.service",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "service",
+          "provider_config_key": "random",
+          "expressions": {
+            "length": {
+              "constant_value": 3
+            },
+            "prefix": {
+              "constant_value": "app"
+            },
+            "separator": {
+              "constant_value": "_"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "random_string.token",
+          "mode": "managed",
+          "type": "random_string",
+          "name": "token",
+          "provider_config_key": "random",
+          "expressions": {
+            "length": {
+              "constant_value": 32
+            },
+            "special": {
+              "constant_value": false
+            },
+            "upper": {
+              "constant_value": true
+            }
+          },
+          "schema_version": 2
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "random_pet.service",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "random_string.token",
+      "attribute": [
+        "length"
+      ]
+    },
+    {
+      "resource": "random_string.token",
+      "attribute": [
+        "result"
+      ]
+    }
+  ],
+  "timestamp": "2026-05-18T18:45:53Z",
+  "applyable": true,
+  "complete": true,
+  "errored": false
+}
