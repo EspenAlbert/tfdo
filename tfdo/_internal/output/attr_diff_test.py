@@ -18,7 +18,7 @@ def _change(plan: PlanOutput, address: str) -> Change:
 
 
 def _names(lines: list) -> list[tuple[str, str | None]]:
-    return [(line.name, line.prefix.value if line.prefix else None) for line in lines]
+    return [(line.name, line.prefix if line.prefix else None) for line in lines]
 
 
 def test_create_hides_unknown_and_marks_user_set(create_flat_plan: Path) -> None:

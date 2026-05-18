@@ -2,13 +2,13 @@
 
 ⚠️  This plan will destroy all 4 resources
 
-🔴 local_file.db_config
+🔴 local_file.db_config (deleted)
        filename: "./output/database.conf"
-🔴 random_id.cluster_id
-🔴 random_pet.db_name
+🔴 random_id.cluster_id (deleted)
+🔴 random_pet.db_name (deleted)
        length: 2
        prefix: "db"
-🔴 random_string.db_password
+🔴 random_string.db_password (deleted)
        length: 24
 
 📤 Outputs (🔴 1 deleted)

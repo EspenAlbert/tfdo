@@ -95,7 +95,7 @@ def _provider_by_addr(plan: PlanOutput) -> dict[str, str]:
     return {rc.address: rc.provider_name or "" for rc in [*plan.resource_changes, *plan.resource_drift]}
 
 
-def build_attr_lines_by_addr(tree: PlanTree, *, plan: PlanOutput) -> dict[str, list]:
+def build_attr_lines_by_addr(tree: PlanTree, *, plan: PlanOutput) -> plan_render_input.ResourceAttrLines:
     provider_by_addr = _provider_by_addr(plan)
     return plan_render_input.build_attr_lines_by_addr(
         tree,

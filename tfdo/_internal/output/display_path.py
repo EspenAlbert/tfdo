@@ -22,7 +22,22 @@ def path_get_value(data: dict[str, object] | None, path: list[str | int]) -> obj
     return current
 
 
+def _unwrap_json_string(value: str) -> object:
+    stripped = value.strip()
+    if not stripped or stripped[0] not in "{[":
+        return value
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return value
+    if isinstance(parsed, dict | list):
+        return parsed
+    return value
+
+
 def inline_json(value: object) -> str:
+    if isinstance(value, str):
+        value = _unwrap_json_string(value)
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 

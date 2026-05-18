@@ -16,6 +16,7 @@ from tfdo._internal.output.complex_render import (
     render_complex_value,
 )
 from tfdo._internal.output.models import OutputChange, ResourceAction
+from tfdo._internal.output.plan_render_input import ResourceAttrLines, iter_nodes_with_attr_lines
 from tfdo._internal.output.schema_lookup import CollectionKindLookup
 from tfdo._internal.output.tree_builder import ModuleNode, PlanTree, ResourceNode
 
@@ -71,7 +72,7 @@ class _PrintState:
 
 def render_plan(
     tree: PlanTree,
-    attr_lines_by_addr: dict[str, list[AttrLine]],
+    attr_lines: ResourceAttrLines,
     *,
     terminal_width: int,
     provider_by_addr: dict[str, str] | None = None,
@@ -82,7 +83,7 @@ def render_plan(
     config = complex_config or ComplexRenderConfig()
     complex_results = _build_complex_results(
         tree,
-        attr_lines_by_addr,
+        attr_lines,
         terminal_width=terminal_width,
         config=config,
         providers=provider_by_addr or {},
@@ -90,7 +91,7 @@ def render_plan(
     )
     state = _PrintState()
     _print_detail_blocks(state, _collect_detail_blocks(complex_results))
-    _print_drift(state, tree, attr_lines_by_addr, complex_results, terminal_width)
+    _print_drift(state, tree, attr_lines.drift, complex_results, terminal_width)
 
     header = _plan_header_line(tree, _action_counts(tree))
     state.emit(header.line)
@@ -101,7 +102,7 @@ def render_plan(
 
     state.blank()
     _print_destroy_warning(state, tree)
-    _print_resources(state, tree, attr_lines_by_addr, complex_results, terminal_width)
+    _print_resources(state, tree, attr_lines.planned, complex_results, terminal_width)
     _print_outputs(state, tree.output_changes, show_unknown_outputs=show_unknown_outputs)
     _maybe_repeat_header(state, header.line)
 
@@ -118,13 +119,13 @@ def _print_detail_blocks(state: _PrintState, detail_blocks: list[DetailBlock]) -
 def _print_drift(
     state: _PrintState,
     tree: PlanTree,
-    attr_lines_by_addr: dict[str, list[AttrLine]],
+    drift_attr_lines: dict[str, list[AttrLine]],
     complex_results: dict[_ComplexKey, ComplexRenderResult],
     terminal_width: int,
 ) -> None:
     drift_lines = _drift_section(
         tree,
-        attr_lines_by_addr,
+        drift_attr_lines,
         complex_results=complex_results,
         terminal_width=terminal_width,
     )
@@ -282,7 +283,7 @@ def _iter_all_resources(tree: PlanTree) -> list[ResourceNode]:
 
 def _build_complex_results(
     tree: PlanTree,
-    attr_lines_by_addr: dict[str, list[AttrLine]],
+    attr_lines: ResourceAttrLines,
     *,
     terminal_width: int,
     config: ComplexRenderConfig,
@@ -290,8 +291,8 @@ def _build_complex_results(
     collection_kind: CollectionKindLookup | None,
 ) -> dict[_ComplexKey, ComplexRenderResult]:
     results: dict[_ComplexKey, ComplexRenderResult] = {}
-    for node in _iter_all_resources(tree):
-        for line in attr_lines_by_addr.get(node.address, []):
+    for node, lines in iter_nodes_with_attr_lines(tree, attr_lines):
+        for line in lines:
             if line.value_kind != ValueKind.COMPLEX:
                 continue
             key = _ComplexKey(node.address, line.name)
@@ -328,7 +329,7 @@ def _collect_detail_blocks(results: dict[_ComplexKey, ComplexRenderResult]) -> l
 
 def _drift_section(
     tree: PlanTree,
-    attr_lines_by_addr: dict[str, list[AttrLine]],
+    drift_attr_lines: dict[str, list[AttrLine]],
     *,
     complex_results: dict[_ComplexKey, ComplexRenderResult],
     terminal_width: int,
@@ -338,11 +339,13 @@ def _drift_section(
     noun = "resource" if len(tree.drift) == 1 else "resources"
     lines: list[Text | str] = [f"⚠️ Drift: {len(tree.drift)} {noun} changed outside terraform"]
     for node in tree.drift:
-        lines.append(Text(f"⚠️ {node.address}", style="cyan"))
+        lines.append(_format_drift_resource_header(node))
+        if node.action == ResourceAction.DELETE:
+            continue
         lines.extend(
             _resource_attr_lines(
                 node,
-                attr_lines_by_addr.get(node.address, []),
+                drift_attr_lines.get(node.address, []),
                 complex_results=complex_results,
                 terminal_width=terminal_width,
             )
@@ -364,10 +367,27 @@ def _resource_emoji_style(action: ResourceAction) -> tuple[str, str]:
             return "", ""
 
 
+def _resource_action_suffix(action: ResourceAction) -> str:
+    match action:
+        case ResourceAction.DELETE:
+            return " (deleted)"
+        case ResourceAction.UPDATE:
+            return " (updated)"
+        case ResourceAction.REPLACE_DESTROY_FIRST | ResourceAction.REPLACE_CREATE_FIRST:
+            return " (must replace)"
+        case _:
+            return ""
+
+
 def _format_resource_header(node: ResourceNode) -> Text:
     emoji, style = _resource_emoji_style(node.action)
-    suffix = " (must replace)" if node.action in _REPLACE_ACTIONS else ""
+    suffix = _resource_action_suffix(node.action)
     return Text(f"{emoji} {node.address}{suffix}", style=style)
+
+
+def _format_drift_resource_header(node: ResourceNode) -> Text:
+    suffix = _resource_action_suffix(node.action) or " (changed)"
+    return Text(f"⚠️ {node.address}{suffix}", style="cyan")
 
 
 def _format_scalar(value: object) -> str:
@@ -398,7 +418,7 @@ def _style_attr_header(line: AttrLine) -> Text:
     text = Text()
     text.append(pad)
     if line.prefix is not None:
-        text.append(f"{line.prefix.value} ")
+        text.append(f"{line.prefix} ")
     text.append(line.name, style="bold" if line.prefix is not None else "")
     text.append(":")
     if line.prefix is None:
@@ -412,7 +432,7 @@ def _style_scalar_attr_line(line: AttrLine) -> Text:
     pad = " " * ATTR_CHANGED_INDENT
     text = Text()
     text.append(pad)
-    text.append(f"{line.prefix.value} ")
+    text.append(f"{line.prefix} ")
     text.append(line.name, style="bold")
     text.append(": ")
     if line.is_sensitive:
@@ -436,19 +456,24 @@ def _style_scalar_attr_line(line: AttrLine) -> Text:
 
 
 def _scalar_old_new_split(line: AttrLine, terminal_width: int) -> list[Text] | None:
-    if line.is_sensitive or line.prefix not in (AttrPrefix.CHANGE, AttrPrefix.REPLACE):
+    if line.is_sensitive:
         return None
+    match line.prefix:
+        case AttrPrefix.CHANGE | AttrPrefix.REPLACE as prefix:
+            pass
+        case _:
+            return None
     if line.old_value is None or line.new_value is None:
         return None
     pad = " " * ATTR_CHANGED_INDENT
     old_s = _format_scalar(line.old_value)
     new_s = _format_scalar(line.new_value)
-    head = f"{pad}{line.prefix.value} {line.name}: "
+    head = f"{pad}{prefix} {line.name}: "
     if len(head) + len(old_s) + 4 + len(new_s) <= terminal_width:
         return None
     first = Text()
     first.append(pad)
-    first.append(f"{line.prefix.value} ")
+    first.append(f"{prefix} ")
     first.append(line.name, style="bold")
     first.append(": ")
     first.append(old_s, style="dim")

@@ -299,4 +299,4 @@ def _detail_value(value: object) -> str:
         case dict() | list():
             return json.dumps(value, sort_keys=True, indent=2)
         case _:
-            return json.dumps(value, sort_keys=True)
+            return display_path.inline_json(value)
