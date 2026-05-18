@@ -4,9 +4,8 @@ import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import NamedTuple
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from tfdo._internal.output.models import PlanOutput
 from tfdo._internal.settings import TfDoSettings
@@ -16,7 +15,9 @@ logger = logging.getLogger(__name__)
 PLAN_PARSE_FAILURE_FILENAME = "plan_parse_failure.json"
 
 
-class PlanParseFailureRecord(NamedTuple):
+class PlanParseFailureRecord(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     timestamp: str
     source_path: str
     error_type: str
@@ -34,7 +35,7 @@ class PlanParseFailureRecord(NamedTuple):
         )
 
     def to_ndjson_line(self) -> str:
-        return json.dumps(self._asdict()) + "\n"
+        return self.model_dump_json() + "\n"
 
 
 def parse_plan_file(path: Path, *, settings: TfDoSettings | None = None) -> PlanOutput:
