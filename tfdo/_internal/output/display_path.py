@@ -22,8 +22,29 @@ def path_get_value(data: dict[str, object] | None, path: list[str | int]) -> obj
     return current
 
 
+def inline_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
 def inline_json_fits(value: object, budget: int = INLINE_MIN_WIDTH) -> bool:
-    return len(json.dumps(value, sort_keys=True, separators=(",", ":"))) <= budget
+    return len(inline_json(value)) <= budget
+
+
+def per_item_trigger(
+    items: list[object],
+    *,
+    min_items: int = PER_ITEM_MIN_ITEMS,
+    budget: int = INLINE_MIN_WIDTH,
+) -> bool:
+    return len(items) >= min_items or not inline_json_fits(items, budget)
+
+
+def is_flat_collection_item(item: object) -> bool:
+    match item:
+        case dict() | str() | int() | float() | bool() | None:
+            return True
+        case _:
+            return False
 
 
 def format_display_key(path: list[str | int]) -> str:
@@ -73,7 +94,7 @@ def _index_position(path: list[str | int]) -> int | None:
 
 
 def _per_item_display(items: list[object]) -> bool:
-    return len(items) >= PER_ITEM_MIN_ITEMS or not inline_json_fits(items)
+    return per_item_trigger(items)
 
 
 def _indexed_replace_display_key(

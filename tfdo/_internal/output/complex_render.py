@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Literal, NamedTuple
+from enum import StrEnum
+from typing import NamedTuple
 
 from pydantic import BaseModel
 
@@ -13,7 +14,17 @@ from tfdo._internal.output.render_thresholds import (
 )
 from tfdo._internal.output.schema_lookup import CollectionKind
 
-_Tier = Literal["inline", "per_item", "detail"]
+class _RenderTier(StrEnum):
+    INLINE = "inline"  # compact sorted-keys JSON when the value fits the inline budget
+    PER_ITEM = "per_item"  # per-element diff for flat lists (set or positional list matching)
+    DETAIL = "detail"  # hoisted block above the plan; tree line shows (see above)
+
+
+class _PerItemKind(StrEnum):
+    CONTEXT = "context"  # unchanged element; no +/-/~ marker
+    ADD = "add"  # new element
+    REMOVE = "remove"  # dropped element
+    CHANGE = "change"  # same index or set slot, different value
 
 
 class ComplexRenderConfig(BaseModel):
@@ -32,7 +43,7 @@ class ComplexRenderResult(BaseModel):
 
 
 class _PerItemRow(NamedTuple):
-    kind: Literal["context", "add", "remove", "change"]
+    kind: _PerItemKind
     idx: int | None
     old: object | None
     new: object | None
@@ -56,10 +67,10 @@ def render_complex_value(
 
     budget = inline_budget(config.inline_min_width, terminal_width, indent)
     tier = _choose_tier(old, new, budget, config)
-    if tier == "inline":
+    if tier is _RenderTier.INLINE:
         return ComplexRenderResult(inline_lines=_pad_lines(_render_inline(old, new), pad))
 
-    if tier == "per_item":
+    if tier is _RenderTier.PER_ITEM:
         per_item = _render_per_item(
             old,
             new,
@@ -93,39 +104,31 @@ def _choose_tier(
     new: object | None,
     budget: int,
     config: ComplexRenderConfig,
-) -> _Tier:
+) -> _RenderTier:
     if _inline_tier_applies(old, new, budget):
-        return "inline"
+        return _RenderTier.INLINE
     if _per_item_eligible(old, new, budget, config):
-        return "per_item"
-    return "detail"
+        return _RenderTier.PER_ITEM
+    return _RenderTier.DETAIL
 
 
 def _inline_tier_applies(old: object | None, new: object | None, budget: int) -> bool:
     if old is not None and new is not None:
-        return _fits_inline(old, budget) and _fits_inline(new, budget)
+        return display_path.inline_json_fits(old, budget) and display_path.inline_json_fits(new, budget)
     if new is not None:
-        return _fits_inline(new, budget)
+        return display_path.inline_json_fits(new, budget)
     if old is not None:
-        return _fits_inline(old, budget)
+        return display_path.inline_json_fits(old, budget)
     return True
-
-
-def _inline_json(value: object) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"))
-
-
-def _fits_inline(value: object, budget: int) -> bool:
-    return display_path.inline_json_fits(value, budget)
 
 
 def _render_inline(old: object | None, new: object | None) -> list[str]:
     if old is not None and new is not None:
-        return [_inline_json(old), f"-> {_inline_json(new)}"]
+        return [display_path.inline_json(old), f"-> {display_path.inline_json(new)}"]
     if new is not None:
-        return [_inline_json(new)]
+        return [display_path.inline_json(new)]
     if old is not None:
-        return [_inline_json(old)]
+        return [display_path.inline_json(old)]
     return []
 
 
@@ -144,23 +147,17 @@ def _per_item_eligible(
     if not before and not after:
         return False
     combined = before + after
-    if not all(_is_per_item_item(item) for item in combined):
+    if not all(display_path.is_flat_collection_item(item) for item in combined):
         return False
-    trigger = (
-        len(before) >= config.per_item_min_items
-        or len(after) >= config.per_item_min_items
-        or not _fits_inline(before, budget)
-        or not _fits_inline(after, budget)
+    return display_path.per_item_trigger(
+        before,
+        min_items=config.per_item_min_items,
+        budget=budget,
+    ) or display_path.per_item_trigger(
+        after,
+        min_items=config.per_item_min_items,
+        budget=budget,
     )
-    return trigger
-
-
-def _is_per_item_item(item: object) -> bool:
-    match item:
-        case dict() | str() | int() | float() | bool() | None:
-            return True
-        case _:
-            return False
 
 
 def _render_per_item(
@@ -190,11 +187,11 @@ def _match_set_items(before: list[object], after: list[object]) -> list[_PerItem
         try:
             idx = after_remaining.index(item)
             after_remaining.pop(idx)
-            rows.append(_PerItemRow("context", None, item, item))
+            rows.append(_PerItemRow(_PerItemKind.CONTEXT, None, item, item))
         except ValueError:
-            rows.append(_PerItemRow("remove", None, item, None))
+            rows.append(_PerItemRow(_PerItemKind.REMOVE, None, item, None))
     for item in after_remaining:
-        rows.append(_PerItemRow("add", None, None, item))
+        rows.append(_PerItemRow(_PerItemKind.ADD, None, None, item))
     return rows
 
 
@@ -204,18 +201,22 @@ def _match_list_items(before: list[object], after: list[object]) -> list[_PerIte
         old_item = before[i] if i < len(before) else None
         new_item = after[i] if i < len(after) else None
         if old_item is None:
-            rows.append(_PerItemRow("add", i, None, new_item))
+            rows.append(_PerItemRow(_PerItemKind.ADD, i, None, new_item))
         elif new_item is None:
-            rows.append(_PerItemRow("remove", i, old_item, None))
+            rows.append(_PerItemRow(_PerItemKind.REMOVE, i, old_item, None))
         elif old_item == new_item:
-            rows.append(_PerItemRow("context", i, old_item, new_item))
+            rows.append(_PerItemRow(_PerItemKind.CONTEXT, i, old_item, new_item))
         else:
-            rows.append(_PerItemRow("change", i, old_item, new_item))
+            rows.append(_PerItemRow(_PerItemKind.CHANGE, i, old_item, new_item))
     return rows
 
 
 def _format_item_value(item: object) -> str:
-    return _inline_json(item)
+    return display_path.inline_json(item)
+
+
+def _indexed_key(attr_name: str, idx: int) -> str:
+    return display_path.format_display_key([attr_name, idx])
 
 
 def _lines_fit(lines: list[str], budget: int) -> bool:
@@ -229,23 +230,27 @@ def _format_per_item_row(
     budget: int,
 ) -> list[str] | None:
     value = row.new if row.new is not None else row.old
-    assert value is not None or row.kind in ("remove", "add", "change")
+    assert value is not None or row.kind in (
+        _PerItemKind.REMOVE,
+        _PerItemKind.ADD,
+        _PerItemKind.CHANGE,
+    )
 
     match row.kind, row.idx:
-        case "context", None | int():
+        case _PerItemKind.CONTEXT, None | int():
             lines = [f"  {_format_item_value(value)}"]
-        case "add", None:
+        case _PerItemKind.ADD, None:
             lines = [f"+ {_format_item_value(value)}"]
-        case "remove", None:
+        case _PerItemKind.REMOVE, None:
             lines = [f"- {_format_item_value(value)}"]
-        case "add", int() as idx:
-            lines = [f"+ {attr_name}[{idx}]:", f"  {_format_item_value(value)}"]
-        case "remove", int() as idx:
-            lines = [f"- {attr_name}[{idx}]:", f"  {_format_item_value(value)}"]
-        case "change", int() as idx:
+        case _PerItemKind.ADD, int() as idx:
+            lines = [f"+ {_indexed_key(attr_name, idx)}:", f"  {_format_item_value(value)}"]
+        case _PerItemKind.REMOVE, int() as idx:
+            lines = [f"- {_indexed_key(attr_name, idx)}:", f"  {_format_item_value(value)}"]
+        case _PerItemKind.CHANGE, int() as idx:
             assert row.old is not None and row.new is not None
             lines = [
-                f"~ {attr_name}[{idx}]:",
+                f"~ {_indexed_key(attr_name, idx)}:",
                 f"  {_format_item_value(row.old)}",
                 f"      -> {_format_item_value(row.new)}",
             ]
