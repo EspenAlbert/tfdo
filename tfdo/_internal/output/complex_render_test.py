@@ -15,6 +15,7 @@ def _render(
     attr_name: str = "tags",
     collection_kind: CollectionKind | None = None,
     terminal_width: int = _WIDE,
+    indent: int = _INDENT,
     config: ComplexRenderConfig | None = None,
     is_sensitive: bool = False,
 ) -> tuple[list[str], str | None]:
@@ -23,7 +24,7 @@ def _render(
         new,
         attr_name=attr_name,
         resource_address=_ADDR,
-        indent=_INDENT,
+        indent=indent,
         terminal_width=terminal_width,
         config=config or ComplexRenderConfig(),
         collection_kind=collection_kind,
@@ -107,6 +108,20 @@ def test_sensitive_masks_values() -> None:
     assert header is None
     assert lines == ["      (sensitive)"]
     assert "secret" not in "\n".join(lines)
+
+
+def test_extra_indent_forces_detail_block() -> None:
+    medium = {"default_write_concern": "majority", "javascript_enabled": False}
+    lines, header = _render(
+        None,
+        medium,
+        attr_name="advanced_configuration",
+        terminal_width=120,
+        indent=100,
+        config=ComplexRenderConfig(inline_min_width=120),
+    )
+    assert header is not None
+    assert any("(see above)" in line for line in lines)
 
 
 def test_per_item_when_list_fits_count_but_not_width() -> None:

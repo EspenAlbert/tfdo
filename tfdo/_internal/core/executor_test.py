@@ -490,11 +490,12 @@ def test_output_json_success(tmp_path: Path):
     settings = _make_settings(tmp_path)
     tf_output = '{"id": {"value": "abc123", "type": "string"}}'
     run = _mock_run(exit_code=0, stdout=tf_output)
-    run.stdout_one_line = tf_output
-    with patch(_patch_output_run, return_value=run):
+    run.parse_output.return_value = {"id": {"value": "abc123", "type": "string"}}
+    with patch(_patch_output_run, return_value=run) as mock_run:
         result = output_json(OutputInput(settings=settings))
     assert result.exit_code == 0
     assert result.outputs == {"id": "abc123"}
+    assert mock_run.call_args.kwargs["ansi_content"] is False
 
 
 def test_output_json_failure(tmp_path: Path):
@@ -509,8 +510,19 @@ def test_output_json_with_state_path(tmp_path: Path):
     settings = _make_settings(tmp_path)
     tf_output = '{"id": {"value": "abc123", "type": "string"}}'
     run = _mock_run(exit_code=0, stdout=tf_output)
-    run.stdout_one_line = tf_output
+    run.parse_output.return_value = {"id": {"value": "abc123", "type": "string"}}
     with patch(_patch_output_run, return_value=run) as mock_raw:
         output_json(OutputInput(settings=settings, state=Path("custom.tfstate")))
     cmd = mock_raw.call_args[0][0]
     assert "-state=custom.tfstate" in cmd
+
+
+def test_output_json_parses_bracketed_true_tokens(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    tf_output = '{"masked": {"value": [true], "type": "list(bool)", "sensitive": true}}'
+    run = _mock_run(exit_code=0, stdout=tf_output)
+    run.parse_output.return_value = {"masked": {"value": [True], "type": "list(bool)", "sensitive": True}}
+    with patch(_patch_output_run, return_value=run):
+        result = output_json(OutputInput(settings=settings))
+    assert result.exit_code == 0
+    assert "[true]" in tf_output

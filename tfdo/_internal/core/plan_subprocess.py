@@ -4,6 +4,7 @@ import json
 import logging
 from pathlib import Path
 
+from ask_shell._internal.models import EmptyOutputError
 from ask_shell.shell import ShellError, run_and_wait
 
 from tfdo._internal.core import binary
@@ -57,16 +58,18 @@ def show_plan_json(settings: TfDoSettings, plan_bin: Path) -> tuple[PlanOutput |
             cmd,
             cwd=settings.work_dir,
             allow_non_zero_exit=True,
-            ansi_content=True,
+            ansi_content=False,
             skip_binary_check=True,
         )
         exit_code = run.exit_code or 0
         if exit_code != 0:
             return None, exit_code
-        data = json.loads(run.stdout_one_line)
-        return PlanOutput.model_validate(data), 0
+        return run.parse_output(PlanOutput), 0
     except ShellError as e:
         return None, e.exit_code or 1
+    except EmptyOutputError as e:
+        logger.error(f"terraform show -json produced no stdout: {e}")
+        return None, 1
     except json.JSONDecodeError as e:
         logger.error(f"failed to parse terraform show -json output: {e}")
         return None, 1

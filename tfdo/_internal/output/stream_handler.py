@@ -9,6 +9,7 @@ from ask_shell import console as ask_console
 from ask_shell._internal.events import ShellRunStdOutput
 from ask_shell._internal.models import ShellRunEventT
 
+from tfdo._internal.output.diagnostic_renderer import render_diagnostic
 from tfdo._internal.output.render_thresholds import (
     REFRESH_HEARTBEAT_INTERVAL_S,
     REFRESH_PROGRESS_THRESHOLD_S,
@@ -34,6 +35,7 @@ class PlanStreamHandler:
         self._progress_enabled = False
         self._last_heartbeat = self._started
         self._planning_emitted = False
+        self._diagnostic_emitted = False
         self._carry = ""
 
     def feed_line(self, chunk: str) -> None:
@@ -76,10 +78,11 @@ class PlanStreamHandler:
         diag = event.diagnostic
         if diag is None:
             return
-        text = diag.summary
-        if diag.detail:
-            text = f"{text}\n{diag.detail}"
-        ask_console.print_to_live(text)
+        if not self._diagnostic_emitted:
+            self._diagnostic_emitted = True
+            ask_console.print_to_live("")
+        for line in render_diagnostic(diag):
+            ask_console.print_to_live(line)
 
     def _on_refresh_start(self, event: RefreshEvent) -> None:
         self._saw_refresh = True

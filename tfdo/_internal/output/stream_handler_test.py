@@ -29,7 +29,11 @@ def test_diagnostic_immediate() -> None:
                 }
             )
         )
-    assert print_mock.call_args[0][0] == "bad config\nline 1"
+    rendered = [str(c[0][0]) for c in print_mock.call_args_list]
+    assert rendered[0] == ""
+    assert "Error:" in rendered[1]
+    assert "bad config" in rendered[1]
+    assert "line 1" in rendered[2]
 
 
 def test_slow_refresh_heartbeat_and_planning() -> None:

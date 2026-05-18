@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import NamedTuple
 
 from ask_shell import console as ask_console
@@ -17,6 +18,13 @@ from tfdo._internal.output.complex_render import (
 )
 from tfdo._internal.output.models import OutputChange, ResourceAction
 from tfdo._internal.output.plan_render_input import ResourceAttrLines, iter_nodes_with_attr_lines
+from tfdo._internal.output.render_thresholds import (
+    OUTPUT_MULTILINE_CHARS,
+    OUTPUT_PRETTY_JSON_CHARS,
+    OUTPUT_WRAP_WIDTH,
+    TREE_BASE_PREFIX_CHARS,
+    TREE_GUIDE_CHARS_PER_LEVEL,
+)
 from tfdo._internal.output.schema_lookup import CollectionKindLookup
 from tfdo._internal.output.tree_builder import ModuleNode, PlanTree, ResourceNode
 
@@ -103,7 +111,12 @@ def render_plan(
     state.blank()
     _print_destroy_warning(state, tree)
     _print_resources(state, tree, attr_lines.planned, complex_results, terminal_width)
-    _print_outputs(state, tree.output_changes, show_unknown_outputs=show_unknown_outputs)
+    _print_outputs(
+        state,
+        tree.output_changes,
+        terminal_width=terminal_width,
+        show_unknown_outputs=show_unknown_outputs,
+    )
     _maybe_repeat_header(state, header.line)
 
 
@@ -149,6 +162,7 @@ def _print_resources(
     complex_results: dict[_ComplexKey, ComplexRenderResult],
     terminal_width: int,
 ) -> None:
+    depths = _module_depth_by_address(tree)
     for node in tree.root_resources:
         state.emit(_format_resource_header(node))
         for line in _resource_attr_lines(
@@ -156,6 +170,7 @@ def _print_resources(
             attr_lines_by_addr.get(node.address, []),
             complex_results=complex_results,
             terminal_width=terminal_width,
+            tree_extra_prefix=0,
         ):
             state.emit(line)
 
@@ -166,6 +181,7 @@ def _print_resources(
                 attr_lines_by_addr,
                 complex_results=complex_results,
                 terminal_width=terminal_width,
+                module_depths=depths,
             )
         )
 
@@ -174,10 +190,12 @@ def _print_outputs(
     state: _PrintState,
     output_changes: dict[str, OutputChange],
     *,
+    terminal_width: int,
     show_unknown_outputs: bool,
 ) -> None:
     output_lines = _format_output_section(
         output_changes,
+        terminal_width=terminal_width,
         show_unknown_outputs=show_unknown_outputs,
     )
     if not output_lines:
@@ -281,6 +299,26 @@ def _iter_all_resources(tree: PlanTree) -> list[ResourceNode]:
     return nodes
 
 
+def _module_depth_by_address(tree: PlanTree) -> dict[str, int]:
+    depths: dict[str, int] = {node.address: 0 for node in tree.root_resources}
+    depths.update({node.address: 0 for node in tree.drift})
+
+    def walk(modules: list[ModuleNode], depth: int) -> None:
+        for module in modules:
+            for node in module.child_resources:
+                depths[node.address] = depth
+            walk(module.child_modules, depth + 1)
+
+    walk(tree.modules, 1)
+    return depths
+
+
+def _tree_extra_prefix(module_depth: int) -> int:
+    if module_depth <= 0:
+        return 0
+    return TREE_BASE_PREFIX_CHARS + (module_depth - 1) * TREE_GUIDE_CHARS_PER_LEVEL
+
+
 def _build_complex_results(
     tree: PlanTree,
     attr_lines: ResourceAttrLines,
@@ -290,8 +328,10 @@ def _build_complex_results(
     providers: dict[str, str],
     collection_kind: CollectionKindLookup | None,
 ) -> dict[_ComplexKey, ComplexRenderResult]:
+    depths = _module_depth_by_address(tree)
     results: dict[_ComplexKey, ComplexRenderResult] = {}
     for node, lines in iter_nodes_with_attr_lines(tree, attr_lines):
+        extra_prefix = _tree_extra_prefix(depths.get(node.address, 0))
         for line in lines:
             if line.value_kind != ValueKind.COMPLEX:
                 continue
@@ -307,7 +347,7 @@ def _build_complex_results(
                 line.new_value,
                 attr_name=line.name,
                 resource_address=node.address,
-                indent=ATTR_VALUE_INDENT,
+                indent=ATTR_VALUE_INDENT + extra_prefix,
                 terminal_width=terminal_width,
                 config=config,
                 collection_kind=kind,
@@ -348,6 +388,7 @@ def _drift_section(
                 drift_attr_lines.get(node.address, []),
                 complex_results=complex_results,
                 terminal_width=terminal_width,
+                tree_extra_prefix=0,
             )
         )
     return lines
@@ -455,7 +496,33 @@ def _style_scalar_attr_line(line: AttrLine) -> Text:
     return text
 
 
-def _scalar_old_new_split(line: AttrLine, terminal_width: int) -> list[Text] | None:
+def _attr_pad_len(line: AttrLine, *, tree_extra_prefix: int) -> int:
+    base = ATTR_CONTEXT_INDENT if line.prefix is None else ATTR_CHANGED_INDENT
+    return base + tree_extra_prefix
+
+
+def _scalar_value_for_line(line: AttrLine) -> str | None:
+    if line.is_sensitive:
+        return None
+    match line.prefix:
+        case None:
+            value = line.new_value if line.new_value is not None else line.old_value
+        case AttrPrefix.ADD:
+            value = line.new_value
+        case AttrPrefix.REMOVE:
+            value = line.old_value
+        case AttrPrefix.CHANGE | AttrPrefix.REPLACE:
+            if line.old_value is not None and line.new_value is not None:
+                return None
+            value = line.new_value if line.new_value is not None else line.old_value
+        case _:
+            return None
+    if value is None:
+        return None
+    return _format_scalar(value)
+
+
+def _scalar_old_new_split(line: AttrLine, terminal_width: int, *, tree_extra_prefix: int) -> list[Text] | None:
     if line.is_sensitive:
         return None
     match line.prefix:
@@ -465,7 +532,7 @@ def _scalar_old_new_split(line: AttrLine, terminal_width: int) -> list[Text] | N
             return None
     if line.old_value is None or line.new_value is None:
         return None
-    pad = " " * ATTR_CHANGED_INDENT
+    pad = " " * _attr_pad_len(line, tree_extra_prefix=tree_extra_prefix)
     old_s = _format_scalar(line.old_value)
     new_s = _format_scalar(line.new_value)
     head = f"{pad}{prefix} {line.name}: "
@@ -484,8 +551,44 @@ def _scalar_old_new_split(line: AttrLine, terminal_width: int) -> list[Text] | N
     return [first, second]
 
 
-def _render_scalar_attr(line: AttrLine, terminal_width: int) -> list[Text]:
-    if split := _scalar_old_new_split(line, terminal_width):
+def _scalar_single_value_split(line: AttrLine, terminal_width: int, *, tree_extra_prefix: int) -> list[Text] | None:
+    value_s = _scalar_value_for_line(line)
+    if value_s is None:
+        return None
+    pad_len = _attr_pad_len(line, tree_extra_prefix=tree_extra_prefix)
+    pad = " " * pad_len
+    value_pad = " " * (pad_len + 2)
+    match line.prefix:
+        case None:
+            head = f"{pad}{line.name}: "
+            first = Text(f"{pad}{line.name}: ", style="dim")
+        case AttrPrefix.ADD | AttrPrefix.REMOVE | AttrPrefix.CHANGE | AttrPrefix.REPLACE as prefix:
+            head = f"{pad}{prefix} {line.name}: "
+            if len(head) + len(value_s) <= terminal_width:
+                return None
+            first = Text()
+            first.append(pad)
+            first.append(f"{prefix} ")
+            first.append(line.name, style="bold")
+            first.append(": ")
+        case _:
+            return None
+    if len(head) + len(value_s) <= terminal_width:
+        return None
+    second = Text(value_pad)
+    if line.prefix is None:
+        second.append(value_s, style="dim")
+    elif line.prefix is AttrPrefix.REMOVE:
+        second.append(value_s, style="dim")
+    else:
+        second.append(value_s)
+    return [first, second]
+
+
+def _render_scalar_attr(line: AttrLine, terminal_width: int, *, tree_extra_prefix: int) -> list[Text]:
+    if split := _scalar_old_new_split(line, terminal_width, tree_extra_prefix=tree_extra_prefix):
+        return split
+    if split := _scalar_single_value_split(line, terminal_width, tree_extra_prefix=tree_extra_prefix):
         return split
     return [_style_scalar_attr_line(line)]
 
@@ -496,6 +599,7 @@ def _resource_attr_lines(
     *,
     complex_results: dict[_ComplexKey, ComplexRenderResult],
     terminal_width: int,
+    tree_extra_prefix: int,
 ) -> list[Text | str]:
     rendered: list[Text | str] = []
     for line in lines:
@@ -504,7 +608,7 @@ def _resource_attr_lines(
             rendered.append(_style_attr_header(line))
             rendered.extend(result.inline_lines)
             continue
-        rendered.extend(_render_scalar_attr(line, terminal_width))
+        rendered.extend(_render_scalar_attr(line, terminal_width, tree_extra_prefix=tree_extra_prefix))
     return rendered
 
 
@@ -514,15 +618,18 @@ def _build_module_tree(
     *,
     complex_results: dict[_ComplexKey, ComplexRenderResult],
     terminal_width: int,
+    module_depths: dict[str, int],
 ) -> Tree:
     tree = Tree(module.name, style="dim")
     for node in module.child_resources:
         branch = tree.add(_format_resource_header(node))
+        extra = _tree_extra_prefix(module_depths.get(node.address, 0))
         for line in _resource_attr_lines(
             node,
             attr_lines_by_addr.get(node.address, []),
             complex_results=complex_results,
             terminal_width=terminal_width,
+            tree_extra_prefix=extra,
         ):
             branch.add(line)
     for child in module.child_modules:
@@ -532,6 +639,7 @@ def _build_module_tree(
                 attr_lines_by_addr,
                 complex_results=complex_results,
                 terminal_width=terminal_width,
+                module_depths=module_depths,
             )
         )
     return tree
@@ -556,6 +664,7 @@ def _output_action_counts(changes: dict[str, OutputChange]) -> tuple[int, int, i
 def _format_output_section(
     output_changes: dict[str, OutputChange],
     *,
+    terminal_width: int,
     show_unknown_outputs: bool,
 ) -> list[str]:
     entries = _output_entries(output_changes, show_unknown_outputs=show_unknown_outputs)
@@ -570,9 +679,8 @@ def _format_output_section(
     if deleted:
         header_parts.append(f"🔴 {deleted} deleted")
     lines = [f"📤 Outputs ({', '.join(header_parts)})"]
-    pad = " " * OUTPUT_INDENT
     for name, change, marker in entries:
-        lines.append(f"{pad}{marker} {_format_output_line(name, change)}")
+        lines.extend(_format_output_entry_lines(name, change, marker, terminal_width=terminal_width))
     return lines
 
 
@@ -602,18 +710,59 @@ def _output_entries(
     return entries
 
 
-def _format_output_line(name: str, change: OutputChange) -> str:
+def _output_value_text(change: OutputChange) -> str:
     if change.before_sensitive or change.after_sensitive:
-        return f"{name}: {_SENSITIVE}"
+        return _SENSITIVE
     if change.after_unknown:
-        return f"{name}: {_KNOWN_AFTER_APPLY}"
+        return _KNOWN_AFTER_APPLY
     key = "+".join(change.actions)
     match key:
         case "create":
-            return f"{name}: {_format_scalar(change.after)}"
+            return _format_scalar(change.after)
         case "delete":
-            return f"{name}: {_format_scalar(change.before)}"
+            return _format_scalar(change.before)
         case "update":
-            return f"{name}: {_format_scalar(change.before)} -> {_format_scalar(change.after)}"
+            return f"{_format_scalar(change.before)} -> {_format_scalar(change.after)}"
         case _:
-            return name
+            return ""
+
+
+def _output_wrap_width(terminal_width: int) -> int:
+    return min(terminal_width, OUTPUT_WRAP_WIDTH)
+
+
+def _format_output_value(value_s: str) -> str:
+    if len(value_s) > OUTPUT_MULTILINE_CHARS:
+        return _pretty_json_if_structured(value_s) or value_s
+    if len(value_s) > OUTPUT_PRETTY_JSON_CHARS:
+        pretty = _pretty_json_if_structured(value_s)
+        if pretty is not None:
+            return pretty
+    return value_s
+
+
+def _pretty_json_if_structured(value_s: str) -> str | None:
+    try:
+        parsed = json.loads(value_s)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(parsed, dict | list):
+        return json.dumps(parsed, sort_keys=True, indent=2)
+    return None
+
+
+def _format_output_entry_lines(name: str, change: OutputChange, marker: str, *, terminal_width: int) -> list[str]:
+    pad = " " * OUTPUT_INDENT
+    value_pad = " " * (OUTPUT_INDENT + 2)
+    value_s = _output_value_text(change)
+    if not value_s:
+        return [f"{pad}{marker} {name}"]
+    head = f"{marker} {name}: "
+    value_s = _format_output_value(value_s)
+    wrap_width = _output_wrap_width(terminal_width)
+    if len(pad) + len(head) + len(value_s) <= wrap_width and "\n" not in value_s:
+        return [f"{pad}{head}{value_s}"]
+    lines = [f"{pad}{head}"]
+    for value_line in value_s.splitlines():
+        lines.append(f"{value_pad}{value_line}")
+    return lines

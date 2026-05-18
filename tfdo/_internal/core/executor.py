@@ -1,6 +1,7 @@
 import json
 import logging
 
+from ask_shell._internal.models import EmptyOutputError
 from ask_shell.shell import ShellError, run_and_wait
 
 from tfdo._internal.core import binary
@@ -76,14 +77,16 @@ def output_json(input_model: OutputInput) -> OutputResult:
             cmd,
             cwd=settings.work_dir,
             allow_non_zero_exit=True,
-            ansi_content=True,
+            ansi_content=False,
             skip_binary_check=True,
         )
         if run.exit_code and run.exit_code != 0:
             return OutputResult(exit_code=run.exit_code, stderr=run.stderr or None)
-        raw = json.loads(run.stdout_one_line) if run.stdout_one_line else {}
+        raw = run.parse_output(dict, output_format="json")
         return OutputResult(exit_code=0, outputs=_parse_tf_outputs(raw))
     except ShellError as e:
         return OutputResult(exit_code=e.exit_code or 1, stderr=e.stderr or None)
+    except EmptyOutputError:
+        return OutputResult(exit_code=0, outputs={})
     except json.JSONDecodeError as e:
         return OutputResult(exit_code=1, stderr=f"failed to parse output JSON: {e}")

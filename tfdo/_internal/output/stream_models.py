@@ -29,12 +29,40 @@ class RefreshEvent(StreamEnvelope):
     hook: StreamHook | None = None
 
 
-class DiagnosticBody(BaseModel):
+class DiagnosticPosition(BaseModel):
     model_config = ConfigDict(extra="ignore")
+
+    line: int
+    column: int
+    byte: int | None = None
+
+
+class DiagnosticRange(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    filename: str
+    start: DiagnosticPosition
+    end: DiagnosticPosition
+
+
+class DiagnosticSnippet(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    context: str | None = None
+    code: str
+    start_line: int
+    highlight_start_offset: int
+    highlight_end_offset: int
+
+
+class DiagnosticBody(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     severity: str | None = None
     summary: str
     detail: str | None = None
+    source_range: DiagnosticRange | None = Field(default=None, validation_alias="range")
+    snippet: DiagnosticSnippet | None = None
 
 
 class DiagnosticEvent(StreamEnvelope):
