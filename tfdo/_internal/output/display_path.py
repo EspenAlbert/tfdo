@@ -74,7 +74,7 @@ def values_for_display_key(
 ) -> tuple[object | None, object | None]:
     if "[" not in key and "." not in key:
         return before.get(key), after.get(key)
-    path = _parse_display_key(key)
+    path = parse_display_key(key)
     return path_get_value(before, path), path_get_value(after, path)
 
 
@@ -155,7 +155,7 @@ def resolve_replace_display_keys(
     return {replace_display_key(path, before, after) for path in deepest}
 
 
-def _parse_display_key(key: str) -> list[str | int]:
+def parse_display_key(key: str) -> list[str | int]:
     path: list[str | int] = []
     for segment in key.split("."):
         if "[" in segment:

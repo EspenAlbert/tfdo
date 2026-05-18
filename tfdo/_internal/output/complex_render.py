@@ -14,6 +14,7 @@ from tfdo._internal.output.render_thresholds import (
 )
 from tfdo._internal.output.schema_lookup import CollectionKind
 
+
 class _RenderTier(StrEnum):
     INLINE = "inline"  # compact sorted-keys JSON when the value fits the inline budget
     PER_ITEM = "per_item"  # per-element diff for flat lists (set or positional list matching)
