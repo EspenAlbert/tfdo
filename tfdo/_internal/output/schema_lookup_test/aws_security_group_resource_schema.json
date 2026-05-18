@@ -1,0 +1,32 @@
+{
+  "version": 0,
+  "block": {
+    "attributes": {
+      "name": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "block_types": {
+      "ingress": {
+        "nesting_mode": "set",
+        "block": {
+          "attributes": {
+            "from_port": {
+              "type": "number",
+              "required": true
+            },
+            "protocol": {
+              "type": "string",
+              "required": true
+            },
+            "to_port": {
+              "type": "number",
+              "required": true
+            }
+          }
+        }
+      }
+    }
+  }
+}

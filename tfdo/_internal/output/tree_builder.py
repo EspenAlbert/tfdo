@@ -12,6 +12,7 @@ from tfdo._internal.output.models import (
     ResourceChange,
 )
 
+
 @total_ordering
 class ResourceNode(BaseModel):
     model_config = ConfigDict(extra="ignore")
