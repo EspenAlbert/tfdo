@@ -91,11 +91,16 @@ def _required_attrs(_provider: str, resource_type: str) -> frozenset[str]:
     return REQUIRED_ATTRS_BY_TYPE.get(resource_type, frozenset())
 
 
-def build_attr_lines_by_addr(tree: PlanTree) -> dict[str, list]:
+def _provider_by_addr(plan: PlanOutput) -> dict[str, str]:
+    return {rc.address: rc.provider_name or "" for rc in [*plan.resource_changes, *plan.resource_drift]}
+
+
+def build_attr_lines_by_addr(tree: PlanTree, *, plan: PlanOutput) -> dict[str, list]:
+    provider_by_addr = _provider_by_addr(plan)
     return plan_render_input.build_attr_lines_by_addr(
         tree,
         required_attrs=_required_attrs,
-        provider_by_addr={},
+        provider_by_addr=provider_by_addr,
     )
 
 
@@ -111,10 +116,12 @@ def render_fixture(
         assert path is not None
         plan = parse_plan_file(path)
     tree = build_plan_tree(plan)
+    provider_by_addr = _provider_by_addr(plan)
     render_plan(
         tree,
-        build_attr_lines_by_addr(tree),
+        build_attr_lines_by_addr(tree, plan=plan),
         terminal_width=terminal_width,
+        provider_by_addr=provider_by_addr,
         show_unknown_outputs=show_unknown_outputs,
     )
     return capture_console.end_capture()

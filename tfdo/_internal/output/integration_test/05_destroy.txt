@@ -1,0 +1,15 @@
+📋 Plan: 🔴 4 to destroy
+
+⚠️  This plan will destroy all 4 resources
+
+🔴 local_file.db_config
+       filename: "./output/database.conf"
+🔴 random_id.cluster_id
+🔴 random_pet.db_name
+       length: 2
+       prefix: "db"
+🔴 random_string.db_password
+       length: 24
+
+📤 Outputs (🔴 1 deleted)
+  - db_name: "db-certain-flamingo"

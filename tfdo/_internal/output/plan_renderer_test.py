@@ -17,6 +17,13 @@ def test_create_flat(create_flat_plan: Path, capture_console) -> None:
     assert "⚠️ Drift:" not in rendered
 
 
+def test_long_scalar_splits_old_new_at_arrow(update_plan: Path, capture_console) -> None:
+    rendered = render_fixture(update_plan, capture_console)
+    lines = rendered.splitlines()
+    content_i = next(i for i, line in enumerate(lines) if line.startswith("     ! content:"))
+    assert lines[content_i + 1].startswith("     -> ")
+
+
 def test_drift_before_plan_header(drift_plan: Path, capture_console) -> None:
     rendered = render_fixture(drift_plan, capture_console)
     drift_idx = rendered.index("⚠️ Drift:")

@@ -99,6 +99,7 @@ def render_plan(
     if not header.render_body:
         return
 
+    state.blank()
     _print_destroy_warning(state, tree)
     _print_resources(state, tree, attr_lines_by_addr, complex_results, terminal_width)
     _print_outputs(state, tree.output_changes, show_unknown_outputs=show_unknown_outputs)
@@ -434,6 +435,36 @@ def _style_scalar_attr_line(line: AttrLine) -> Text:
     return text
 
 
+def _scalar_old_new_split(line: AttrLine, terminal_width: int) -> list[Text] | None:
+    if line.is_sensitive or line.prefix not in (AttrPrefix.CHANGE, AttrPrefix.REPLACE):
+        return None
+    if line.old_value is None or line.new_value is None:
+        return None
+    pad = " " * ATTR_CHANGED_INDENT
+    old_s = _format_scalar(line.old_value)
+    new_s = _format_scalar(line.new_value)
+    head = f"{pad}{line.prefix.value} {line.name}: "
+    if len(head) + len(old_s) + 4 + len(new_s) <= terminal_width:
+        return None
+    first = Text()
+    first.append(pad)
+    first.append(f"{line.prefix.value} ")
+    first.append(line.name, style="bold")
+    first.append(": ")
+    first.append(old_s, style="dim")
+    second = Text()
+    second.append(pad)
+    second.append("-> ")
+    second.append(new_s)
+    return [first, second]
+
+
+def _render_scalar_attr(line: AttrLine, terminal_width: int) -> list[Text]:
+    if split := _scalar_old_new_split(line, terminal_width):
+        return split
+    return [_style_scalar_attr_line(line)]
+
+
 def _resource_attr_lines(
     node: ResourceNode,
     lines: list[AttrLine],
@@ -448,7 +479,7 @@ def _resource_attr_lines(
             rendered.append(_style_attr_header(line))
             rendered.extend(result.inline_lines)
             continue
-        rendered.append(_style_scalar_attr_line(line))
+        rendered.extend(_render_scalar_attr(line, terminal_width))
     return rendered
 
 

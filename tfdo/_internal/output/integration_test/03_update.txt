@@ -1,0 +1,10 @@
+📋 Plan: 🟣 1 to replace
+
+🟣 local_file.config (must replace)
+       filename: "./output/config.json"
+     ! content: "{\"name\": \"api-live-rat\", \"version\": \"1.0.0\"}"
+     -> "{\"name\": \"api-live-rat\", \"version\": \"2.0.0\", \"env\": \"production\"}"
+     ! file_permission: "0644" -> "0600"
+
+📤 Outputs (🟡 1 changed)
+  ~ config_version: "1.0.0" -> "2.0.0"

@@ -1,0 +1,8 @@
+⚠️ Drift: 1 resource changed outside terraform
+⚠️ local_file.config
+       filename: "./output/config.json"
+
+📋 Plan: 🟢 1 to add
+
+🟢 local_file.config
+       filename: "./output/config.json"
