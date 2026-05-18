@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from functools import total_ordering
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
+@total_ordering
 class ResourceAction(StrEnum):
     NO_OP = "no-op"
     CREATE = "create"
@@ -34,6 +36,28 @@ class ResourceAction(StrEnum):
                 return cls.REPLACE_CREATE_FIRST
             case _:
                 raise ValueError(f"unknown resource actions: {actions!r}")
+
+    def __lt__(self, other: object) -> bool:
+        match other:
+            case ResourceAction():
+                self_rank = _PLAN_ACTION_RANK[self]
+                other_rank = _PLAN_ACTION_RANK[other]
+                if self_rank != other_rank:
+                    return self_rank < other_rank
+                return self.value < other.value
+            case _:
+                return NotImplemented
+
+
+_PLAN_ACTION_RANK: dict[ResourceAction, int] = {
+    ResourceAction.DELETE: 0,
+    ResourceAction.REPLACE_DESTROY_FIRST: 1,
+    ResourceAction.REPLACE_CREATE_FIRST: 1,
+    ResourceAction.UPDATE: 2,
+    ResourceAction.CREATE: 3,
+    ResourceAction.READ: 4,
+    ResourceAction.NO_OP: 5,
+}
 
 
 class Change(BaseModel):

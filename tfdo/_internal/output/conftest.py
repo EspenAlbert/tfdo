@@ -18,6 +18,16 @@ def create_flat_plan() -> Path:
 
 
 @pytest.fixture
+def create_modules_plan() -> Path:
+    return TESTDATA_DIR / "02_create_modules.json"
+
+
+@pytest.fixture
+def update_plan() -> Path:
+    return TESTDATA_DIR / "03_update.json"
+
+
+@pytest.fixture
 def destroy_plan() -> Path:
     return TESTDATA_DIR / "05_destroy.json"
 
