@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import json
 
-INLINE_MIN_WIDTH = 120
-PER_ITEM_MIN_ITEMS = 5
+from tfdo._internal.output.render_thresholds import INLINE_MIN_WIDTH, PER_ITEM_MIN_ITEMS
 
 
 def path_get_value(data: dict[str, object] | None, path: list[str | int]) -> object | None:

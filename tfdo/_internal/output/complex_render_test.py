@@ -1,0 +1,125 @@
+from __future__ import annotations
+
+from tfdo._internal.output.complex_render import ComplexRenderConfig, render_complex_value
+from tfdo._internal.output.schema_lookup import CollectionKind
+
+_ADDR = "aws_security_group.allow_tls"
+_WIDE = 200
+_INDENT = 6
+
+
+def _render(
+    old: object | None,
+    new: object | None,
+    *,
+    attr_name: str = "tags",
+    collection_kind: CollectionKind | None = None,
+    terminal_width: int = _WIDE,
+    config: ComplexRenderConfig | None = None,
+    is_sensitive: bool = False,
+) -> tuple[list[str], str | None]:
+    result = render_complex_value(
+        old,
+        new,
+        attr_name=attr_name,
+        resource_address=_ADDR,
+        indent=_INDENT,
+        terminal_width=terminal_width,
+        config=config or ComplexRenderConfig(),
+        collection_kind=collection_kind,
+        is_sensitive=is_sensitive,
+    )
+    header = result.detail_block.header if result.detail_block else None
+    return result.inline_lines, header
+
+
+def _rule(port: int) -> dict[str, object]:
+    return {
+        "cidr_blocks": ["10.0.0.0/8"],
+        "from_port": port,
+        "protocol": "tcp",
+        "to_port": port,
+    }
+
+
+def _ingress_rules(n: int) -> list[dict[str, object]]:
+    return [_rule(80 + i) for i in range(n)]
+
+
+def test_inline_scalar_list() -> None:
+    lines, header = _render(["a", "b"], ["a", "b", "c"])
+    assert header is None
+    joined = "\n".join(lines)
+    assert '["a","b"]' in joined
+    assert "-> " in joined
+    assert '["a","b","c"]' in joined
+
+
+def test_inline_dict_sorted_keys() -> None:
+    lines, header = _render({"z": 1, "a": 2}, {"a": 2, "z": 3})
+    assert header is None
+    joined = "\n".join(lines)
+    assert '{"a":2,"z":1}' in joined
+    assert "-> " in joined
+    assert '{"a":2,"z":3}' in joined
+
+
+def test_per_item_set_insert() -> None:
+    before = _ingress_rules(5)
+    after = [*before, _rule(8080)]
+    lines, header = _render(before, after, attr_name="ingress", collection_kind="set")
+    assert header is None
+    text = "\n".join(lines)
+    assert text.count("+ ") == 1
+    assert text.count("- ") == 0
+    assert text.count("~ ") == 0
+
+
+def test_per_item_list_middle_insert() -> None:
+    before = _ingress_rules(5)
+    after = [before[0], _rule(3000), *before[1:]]
+    lines, header = _render(before, after, attr_name="ingress", collection_kind="list")
+    assert header is None
+    text = "\n".join(lines)
+    assert "ingress[1]" in text
+    assert "-> " in text
+    assert "+ ingress[5]" in text
+
+
+def test_detail_block_large_dict() -> None:
+    old = {"layer": {f"k{i}": "x" * 40 for i in range(8)}}
+    new = {"layer": {f"k{i}": "y" * 40 for i in range(8)}}
+    lines, header = _render(old, new, attr_name="user_data")
+    assert header == f"--- user_data ({_ADDR}) ---"
+    assert any("(see above)" in line for line in lines)
+
+
+def test_narrow_terminal_uses_inline_min_width() -> None:
+    config = ComplexRenderConfig(inline_min_width=120)
+    old = {"key": "x" * 200}
+    new = {"key": "y" * 200}
+    lines, header = _render(old, new, terminal_width=40, config=config)
+    assert header is not None
+
+
+def test_sensitive_masks_values() -> None:
+    lines, header = _render({"secret": "x"}, {"secret": "y"}, is_sensitive=True)
+    assert header is None
+    assert lines == ["      (sensitive)"]
+    assert "secret" not in "\n".join(lines)
+
+
+def test_per_item_when_list_fits_count_but_not_width() -> None:
+    big = {**_rule(80), "notes": "n" * 90}
+    before = [big]
+    after = [big, {**_rule(81), "notes": "n" * 90}]
+    lines, header = _render(before, after, attr_name="ingress", collection_kind="list")
+    assert header is None
+    assert any("+ ingress[1]" in line for line in lines)
+
+
+def test_none_collection_kind_uses_list_matching() -> None:
+    before = _ingress_rules(5)
+    after = [before[0], _rule(3000), *before[1:]]
+    lines, _ = _render(before, after, attr_name="ingress", collection_kind=None)
+    assert any("ingress[1]" in line for line in lines)
