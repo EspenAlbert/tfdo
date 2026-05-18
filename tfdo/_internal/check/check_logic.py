@@ -24,7 +24,7 @@ from tfdo._internal.config.config_file import (
 from tfdo._internal.config.config_model import BackendConfig, ProviderConstraint, merge_providers
 from tfdo._internal.config.config_resolution import resolve_config
 from tfdo._internal.core import binary
-from tfdo._internal.core.executor import init
+from tfdo._internal.core.terraform_init import init
 from tfdo._internal.core.tf_files import TERRAFORM_DIR, find_tf_directories
 from tfdo._internal.git_utils import parse_git_remote
 from tfdo._internal.hcl_entity_parser import TfRequiredProviders, parse_dir_entities

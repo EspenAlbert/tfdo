@@ -208,9 +208,9 @@ def test_modules_written_to_yaml_and_cache_populated(tmp_path: Path) -> None:
     module = ModuleConstraint(source="terraform-mongodbatlas-modules/project")
     with (
         patch(f"{_MODULE}.check_tf_version", return_value="1.11.0"),
-        patch(f"{_CACHE_MODULE}.executor") as mock_executor,
+        patch(f"{_CACHE_MODULE}.terraform_init") as mock_init,
     ):
-        mock_executor.init.side_effect = _fake_init
+        mock_init.init.side_effect = _fake_init
         result = boot_repo(TfdoBootInput(settings=_settings(tmp_path), modules=[module]))
 
     raw = yaml.safe_load((tmp_path / "tfdo.yaml").read_text())

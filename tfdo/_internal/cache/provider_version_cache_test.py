@@ -86,11 +86,11 @@ def test_resolve_runs_init_per_provider(tmp_path: Path):
                 return _fake_init_with_lock(lock)(input_model)
         return InitResult(exit_code=1, attempts_used=1, stderr="unknown provider")
 
-    with patch(f"{_MODULE}.executor") as mock_executor:
-        mock_executor.init.side_effect = _init
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
+        mock_init.init.side_effect = _init
         result = resolve_provider_versions(providers, _settings(tmp_path))
 
-    assert mock_executor.init.call_count == 2
+    assert mock_init.init.call_count == 2
     assert result[0].constraint == "5.82.0"
     assert result[1].constraint == "1.23.0"
 
@@ -99,14 +99,14 @@ def test_resolve_cache_hit_skips_init(tmp_path: Path):
     providers = [ProviderConstraint(name="aws", source="hashicorp/aws")]
     settings = _settings(tmp_path)
 
-    with patch(f"{_MODULE}.executor") as mock_executor:
-        mock_executor.init.side_effect = _fake_init_with_lock(SAMPLE_LOCK_AWS)
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
+        mock_init.init.side_effect = _fake_init_with_lock(SAMPLE_LOCK_AWS)
         first = resolve_provider_versions(providers, settings)
 
-    with patch(f"{_MODULE}.executor") as mock_executor:
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
         second = resolve_provider_versions(providers, settings)
 
-    mock_executor.init.assert_not_called()
+    mock_init.init.assert_not_called()
     assert first[0].constraint == second[0].constraint == "5.82.0"
 
 
@@ -114,27 +114,27 @@ def test_resolve_partial_cache_hit(tmp_path: Path):
     """Resolving [aws] then [aws, atlas] only inits for atlas the second time."""
     settings = _settings(tmp_path)
 
-    with patch(f"{_MODULE}.executor") as mock_executor:
-        mock_executor.init.side_effect = _fake_init_with_lock(SAMPLE_LOCK_AWS)
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
+        mock_init.init.side_effect = _fake_init_with_lock(SAMPLE_LOCK_AWS)
         resolve_provider_versions([ProviderConstraint(name="aws", source="hashicorp/aws")], settings)
 
     both = [
         ProviderConstraint(name="aws", source="hashicorp/aws"),
         ProviderConstraint(name="mongodbatlas", source="mongodb/mongodbatlas"),
     ]
-    with patch(f"{_MODULE}.executor") as mock_executor:
-        mock_executor.init.side_effect = _fake_init_with_lock(SAMPLE_LOCK_ATLAS)
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
+        mock_init.init.side_effect = _fake_init_with_lock(SAMPLE_LOCK_ATLAS)
         result = resolve_provider_versions(both, settings)
 
-    mock_executor.init.assert_called_once()
+    mock_init.init.assert_called_once()
     assert result[0].constraint == "5.82.0"
     assert result[1].constraint == "1.23.0"
 
 
 def test_resolve_loose_constraint_gets_pinned(tmp_path: Path):
     providers = [ProviderConstraint(name="aws", source="hashicorp/aws", constraint="~> 5.0")]
-    with patch(f"{_MODULE}.executor") as mock_executor:
-        mock_executor.init.side_effect = _fake_init_with_lock(SAMPLE_LOCK_AWS)
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
+        mock_init.init.side_effect = _fake_init_with_lock(SAMPLE_LOCK_AWS)
         result = resolve_provider_versions(providers, _settings(tmp_path))
 
     assert result[0].constraint == "5.82.0"
@@ -142,8 +142,8 @@ def test_resolve_loose_constraint_gets_pinned(tmp_path: Path):
 
 def test_resolve_graceful_on_init_failure(tmp_path: Path):
     providers = [ProviderConstraint(name="aws", source="hashicorp/aws")]
-    with patch(f"{_MODULE}.executor") as mock_executor:
-        mock_executor.init.return_value = InitResult(exit_code=1, attempts_used=1, stderr="no network")
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
+        mock_init.init.return_value = InitResult(exit_code=1, attempts_used=1, stderr="no network")
         result = resolve_provider_versions(providers, _settings(tmp_path))
 
     assert result[0].constraint is None

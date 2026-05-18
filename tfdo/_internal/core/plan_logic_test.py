@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from tfdo._internal.core import executor, plan_logic
+from tfdo._internal.core import plan_logic, plan_subprocess
 from tfdo._internal.models import PlanInput, PlanResult
 from tfdo._internal.output.models import PlanOutput
 from tfdo._internal.output.plan_artifacts import plan_bin_path, plan_json_path
@@ -25,8 +25,8 @@ def test_run_plan_renders_and_writes_artifacts(tmp_path: Path) -> None:
     bin_path.write_bytes(b"plan")
 
     with (
-        patch.object(executor, "run_streaming_plan", return_value=PlanResult(exit_code=2)),
-        patch.object(executor, "show_plan_json", return_value=(plan_output, 0)),
+        patch.object(plan_subprocess, "run_streaming_plan", return_value=PlanResult(exit_code=2)),
+        patch.object(plan_subprocess, "show_plan_json", return_value=(plan_output, 0)),
         patch.object(plan_logic, "render_plan") as render_mock,
         patch.object(plan_logic, "build_schema_lookups") as lookups_mock,
     ):
@@ -45,9 +45,9 @@ def test_run_plan_parse_failure_keeps_plan_exit_code(tmp_path: Path) -> None:
     bin_path.write_bytes(b"plan")
 
     with (
-        patch.object(executor, "run_streaming_plan", return_value=PlanResult(exit_code=2)),
+        patch.object(plan_subprocess, "run_streaming_plan", return_value=PlanResult(exit_code=2)),
         patch.object(
-            executor,
+            plan_subprocess,
             "show_plan_json",
             return_value=(PlanOutput(format_version="1.2", errored=False), 0),
         ),
@@ -68,8 +68,8 @@ def test_run_plan_exports_user_out(tmp_path: Path) -> None:
     user_out = tmp_path / "out" / "staging.tfplan"
 
     with (
-        patch.object(executor, "run_streaming_plan", return_value=PlanResult(exit_code=0)),
-        patch.object(executor, "show_plan_json", return_value=(None, 1)),
+        patch.object(plan_subprocess, "run_streaming_plan", return_value=PlanResult(exit_code=0)),
+        patch.object(plan_subprocess, "show_plan_json", return_value=(None, 1)),
     ):
         plan_logic.run_plan(PlanInput(settings=settings, out=Path("out/staging.tfplan")))
 

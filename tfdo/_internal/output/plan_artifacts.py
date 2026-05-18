@@ -27,6 +27,7 @@ def resolve_plan_out(work_dir: Path, out: Path) -> Path:
 
 
 def atomic_write_text(path: Path, content: str) -> None:
+    # Write to a sibling .tmp then rename so plan.json is never half-written if we crash mid-write.
     tmp = path.with_suffix(path.suffix + ".tmp")
     file_utils.ensure_parents_write_text(tmp, content)
     tmp.replace(path)

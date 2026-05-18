@@ -50,11 +50,11 @@ def test_populate_cache_hit_skips_terraform(tmp_path: Path) -> None:
     target.mkdir(parents=True)
     (target / "modules.json").write_text(_modules_json(version))
 
-    with patch(f"{_MODULE}.executor") as mock_executor:
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
         result = populate(tmp_path, source, version, _settings(tmp_path))
 
     assert result == target
-    mock_executor.init.assert_not_called()
+    mock_init.init.assert_not_called()
 
 
 def test_populate_pinned_version_stores_under_constraint(tmp_path: Path) -> None:
@@ -68,11 +68,11 @@ def test_populate_pinned_version_stores_under_constraint(tmp_path: Path) -> None
         assert version in (input_model.settings.work_dir / "main.tf").read_text()
         return InitResult(exit_code=0, attempts_used=1)
 
-    with patch(f"{_MODULE}.executor") as mock_executor:
-        mock_executor.init.side_effect = fake_init
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
+        mock_init.init.side_effect = fake_init
         result = populate(tmp_path, source, version, _settings(tmp_path))
 
-    mock_executor.init.assert_called_once()
+    mock_init.init.assert_called_once()
     assert result == cache_dir(tmp_path, source, version)
     assert (result / "modules.json").is_file()
 
@@ -89,8 +89,8 @@ def test_populate_unresolved_stores_under_resolved_version(tmp_path: Path) -> No
         (modules_dir / "modules.json").write_text(_modules_json(resolved))
         return InitResult(exit_code=0, attempts_used=1)
 
-    with patch(f"{_MODULE}.executor") as mock_executor:
-        mock_executor.init.side_effect = fake_init
+    with patch(f"{_MODULE}.terraform_init") as mock_init:
+        mock_init.init.side_effect = fake_init
         result = populate(tmp_path, source, UNRESOLVED, _settings(tmp_path))
 
     assert result == cache_dir(tmp_path, source, resolved)

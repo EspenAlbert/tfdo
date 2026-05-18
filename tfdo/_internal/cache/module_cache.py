@@ -8,7 +8,7 @@ from urllib.parse import quote
 
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
-from tfdo._internal.core import executor
+from tfdo._internal.core import terraform_init
 from tfdo._internal.models import InitInput, InitResult
 from tfdo._internal.settings import TfDoSettings
 
@@ -87,7 +87,7 @@ def populate(cache_root: Path, source: str, version: str, settings: TfDoSettings
         tmp = Path(tmpdir)
         ensure_parents_write_text(tmp / "main.tf", _module_stub(source, version))
         init_settings = settings.with_work_dir(tmp)
-        result: InitResult = executor.init(InitInput(settings=init_settings))
+        result: InitResult = terraform_init.init(InitInput(settings=init_settings))
         if result.exit_code != 0:
             raise ValueError(f"terraform init failed for module {source}@{version}: {result.stderr}")
         modules_src = tmp / ".terraform" / "modules"

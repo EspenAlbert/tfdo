@@ -2,7 +2,7 @@ import logging
 
 import typer
 
-from tfdo._internal.core import executor
+from tfdo._internal.core import terraform_init
 from tfdo._internal.models import InitInput
 from tfdo._internal.typer_app import app, get_settings
 
@@ -22,6 +22,6 @@ def init_cmd(
     if reconfigure:
         args.append("-reconfigure")
     input_model = InitInput(settings=settings, extra_args=args)
-    result = executor.init(input_model)
+    result = terraform_init.init(input_model)
     logger.info(f"init complete: exit_code={result.exit_code} attempts={result.attempts_used}")
     raise typer.Exit(result.exit_code)

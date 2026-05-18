@@ -10,7 +10,7 @@ from typing import NamedTuple
 from ask_shell.shell import ShellError, run_and_wait
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
-from tfdo._internal.core import binary, executor
+from tfdo._internal.core import binary, terraform_init
 from tfdo._internal.models import InitInput
 from tfdo._internal.schema import cache as schema_cache
 from tfdo._internal.schema import terraform_cli_config as tf_cli
@@ -74,7 +74,9 @@ def _env_for_schema_fetch(
 
 
 def _terraform_init_or_raise(settings: TfDoSettings, env_for_tf: dict[str, str] | None) -> None:
-    init_result = executor.init(InitInput(settings=settings, extra_args=["-input=false", "-no-color"], env=env_for_tf))
+    init_result = terraform_init.init(
+        InitInput(settings=settings, extra_args=["-input=false", "-no-color"], env=env_for_tf)
+    )
     if init_result.exit_code != 0:
         msg = f"terraform init failed (exit {init_result.exit_code})"
         if init_result.stderr:

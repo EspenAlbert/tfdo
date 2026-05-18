@@ -6,7 +6,7 @@ import logging
 from ask_shell import console as ask_console
 from pydantic import ValidationError
 
-from tfdo._internal.core import executor
+from tfdo._internal.core import plan_subprocess
 from tfdo._internal.models import PlanInput, PlanResult
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_artifacts import (
@@ -34,7 +34,7 @@ def run_plan(input_model: PlanInput) -> PlanResult:
     bin_path = plan_bin_path(settings.work_dir)
     json_path = plan_json_path(settings.work_dir)
 
-    plan_result = executor.run_streaming_plan(input_model)
+    plan_result = plan_subprocess.run_streaming_plan(input_model)
     plan_exit_code = plan_result.exit_code
 
     if input_model.out and bin_path.is_file():
@@ -43,7 +43,7 @@ def run_plan(input_model: PlanInput) -> PlanResult:
     if not bin_path.is_file():
         return PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)
 
-    plan_output, show_exit = executor.show_plan_json(settings, bin_path)
+    plan_output, show_exit = plan_subprocess.show_plan_json(settings, bin_path)
     if show_exit != 0:
         return PlanResult(exit_code=show_exit, stderr=plan_result.stderr)
 

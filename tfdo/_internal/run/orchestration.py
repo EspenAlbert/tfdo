@@ -17,7 +17,7 @@ from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
 from tfdo._internal.config.discovery_pattern import parse_discovery_pattern
 from tfdo._internal.config.enums import LifecycleCommand, LifecycleEvent
-from tfdo._internal.core import executor
+from tfdo._internal.core import executor, lifecycle_init_retry, terraform_init
 from tfdo._internal.git_utils import parse_git_remote
 from tfdo._internal.hooks import execution as hook_execution
 from tfdo._internal.hooks.execution import HookContext
@@ -204,7 +204,7 @@ def _dependency_outputs_or_log(
 
 
 def _outputs_after_prereq_init(init_input: InitInput, run_dir_path: Path) -> dict[str, object] | None:
-    if (ir := executor.init(init_input)).exit_code != 0:
+    if (ir := terraform_init.init(init_input)).exit_code != 0:
         logger.warning(f"terraform init before output failed in {run_dir_path}: {ir.stderr}")
         return None
     return _dependency_outputs_or_log(init_input, run_dir_path)
@@ -215,11 +215,11 @@ def _outputs_retry_after_auto_init(
     run_dir_path: Path,
     stderr: str,
 ) -> dict[str, object] | None:
-    init_for_retry = executor.init_input_for_output_retry(stderr, init_input)
+    init_for_retry = lifecycle_init_retry.init_input_for_output_retry(stderr, init_input)
     if init_for_retry is None:
         logger.warning(f"terraform output failed in {run_dir_path}: {stderr}")
         return None
-    if (ir := executor.init(init_for_retry)).exit_code != 0:
+    if (ir := terraform_init.init(init_for_retry)).exit_code != 0:
         logger.warning(f"terraform init before output retry failed in {run_dir_path}: {ir.stderr}")
         return None
     return _dependency_outputs_or_log(init_input, run_dir_path, log_suffix="after init")
@@ -303,7 +303,7 @@ def _dispatch_command(
                 extra_args=[*init_input.extra_args, *inp.extra_flags],
                 env=init_input.env,
             )
-        init_result = executor.init(init_input)
+        init_result = terraform_init.init(init_input)
         return RunDirResult(
             run_dir=rel, exit_code=init_result.exit_code, stdout=init_result.stdout, stderr=init_result.stderr or ""
         )
