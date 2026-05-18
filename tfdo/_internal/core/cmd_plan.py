@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 
 from tfdo._internal import cmd_options
-from tfdo._internal.core import executor
+from tfdo._internal.core import plan_logic
 from tfdo._internal.models import InitMode, PlanInput
 from tfdo._internal.typer_app import app, get_settings
 
@@ -20,5 +20,5 @@ def plan_cmd(
     """Run terraform plan."""
     settings = get_settings(ctx)
     input_model = PlanInput(settings=settings, out=out, json_output=json_output, var_file=var_file, init_mode=init_mode)
-    result = executor.plan(input_model)
+    result = plan_logic.run_plan(input_model)
     raise typer.Exit(result.exit_code)

@@ -21,6 +21,9 @@ from tfdo._internal.models import (
     PlanInput,
     PlanResult,
 )
+from tfdo._internal.output.models import PlanOutput
+from tfdo._internal.output.plan_artifacts import plan_bin_path
+from tfdo._internal.output.stream_handler import PlanStreamHandler, plan_stream_callback
 from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
@@ -173,6 +176,25 @@ def _run_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, result_cl
         return result_cls(exit_code=e.exit_code or 1, stderr=e.stderr or None)
 
 
+def _run_streaming_command(settings: TfDoSettings, cmd: str, handler: PlanStreamHandler) -> PlanResult:
+    callback = plan_stream_callback(handler)
+    try:
+        run = run_and_wait(
+            cmd,
+            cwd=settings.work_dir,
+            allow_non_zero_exit=True,
+            ansi_content=True,
+            skip_binary_check=True,
+            user_input=False,
+            message_callbacks=[callback],
+        )
+        handler.flush()
+        return PlanResult(exit_code=run.exit_code or 0, stderr=run.stderr or None)
+    except ShellError as e:
+        handler.flush()
+        return PlanResult(exit_code=e.exit_code or 1, stderr=e.stderr or None)
+
+
 def _run_lifecycle[T: LifecycleResult](
     input_model: LifecycleInput, subcommand: str, extra_flags: list[str], result_cls: type[T]
 ) -> T:
@@ -217,13 +239,80 @@ def _run_lifecycle[T: LifecycleResult](
     return result
 
 
+def _run_streaming_lifecycle(input_model: LifecycleInput, subcommand: str, extra_flags: list[str]) -> PlanResult:
+    settings = input_model.settings
+    mode = input_model.init_mode
+    force_init = mode == InitMode.ALWAYS
+
+    if force_init:
+        init_result = init(
+            InitInput(
+                settings=settings,
+                backend_args=input_model.init_backend_args,
+            )
+        )
+        if init_result.exit_code != 0:
+            return PlanResult(exit_code=init_result.exit_code)
+
+    all_flags = [*extra_flags, *input_model.extra_args]
+    cmd = _build_lifecycle_command(binary.resolve_binary(settings), subcommand, input_model.var_file, all_flags)
+
+    def run_once() -> PlanResult:
+        return _run_streaming_command(settings, cmd, PlanStreamHandler())
+
+    result = run_once()
+    stderr = result.stderr or ""
+    if result.exit_code != 0 and mode != InitMode.NEVER and not force_init:
+        if is_backend_changed(stderr):
+            logger.warning(
+                f"backend configuration changed in {settings.work_dir}. "
+                "Run 'tfdo check --fix' to update backend.tf, then 'terraform init -reconfigure' to accept "
+                "the new backend, or 'terraform init -migrate-state' to migrate existing state."
+            )
+        elif needs_init(stderr):
+            logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
+            init_result = init(
+                InitInput(
+                    settings=settings,
+                    backend_args=input_model.init_backend_args,
+                )
+            )
+            if init_result.exit_code != 0:
+                return PlanResult(exit_code=init_result.exit_code)
+            result = run_once()
+    return result
+
+
+def run_streaming_plan(input_model: PlanInput) -> PlanResult:
+    bin_path = plan_bin_path(input_model.settings.work_dir)
+    extra_flags = ["-json", f"-out={bin_path}"]
+    return _run_streaming_lifecycle(input_model, "plan", extra_flags)
+
+
+def show_plan_json(settings: TfDoSettings, plan_bin: Path) -> tuple[PlanOutput | None, int]:
+    cmd = f"{binary.resolve_binary(settings)} show -json {plan_bin}"
+    try:
+        run = run_and_wait(
+            cmd,
+            cwd=settings.work_dir,
+            allow_non_zero_exit=True,
+            ansi_content=True,
+            skip_binary_check=True,
+        )
+        exit_code = run.exit_code or 0
+        if exit_code != 0:
+            return None, exit_code
+        data = json.loads(run.stdout_one_line)
+        return PlanOutput.model_validate(data), 0
+    except ShellError as e:
+        return None, e.exit_code or 1
+    except json.JSONDecodeError as e:
+        logger.error(f"failed to parse terraform show -json output: {e}")
+        return None, 1
+
+
 def plan(input_model: PlanInput) -> PlanResult:
-    extra_flags: list[str] = []
-    if input_model.out:
-        extra_flags.append(f"-out={input_model.out}")
-    if input_model.json_output:
-        extra_flags.append("-json")
-    return _run_lifecycle(input_model, "plan", extra_flags, PlanResult)
+    return plan_logic.run_plan(input_model)
 
 
 def apply(input_model: ApplyInput) -> ApplyResult:
@@ -273,3 +362,6 @@ def output_json(input_model: OutputInput) -> OutputResult:
         return OutputResult(exit_code=e.exit_code or 1, stderr=e.stderr or None)
     except json.JSONDecodeError as e:
         return OutputResult(exit_code=1, stderr=f"failed to parse output JSON: {e}")
+
+
+from tfdo._internal.core import plan_logic  # noqa: E402

@@ -6,7 +6,7 @@ import pytest
 from ask_shell.shell import AbortRetryError, ShellRun
 from typer.testing import CliRunner
 
-from tfdo._internal.core import binary, executor
+from tfdo._internal.core import binary, executor, plan_logic
 from tfdo._internal.core.executor import (
     _build_init_command,
     _build_lifecycle_command,
@@ -22,6 +22,7 @@ from tfdo._internal.core.executor import (
     needs_init,
     output_json,
     plan,
+    run_streaming_plan,
     terraform_init_should_retry,
 )
 from tfdo._internal.models import (
@@ -34,6 +35,7 @@ from tfdo._internal.models import (
     PlanInput,
     PlanResult,
 )
+from tfdo._internal.output.plan_artifacts import plan_bin_path
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 module_name = init.__module__
@@ -173,21 +175,23 @@ def test_build_lifecycle_command():
 # --- plan tests ---
 
 
-def test_plan_success(tmp_path: Path):
+def test_run_streaming_plan_success(tmp_path: Path):
     settings = _make_settings(tmp_path)
     run = _mock_run(exit_code=0)
     with patch(_patch_run, return_value=run) as mock_raw:
-        result = plan(PlanInput(settings=settings))
+        result = run_streaming_plan(PlanInput(settings=settings))
     assert result.exit_code == 0
-    assert "terraform plan" in mock_raw.call_args[0][0]
+    cmd = mock_raw.call_args[0][0]
+    assert "terraform plan" in cmd
+    assert "-json" in cmd
+    assert f"-out={plan_bin_path(tmp_path)}" in cmd
 
 
 def test_lifecycle_result_captures_stdout_stderr(tmp_path: Path):
     settings = _make_settings(tmp_path)
     run = _mock_run(exit_code=0, stdout="Plan: 2 to add", stderr="Warning: deprecated")
     with patch(_patch_run, return_value=run):
-        result = plan(PlanInput(settings=settings))
-    assert result.stdout == "Plan: 2 to add"
+        result = run_streaming_plan(PlanInput(settings=settings))
     assert result.stderr == "Warning: deprecated"
 
 
@@ -201,8 +205,7 @@ def test_init_result_captures_stdout(tmp_path: Path):
 
 def test_plan_exit_code_2_changes_detected(tmp_path: Path):
     settings = _make_settings(tmp_path)
-    run = _mock_run(exit_code=2)
-    with patch(_patch_run, return_value=run):
+    with patch.object(plan_logic, "run_plan", return_value=PlanResult(exit_code=2)):
         result = plan(PlanInput(settings=settings))
     assert result.exit_code == 2
 
@@ -211,10 +214,10 @@ def test_plan_flags_forwarded(tmp_path: Path):
     settings = _make_settings(tmp_path)
     run = _mock_run(exit_code=0)
     with patch(_patch_run, return_value=run) as mock_raw:
-        plan(PlanInput(settings=settings, out=Path("tfplan"), json_output=True, var_file=Path("dev.tfvars")))
+        run_streaming_plan(PlanInput(settings=settings, var_file=Path("dev.tfvars")))
     cmd = mock_raw.call_args[0][0]
     assert "-var-file=dev.tfvars" in cmd
-    assert "-out=tfplan" in cmd
+    assert f"-out={plan_bin_path(tmp_path)}" in cmd
     assert "-json" in cmd
 
 
@@ -222,7 +225,7 @@ def test_plan_always_init_aborts_on_failure(tmp_path: Path):
     settings = _make_settings(tmp_path)
     init_run = _mock_run(exit_code=1, attempt=1)
     with patch(_patch_run, return_value=init_run) as mock_raw:
-        result = plan(PlanInput(settings=settings, init_mode=InitMode.ALWAYS))
+        result = run_streaming_plan(PlanInput(settings=settings, init_mode=InitMode.ALWAYS))
     assert result.exit_code == 1
     mock_raw.assert_called_once()
     assert "init" in mock_raw.call_args[0][0]
@@ -298,7 +301,7 @@ def test_auto_init_retries_on_init_needed_error(tmp_path: Path):
     init_run = _mock_run(exit_code=0, attempt=1)
     success_run = _mock_run(exit_code=0)
     with patch(_patch_run, side_effect=[fail_run, init_run, success_run]) as mock_raw:
-        result = plan(PlanInput(settings=settings))
+        result = run_streaming_plan(PlanInput(settings=settings))
     assert result.exit_code == 0
     assert mock_raw.call_count == 3
     cmds = [c[0][0] for c in mock_raw.call_args_list]
@@ -311,7 +314,7 @@ def test_auto_init_skips_when_no_init_pattern(tmp_path: Path):
     settings = _make_settings(tmp_path)
     fail_run = _mock_run(exit_code=1, stderr="Error: Invalid resource type")
     with patch(_patch_run, return_value=fail_run) as mock_raw:
-        result = plan(PlanInput(settings=settings))
+        result = run_streaming_plan(PlanInput(settings=settings))
     assert result.exit_code == 1
     mock_raw.assert_called_once()
 
@@ -320,7 +323,7 @@ def test_never_init_mode_skips_init(tmp_path: Path):
     settings = _make_settings(tmp_path)
     fail_run = _mock_run(exit_code=1, stderr='Please run "terraform init"')
     with patch(_patch_run, return_value=fail_run) as mock_raw:
-        result = plan(PlanInput(settings=settings, init_mode=InitMode.NEVER))
+        result = run_streaming_plan(PlanInput(settings=settings, init_mode=InitMode.NEVER))
     assert result.exit_code == 1
     mock_raw.assert_called_once()
 
@@ -329,11 +332,9 @@ def test_never_init_mode_skips_init(tmp_path: Path):
 
 
 def test_plan_cmd_via_cli(tmp_path: Path):
-    from tfdo._internal.core import cmd_plan  # noqa: F401
     from tfdo._internal.typer_app import app
 
-    run = _mock_run(exit_code=0)
-    with patch(_patch_run, return_value=run):
+    with patch.object(plan_logic, "run_plan", return_value=PlanResult(exit_code=0)):
         result = runner.invoke(app, ["--work-dir", str(tmp_path), "plan"])
     assert result.exit_code == 0
 
@@ -374,9 +375,11 @@ def test_plan_with_tf_version(tmp_path: Path):
     settings = _make_settings(tmp_path, tf_version="1.14.0")
     run = _mock_run(exit_code=0)
     with patch(_patch_which, return_value="/usr/local/bin/mise"), patch(_patch_run, return_value=run) as mock_raw:
-        result = plan(PlanInput(settings=settings))
+        result = run_streaming_plan(PlanInput(settings=settings))
     assert result.exit_code == 0
-    assert mock_raw.call_args[0][0] == "mise x terraform@1.14.0 -- terraform plan"
+    cmd = mock_raw.call_args[0][0]
+    assert cmd.startswith("mise x terraform@1.14.0 -- terraform plan")
+    assert "-json" in cmd
 
 
 # --- interactive / approval validation ---
@@ -416,10 +419,10 @@ def test_auto_init_uses_backend_args(tmp_path: Path):
         init_calls.append(inp)
         return InitResult(exit_code=0, attempts_used=1)
 
-    module = plan.__module__
+    module = run_streaming_plan.__module__
     with (
         patch(
-            f"{module}.{executor._run_command.__name__}",
+            f"{module}.{executor._run_streaming_command.__name__}",
             side_effect=[
                 PlanResult(exit_code=1, stderr="terraform init is required"),
                 PlanResult(exit_code=0),
@@ -427,7 +430,7 @@ def test_auto_init_uses_backend_args(tmp_path: Path):
         ),
         patch(f"{module}.{init.__name__}", side_effect=mock_init),
     ):
-        result = plan(input_model)
+        result = run_streaming_plan(input_model)
 
     assert result.exit_code == 0
     assert len(init_calls) == 1
@@ -439,15 +442,15 @@ def test_backend_changed_warns_without_auto_reconfigure(tmp_path: Path):
     settings = _make_settings(tmp_path)
     input_model = PlanInput(settings=settings, init_backend_args=["-backend-config=key=new"])
 
-    module = plan.__module__
+    module = run_streaming_plan.__module__
     with (
         patch(
-            f"{module}.{executor._run_command.__name__}",
+            f"{module}.{executor._run_streaming_command.__name__}",
             return_value=PlanResult(exit_code=1, stderr="Backend configuration changed"),
         ),
         patch(f"{module}.{init.__name__}") as mock_init,
     ):
-        result = plan(input_model)
+        result = run_streaming_plan(input_model)
 
     assert result.exit_code == 1
     mock_init.assert_not_called()

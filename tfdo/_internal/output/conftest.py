@@ -7,12 +7,12 @@ import pytest
 from ask_shell._internal.rich_live import get_live, reset_live
 from rich.console import Console
 
-from tfdo._internal.output.attr_diff import compute_attr_lines
+from tfdo._internal.output import plan_render_input
 from tfdo._internal.output.models import PlanOutput
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_renderer import render_plan
 from tfdo._internal.output.testdata_paths import TESTDATA_DIR
-from tfdo._internal.output.tree_builder import ModuleNode, PlanTree, ResourceNode, build_plan_tree
+from tfdo._internal.output.tree_builder import PlanTree, build_plan_tree
 
 REQUIRED_ATTRS_BY_TYPE: dict[str, frozenset[str]] = {
     "random_string": frozenset({"length"}),
@@ -87,27 +87,16 @@ def drift_plan() -> Path:
     return TESTDATA_DIR / "07_drift.json"
 
 
-def _required_attrs(resource_type: str) -> frozenset[str]:
+def _required_attrs(_provider: str, resource_type: str) -> frozenset[str]:
     return REQUIRED_ATTRS_BY_TYPE.get(resource_type, frozenset())
 
 
-def _iter_resource_nodes(tree: PlanTree) -> list[ResourceNode]:
-    nodes = list(tree.root_resources)
-    nodes.extend(tree.drift)
-
-    def walk(modules: list[ModuleNode]) -> None:
-        for module in modules:
-            nodes.extend(module.child_resources)
-            walk(module.child_modules)
-
-    walk(tree.modules)
-    return nodes
-
-
 def build_attr_lines_by_addr(tree: PlanTree) -> dict[str, list]:
-    return {
-        node.address: compute_attr_lines(node.change, _required_attrs(node.type)) for node in _iter_resource_nodes(tree)
-    }
+    return plan_render_input.build_attr_lines_by_addr(
+        tree,
+        required_attrs=_required_attrs,
+        provider_by_addr={},
+    )
 
 
 def render_fixture(
