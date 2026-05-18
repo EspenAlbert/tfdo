@@ -38,5 +38,10 @@ def outputs_only_plan() -> Path:
 
 
 @pytest.fixture
+def replace_plan() -> Path:
+    return TESTDATA_DIR / "04_replace.json"
+
+
+@pytest.fixture
 def drift_plan() -> Path:
     return TESTDATA_DIR / "07_drift.json"
