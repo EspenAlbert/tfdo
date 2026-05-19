@@ -2,9 +2,115 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tfdo._internal.output.conftest import render_fixture
+import pytest
+from rich.console import Console
+from rich.segment import Segment
+
+from tfdo._internal.output.complex_render import ComplexRenderConfig
+from tfdo._internal.output.conftest import build_attr_lines_by_addr, render_fixture
 from tfdo._internal.output.models import Change, OutputChange, PlanOutput, ResourceChange
-from tfdo._internal.output.plan_renderer import _format_output_section
+from tfdo._internal.output.parser import parse_plan_file
+from tfdo._internal.output.plan_renderer import (
+    _build_complex_results,
+    _build_module_tree,
+    _format_output_section,
+    _module_depth_by_address,
+)
+from tfdo._internal.output.tree_builder import build_plan_tree
+
+
+def test_module_resource_header_not_dim(create_modules_plan: Path) -> None:
+    plan = parse_plan_file(create_modules_plan)
+    tree = build_plan_tree(plan)
+    attr_lines = build_attr_lines_by_addr(tree, plan=plan)
+    complex_results = _build_complex_results(
+        tree,
+        attr_lines,
+        terminal_width=120,
+        config=ComplexRenderConfig(),
+        providers={},
+        collection_kind=None,
+    )
+    renderable = _build_module_tree(
+        tree.modules[0],
+        attr_lines.planned,
+        complex_results=complex_results,
+        terminal_width=120,
+        module_depths=_module_depth_by_address(tree),
+    )
+    console = Console(width=120, force_terminal=True, color_system="standard", legacy_windows=False)
+    for seg in console.render(renderable):
+        if not isinstance(seg, Segment):
+            continue
+        if "module.networking.local_file.network_config" not in seg.text:
+            continue
+        assert seg.style is not None
+        assert not seg.style.dim
+        assert seg.style.color is not None
+        assert seg.style.color.name == "green"
+        return
+    pytest.fail("module resource header segment not found")
+
+
+def test_module_attr_lines_not_green(create_modules_plan: Path) -> None:
+    plan = parse_plan_file(create_modules_plan)
+    tree = build_plan_tree(plan)
+    attr_lines = build_attr_lines_by_addr(tree, plan=plan)
+    complex_results = _build_complex_results(
+        tree,
+        attr_lines,
+        terminal_width=120,
+        config=ComplexRenderConfig(),
+        providers={},
+        collection_kind=None,
+    )
+    renderable = _build_module_tree(
+        tree.modules[0],
+        attr_lines.planned,
+        complex_results=complex_results,
+        terminal_width=120,
+        module_depths=_module_depth_by_address(tree),
+    )
+    console = Console(width=120, force_terminal=True, color_system="standard", legacy_windows=False)
+    for seg in console.render(renderable):
+        if not isinstance(seg, Segment):
+            continue
+        if "content_base64" in seg.text:
+            assert seg.style is not None
+            assert seg.style.color is None
+            return
+    pytest.fail("module attribute segment not found")
+
+
+def test_compact_complex_attr_on_one_line(capture_console) -> None:
+    plan = PlanOutput(
+        format_version="1.2",
+        errored=False,
+        resource_changes=[
+            ResourceChange(
+                address="module.project.mongodbatlas_project.this",
+                mode="managed",
+                type="mongodbatlas_project",
+                name="this",
+                module_address="module.project",
+                change=Change(
+                    actions=["create"],
+                    after={
+                        "name": "project-module-online",
+                        "tags": {},
+                        "teams": [],
+                        "limits": [],
+                    },
+                ),
+            ),
+        ],
+    )
+    rendered = render_fixture(None, capture_console, plan=plan, terminal_width=120)
+    assert "+ tags: {}" in rendered
+    assert "+ teams: []" in rendered
+    assert "+ limits: []" in rendered
+    assert not any(line.strip() == "{}" for line in rendered.splitlines())
+    assert not any(line.strip() == "[]" for line in rendered.splitlines())
 
 
 def test_create_flat(create_flat_plan: Path, capture_console) -> None:

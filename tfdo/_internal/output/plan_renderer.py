@@ -34,6 +34,8 @@ ATTR_VALUE_INDENT = 7
 OUTPUT_INDENT = 2
 LINE_REPEAT_THRESHOLD = 40
 DESTROY_WARNING_THRESHOLD = 3
+_MODULE_TREE_LABEL_STYLE = "bold"
+_MODULE_TREE_GUIDE_STYLE = "dim"
 
 _REPLACE_ACTIONS = frozenset({ResourceAction.REPLACE_DESTROY_FIRST, ResourceAction.REPLACE_CREATE_FIRST})
 _SENSITIVE = "(sensitive)"
@@ -347,8 +349,8 @@ def _build_complex_results(
                 line.new_value,
                 attr_name=line.name,
                 resource_address=node.address,
-                indent=ATTR_VALUE_INDENT + extra_prefix,
-                terminal_width=terminal_width,
+                indent=ATTR_CHANGED_INDENT,
+                terminal_width=terminal_width - extra_prefix,
                 config=config,
                 collection_kind=kind,
                 is_sensitive=line.is_sensitive,
@@ -455,7 +457,7 @@ def _format_attr_value_line(line: AttrLine) -> str:
 
 
 def _style_attr_header(line: AttrLine) -> Text:
-    pad = " " * (ATTR_CONTEXT_INDENT if line.prefix is None else ATTR_CHANGED_INDENT)
+    pad = " " * _attr_pad_len(line)
     text = Text()
     text.append(pad)
     if line.prefix is not None:
@@ -465,6 +467,49 @@ def _style_attr_header(line: AttrLine) -> Text:
     if line.prefix is None:
         text.stylize("dim")
     return text
+
+
+def _header_value_fits(
+    line: AttrLine,
+    value_s: str,
+    terminal_width: int,
+    *,
+    tree_extra_prefix: int,
+) -> bool:
+    pad_len = _attr_pad_len(line)
+    prefix = f"{line.prefix} " if line.prefix is not None else ""
+    head = f"{' ' * pad_len}{prefix}{line.name}: {value_s}"
+    return len(head) <= _attr_line_width(terminal_width, tree_extra_prefix=tree_extra_prefix)
+
+
+def _style_complex_inline_attr(line: AttrLine, value_s: str) -> Text:
+    pad = " " * _attr_pad_len(line)
+    text = Text()
+    text.append(pad)
+    if line.prefix is not None:
+        text.append(f"{line.prefix} ")
+        text.append(line.name, style="bold")
+        text.append(": ")
+        text.append(value_s)
+        return text
+    text.append(f"{line.name}: ", style="dim")
+    text.append(value_s, style="dim")
+    return text
+
+
+def _render_complex_attr(
+    line: AttrLine,
+    result: ComplexRenderResult,
+    terminal_width: int,
+    *,
+    tree_extra_prefix: int,
+) -> list[Text | str]:
+    if result.detail_block is not None or len(result.inline_lines) != 1:
+        return [_style_attr_header(line), *result.inline_lines]
+    value_s = result.inline_lines[0].strip()
+    if _header_value_fits(line, value_s, terminal_width, tree_extra_prefix=tree_extra_prefix):
+        return [_style_complex_inline_attr(line, value_s)]
+    return [_style_attr_header(line), *result.inline_lines]
 
 
 def _style_scalar_attr_line(line: AttrLine) -> Text:
@@ -496,9 +541,12 @@ def _style_scalar_attr_line(line: AttrLine) -> Text:
     return text
 
 
-def _attr_pad_len(line: AttrLine, *, tree_extra_prefix: int) -> int:
-    base = ATTR_CONTEXT_INDENT if line.prefix is None else ATTR_CHANGED_INDENT
-    return base + tree_extra_prefix
+def _attr_pad_len(line: AttrLine) -> int:
+    return ATTR_CONTEXT_INDENT if line.prefix is None else ATTR_CHANGED_INDENT
+
+
+def _attr_line_width(terminal_width: int, *, tree_extra_prefix: int) -> int:
+    return max(1, terminal_width - tree_extra_prefix)
 
 
 def _scalar_value_for_line(line: AttrLine) -> str | None:
@@ -532,11 +580,11 @@ def _scalar_old_new_split(line: AttrLine, terminal_width: int, *, tree_extra_pre
             return None
     if line.old_value is None or line.new_value is None:
         return None
-    pad = " " * _attr_pad_len(line, tree_extra_prefix=tree_extra_prefix)
+    pad = " " * _attr_pad_len(line)
     old_s = _format_scalar(line.old_value)
     new_s = _format_scalar(line.new_value)
     head = f"{pad}{prefix} {line.name}: "
-    if len(head) + len(old_s) + 4 + len(new_s) <= terminal_width:
+    if len(head) + len(old_s) + 4 + len(new_s) <= _attr_line_width(terminal_width, tree_extra_prefix=tree_extra_prefix):
         return None
     first = Text()
     first.append(pad)
@@ -555,16 +603,17 @@ def _scalar_single_value_split(line: AttrLine, terminal_width: int, *, tree_extr
     value_s = _scalar_value_for_line(line)
     if value_s is None:
         return None
-    pad_len = _attr_pad_len(line, tree_extra_prefix=tree_extra_prefix)
+    pad_len = _attr_pad_len(line)
     pad = " " * pad_len
     value_pad = " " * (pad_len + 2)
+    available = _attr_line_width(terminal_width, tree_extra_prefix=tree_extra_prefix)
     match line.prefix:
         case None:
             head = f"{pad}{line.name}: "
             first = Text(f"{pad}{line.name}: ", style="dim")
         case AttrPrefix.ADD | AttrPrefix.REMOVE | AttrPrefix.CHANGE | AttrPrefix.REPLACE as prefix:
             head = f"{pad}{prefix} {line.name}: "
-            if len(head) + len(value_s) <= terminal_width:
+            if len(head) + len(value_s) <= available:
                 return None
             first = Text()
             first.append(pad)
@@ -573,7 +622,7 @@ def _scalar_single_value_split(line: AttrLine, terminal_width: int, *, tree_extr
             first.append(": ")
         case _:
             return None
-    if len(head) + len(value_s) <= terminal_width:
+    if len(head) + len(value_s) <= available:
         return None
     second = Text(value_pad)
     if line.prefix is None:
@@ -605,8 +654,14 @@ def _resource_attr_lines(
     for line in lines:
         if line.value_kind == ValueKind.COMPLEX:
             result = complex_results[_ComplexKey(node.address, line.name)]
-            rendered.append(_style_attr_header(line))
-            rendered.extend(result.inline_lines)
+            rendered.extend(
+                _render_complex_attr(
+                    line,
+                    result,
+                    terminal_width,
+                    tree_extra_prefix=tree_extra_prefix,
+                )
+            )
             continue
         rendered.extend(_render_scalar_attr(line, terminal_width, tree_extra_prefix=tree_extra_prefix))
     return rendered
@@ -620,9 +675,16 @@ def _build_module_tree(
     terminal_width: int,
     module_depths: dict[str, int],
 ) -> Tree:
-    tree = Tree(module.name, style="dim")
+    tree = Tree(
+        module.name,
+        style=_MODULE_TREE_LABEL_STYLE,
+        guide_style=_MODULE_TREE_GUIDE_STYLE,
+    )
     for node in module.child_resources:
-        branch = tree.add(_format_resource_header(node))
+        branch = tree.add(
+            _format_resource_header(node),
+            guide_style=_MODULE_TREE_GUIDE_STYLE,
+        )
         extra = _tree_extra_prefix(module_depths.get(node.address, 0))
         for line in _resource_attr_lines(
             node,
@@ -631,7 +693,7 @@ def _build_module_tree(
             terminal_width=terminal_width,
             tree_extra_prefix=extra,
         ):
-            branch.add(line)
+            branch.add(line, guide_style=_MODULE_TREE_GUIDE_STYLE)
     for child in module.child_modules:
         tree.add(
             _build_module_tree(
@@ -640,7 +702,9 @@ def _build_module_tree(
                 complex_results=complex_results,
                 terminal_width=terminal_width,
                 module_depths=module_depths,
-            )
+            ),
+            style=_MODULE_TREE_LABEL_STYLE,
+            guide_style=_MODULE_TREE_GUIDE_STYLE,
         )
     return tree
 
