@@ -29,14 +29,13 @@ class _PlanStatusRenderable:
         self._handler = handler
 
     def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
-        line = self._handler._status_line()
-        if line:
-            yield Text(line)
+        status = self._handler._status_line()
+        if status:
+            yield status
 
 
 class PlanStreamHandler:
-    def __init__(self, *, context_label: str) -> None:
-        self._context_label = context_label
+    def __init__(self) -> None:
         self._started = time.monotonic()
         self._phase = _Phase.REFRESH
         self._in_flight: set[str] = set()
@@ -119,20 +118,25 @@ class PlanStreamHandler:
         self._planning_emitted = True
         ask_console.print_to_live("plan: computing changes…")
 
-    def _status_line(self) -> str | None:
+    def _status_line(self) -> Text | None:
         if self._phase == _Phase.DONE:
             return None
         if self._phase == _Phase.PLANNING:
-            return self._with_context("planning…")
-        return self._with_context(self._refresh_detail(time.monotonic() - self._started))
+            return Text("planning…", style="cyan")
+        return self._refresh_status(time.monotonic() - self._started)
 
-    def _with_context(self, detail: str) -> str:
-        return f"{self._context_label}  {detail}"
-
-    def _refresh_detail(self, elapsed_s: float) -> str:
+    def _refresh_status(self, elapsed_s: float) -> Text:
         mins, secs = divmod(int(elapsed_s), 60)
         elapsed = f"{mins}m {secs:02d}s" if mins else f"{secs}s"
-        return f"refresh: {self._done} complete, {len(self._in_flight)} in progress ({elapsed})"
+        return Text.assemble(
+            ("refresh", "cyan"),
+            " · ",
+            (str(self._done), "bold"),
+            " done · ",
+            (str(len(self._in_flight)), "bold"),
+            " running · ",
+            (elapsed, "dim"),
+        )
 
     def _remove_status_panel(self) -> None:
         if self._remove_panel is None:

@@ -19,7 +19,9 @@ from tfdo._internal.settings import TfDoSettings
 logger = logging.getLogger(__name__)
 
 
-def _run_streaming_command(settings: TfDoSettings, cmd: str, handler: PlanStreamHandler) -> PlanResult:
+def _run_streaming_command(
+    settings: TfDoSettings, cmd: str, handler: PlanStreamHandler, *, print_prefix: str
+) -> PlanResult:
     callback = plan_stream_callback(handler)
     try:
         run = run_and_wait(
@@ -30,6 +32,7 @@ def _run_streaming_command(settings: TfDoSettings, cmd: str, handler: PlanStream
             skip_binary_check=True,
             skip_progress_output=True,
             user_input=False,
+            print_prefix=print_prefix,
             message_callbacks=[callback],
         )
         handler.flush()
@@ -47,8 +50,9 @@ def run_streaming_plan(input_model: PlanInput) -> PlanResult:
     cmd = build_lifecycle_command(binary.resolve_binary(settings), "plan", input_model.var_file, all_flags)
 
     def run_once() -> PlanResult:
-        handler = PlanStreamHandler(context_label=input_model.run_context_label)
-        return _run_streaming_command(settings, cmd, handler)
+        handler = PlanStreamHandler()
+        print_prefix = f"{input_model.run_context_label} plan"
+        return _run_streaming_command(settings, cmd, handler, print_prefix=print_prefix)
 
     return run_with_init_retry(input_model, "plan", PlanResult, run_once)
 

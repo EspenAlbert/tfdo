@@ -176,6 +176,9 @@ class TfDoConfig(BaseModel):
         if selectors := pattern.match(rel):
             if label := pattern.context_label(selectors):
                 return label
+        parts = rel.strip("/").split("/")
+        if len(parts) >= 2:
+            return f"{parts[-2]}/{parts[-1]}"
         return rel
 
     def run_dir_relative(self, env_name: str, run_dir_name: str) -> str:

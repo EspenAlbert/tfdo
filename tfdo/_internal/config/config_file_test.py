@@ -37,6 +37,14 @@ def test_resolve_run_context_label_includes_optional_team(tmp_path: Path) -> Non
     assert resolve_run_context_label(no_team) == "00_debug/module_online"
 
 
+def test_run_context_label_falls_back_to_last_two_path_segments(tmp_path: Path) -> None:
+    _init_git_repo(tmp_path)
+    (tmp_path / "tfdo.yaml").write_text("run_dir_discovery: '{env}/{run_dir}'\n")
+    run_dir = tmp_path / "code" / "00_debug" / "32_cluster_module_online"
+    run_dir.mkdir(parents=True)
+    assert resolve_run_context_label(run_dir) == "00_debug/32_cluster_module_online"
+
+
 def test_plan_input_sets_run_context_label(tmp_path: Path) -> None:
     _init_git_repo(tmp_path)
     (tmp_path / "tfdo.yaml").write_text("run_dir_discovery: '{env}/{run_dir}'\n")
