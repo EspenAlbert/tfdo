@@ -30,6 +30,7 @@ from tfdo._internal.output.tree_builder import ModuleNode, PlanTree, ResourceNod
 
 ATTR_CONTEXT_INDENT = 7
 ATTR_CHANGED_INDENT = 5
+MODULE_TREE_ATTR_INDENT = 0
 ATTR_VALUE_INDENT = 7
 OUTPUT_INDENT = 2
 LINE_REPEAT_THRESHOLD = 40
@@ -344,12 +345,13 @@ def _build_complex_results(
             if collection_kind is not None:
                 path = tuple(display_path.parse_display_key(line.name))
                 kind = collection_kind(providers.get(node.address, ""), node.type, path)
+            in_module_tree = extra_prefix > 0
             results[key] = render_complex_value(
                 line.old_value,
                 line.new_value,
                 attr_name=line.name,
                 resource_address=node.address,
-                indent=ATTR_CHANGED_INDENT,
+                indent=MODULE_TREE_ATTR_INDENT if in_module_tree else ATTR_CHANGED_INDENT,
                 terminal_width=terminal_width - extra_prefix,
                 config=config,
                 collection_kind=kind,
@@ -456,8 +458,8 @@ def _format_attr_value_line(line: AttrLine) -> str:
             return f"{line.name}: {_format_scalar(line.old_value)}"
 
 
-def _style_attr_header(line: AttrLine) -> Text:
-    pad = " " * _attr_pad_len(line)
+def _style_attr_header(line: AttrLine, *, in_module_tree: bool = False) -> Text:
+    pad = " " * _attr_pad_len(line, in_module_tree=in_module_tree)
     text = Text()
     text.append(pad)
     if line.prefix is not None:
@@ -476,14 +478,15 @@ def _header_value_fits(
     *,
     tree_extra_prefix: int,
 ) -> bool:
-    pad_len = _attr_pad_len(line)
+    in_module_tree = tree_extra_prefix > 0
+    pad_len = _attr_pad_len(line, in_module_tree=in_module_tree)
     prefix = f"{line.prefix} " if line.prefix is not None else ""
     head = f"{' ' * pad_len}{prefix}{line.name}: {value_s}"
     return len(head) <= _attr_line_width(terminal_width, tree_extra_prefix=tree_extra_prefix)
 
 
-def _style_complex_inline_attr(line: AttrLine, value_s: str) -> Text:
-    pad = " " * _attr_pad_len(line)
+def _style_complex_inline_attr(line: AttrLine, value_s: str, *, in_module_tree: bool = False) -> Text:
+    pad = " " * _attr_pad_len(line, in_module_tree=in_module_tree)
     text = Text()
     text.append(pad)
     if line.prefix is not None:
@@ -504,18 +507,19 @@ def _render_complex_attr(
     *,
     tree_extra_prefix: int,
 ) -> list[Text | str]:
+    in_module_tree = tree_extra_prefix > 0
     if result.detail_block is not None or len(result.inline_lines) != 1:
-        return [_style_attr_header(line), *result.inline_lines]
+        return [_style_attr_header(line, in_module_tree=in_module_tree), *result.inline_lines]
     value_s = result.inline_lines[0].strip()
     if _header_value_fits(line, value_s, terminal_width, tree_extra_prefix=tree_extra_prefix):
-        return [_style_complex_inline_attr(line, value_s)]
-    return [_style_attr_header(line), *result.inline_lines]
+        return [_style_complex_inline_attr(line, value_s, in_module_tree=in_module_tree)]
+    return [_style_attr_header(line, in_module_tree=in_module_tree), *result.inline_lines]
 
 
-def _style_scalar_attr_line(line: AttrLine) -> Text:
+def _style_scalar_attr_line(line: AttrLine, *, in_module_tree: bool = False) -> Text:
+    pad = " " * _attr_pad_len(line, in_module_tree=in_module_tree)
     if line.prefix is None:
-        return Text(f"{' ' * ATTR_CONTEXT_INDENT}{_format_attr_value_line(line)}", style="dim")
-    pad = " " * ATTR_CHANGED_INDENT
+        return Text(f"{pad}{_format_attr_value_line(line)}", style="dim")
     text = Text()
     text.append(pad)
     text.append(f"{line.prefix} ")
@@ -541,7 +545,9 @@ def _style_scalar_attr_line(line: AttrLine) -> Text:
     return text
 
 
-def _attr_pad_len(line: AttrLine) -> int:
+def _attr_pad_len(line: AttrLine, *, in_module_tree: bool = False) -> int:
+    if in_module_tree:
+        return MODULE_TREE_ATTR_INDENT
     return ATTR_CONTEXT_INDENT if line.prefix is None else ATTR_CHANGED_INDENT
 
 
@@ -580,7 +586,8 @@ def _scalar_old_new_split(line: AttrLine, terminal_width: int, *, tree_extra_pre
             return None
     if line.old_value is None or line.new_value is None:
         return None
-    pad = " " * _attr_pad_len(line)
+    in_module_tree = tree_extra_prefix > 0
+    pad = " " * _attr_pad_len(line, in_module_tree=in_module_tree)
     old_s = _format_scalar(line.old_value)
     new_s = _format_scalar(line.new_value)
     head = f"{pad}{prefix} {line.name}: "
@@ -603,7 +610,8 @@ def _scalar_single_value_split(line: AttrLine, terminal_width: int, *, tree_extr
     value_s = _scalar_value_for_line(line)
     if value_s is None:
         return None
-    pad_len = _attr_pad_len(line)
+    in_module_tree = tree_extra_prefix > 0
+    pad_len = _attr_pad_len(line, in_module_tree=in_module_tree)
     pad = " " * pad_len
     value_pad = " " * (pad_len + 2)
     available = _attr_line_width(terminal_width, tree_extra_prefix=tree_extra_prefix)
@@ -639,7 +647,7 @@ def _render_scalar_attr(line: AttrLine, terminal_width: int, *, tree_extra_prefi
         return split
     if split := _scalar_single_value_split(line, terminal_width, tree_extra_prefix=tree_extra_prefix):
         return split
-    return [_style_scalar_attr_line(line)]
+    return [_style_scalar_attr_line(line, in_module_tree=tree_extra_prefix > 0)]
 
 
 def _resource_attr_lines(
