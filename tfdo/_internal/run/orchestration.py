@@ -15,7 +15,6 @@ from tfdo._internal.config import backend_resolution, config_resolution
 from tfdo._internal.config.config_file import load_config_layers
 from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
-from tfdo._internal.config.discovery_pattern import parse_discovery_pattern
 from tfdo._internal.config.enums import LifecycleCommand, LifecycleEvent
 from tfdo._internal.core import executor, lifecycle_init_retry, terraform_init
 from tfdo._internal.git_utils import parse_git_remote
@@ -410,8 +409,7 @@ def _discover_run_dirs(repo_root: Path) -> list[DiscoveredRunDir]:
     if not root_config.run_dir_discovery:
         raise ValueError("root tfdo.yaml must define run_dir_discovery pattern")
 
-    pattern = parse_discovery_pattern(root_config.run_dir_discovery)
-    return discover_run_dirs(repo_root, pattern)
+    return discover_run_dirs(repo_root, root_config.parsed_pattern())
 
 
 def _resolve_all_configs(

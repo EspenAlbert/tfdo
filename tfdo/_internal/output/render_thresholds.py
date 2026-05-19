@@ -7,8 +7,6 @@ OUTPUT_MULTILINE_CHARS = 400
 OUTPUT_PRETTY_JSON_CHARS = 80
 TREE_GUIDE_CHARS_PER_LEVEL = 4
 TREE_BASE_PREFIX_CHARS = 12
-REFRESH_PROGRESS_THRESHOLD_S = 2.0
-REFRESH_HEARTBEAT_INTERVAL_S = 5.0
 
 
 def inline_budget(inline_min_width: int, terminal_width: int, indent: int) -> int:

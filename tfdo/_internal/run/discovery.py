@@ -33,6 +33,9 @@ class DiscoveredRunDir(BaseModel):
     relative_path: str
     selectors: dict[str, str] = Field(default_factory=dict)
 
+    def context_label(self, pattern: DiscoveryPattern) -> str:
+        return pattern.context_label(self.selectors)
+
 
 def discover_run_dirs(
     repo_root: Path, pattern: DiscoveryPattern, require_backend: bool = True

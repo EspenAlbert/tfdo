@@ -28,6 +28,7 @@ def _run_streaming_command(settings: TfDoSettings, cmd: str, handler: PlanStream
             allow_non_zero_exit=True,
             ansi_content=True,
             skip_binary_check=True,
+            skip_progress_output=True,
             user_input=False,
             message_callbacks=[callback],
         )
@@ -46,7 +47,8 @@ def run_streaming_plan(input_model: PlanInput) -> PlanResult:
     cmd = build_lifecycle_command(binary.resolve_binary(settings), "plan", input_model.var_file, all_flags)
 
     def run_once() -> PlanResult:
-        return _run_streaming_command(settings, cmd, PlanStreamHandler())
+        handler = PlanStreamHandler(context_label=input_model.run_context_label)
+        return _run_streaming_command(settings, cmd, handler)
 
     return run_with_init_retry(input_model, "plan", PlanResult, run_once)
 

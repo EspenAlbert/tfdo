@@ -37,8 +37,12 @@ def create_capture_console(*, width: int = 120, height: int = 80) -> Console:
 def capture_console() -> Iterator[Console]:
     console = create_capture_console()
     console.begin_capture()
-    get_live().console = console
+    live = get_live()
+    prev_console = live.console
+    live.console = console
     yield console
+    live.console = prev_console
+    console.end_capture()
     reset_live()
 
 

@@ -8,12 +8,11 @@ from enum import StrEnum
 from ask_shell import console as ask_console
 from ask_shell._internal.events import ShellRunStdOutput
 from ask_shell._internal.models import ShellRunEventT
+from ask_shell.console import RemoveLivePart
+from rich.console import Console, ConsoleOptions, RenderResult
+from rich.text import Text
 
 from tfdo._internal.output.diagnostic_renderer import render_diagnostic
-from tfdo._internal.output.render_thresholds import (
-    REFRESH_HEARTBEAT_INTERVAL_S,
-    REFRESH_PROGRESS_THRESHOLD_S,
-)
 from tfdo._internal.output.stream_models import ChangeSummaryEvent, DiagnosticEvent, RefreshEvent
 
 logger = logging.getLogger(__name__)
@@ -25,18 +24,30 @@ class _Phase(StrEnum):
     DONE = "done"
 
 
+class _PlanStatusRenderable:
+    def __init__(self, handler: PlanStreamHandler) -> None:
+        self._handler = handler
+
+    def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+        line = self._handler._status_line()
+        if line:
+            yield Text(line)
+
+
 class PlanStreamHandler:
-    def __init__(self) -> None:
+    def __init__(self, *, context_label: str) -> None:
+        self._context_label = context_label
         self._started = time.monotonic()
         self._phase = _Phase.REFRESH
         self._in_flight: set[str] = set()
         self._done = 0
-        self._saw_refresh = False
-        self._progress_enabled = False
-        self._last_heartbeat = self._started
         self._planning_emitted = False
         self._diagnostic_emitted = False
         self._carry = ""
+        self._status = _PlanStatusRenderable(self)
+        self._remove_panel: RemoveLivePart | None = ask_console.add_renderable(
+            self._status, order=10, name="plan-status"
+        )
 
     def feed_line(self, chunk: str) -> None:
         self._carry += chunk
@@ -50,6 +61,7 @@ class PlanStreamHandler:
         if self._carry.strip():
             self._handle_line(self._carry.strip())
         self._carry = ""
+        self._remove_status_panel()
 
     def _handle_line(self, line: str) -> None:
         try:
@@ -58,13 +70,14 @@ class PlanStreamHandler:
             logger.debug(f"skipping non-json plan stream line: {line[:120]!r}")
             return
         msg_type = data.get("type")
+        event = RefreshEvent.model_validate(data)
         match msg_type:
             case "diagnostic":
                 self._emit_diagnostic(DiagnosticEvent.model_validate(data))
-            case "refresh_start":
-                self._on_refresh_start(RefreshEvent.model_validate(data))
-            case "refresh_complete":
-                self._on_refresh_complete(RefreshEvent.model_validate(data))
+            case "refresh_start" | "apply_start":
+                self._on_refresh_start(event)
+            case "refresh_complete" | "apply_complete":
+                self._on_refresh_complete(event)
             case "change_summary":
                 ChangeSummaryEvent.model_validate(data)
                 self._phase = _Phase.DONE
@@ -72,7 +85,6 @@ class PlanStreamHandler:
                 self._leave_refresh_phase()
             case _:
                 pass
-        self._maybe_heartbeat()
 
     def _emit_diagnostic(self, event: DiagnosticEvent) -> None:
         diag = event.diagnostic
@@ -85,17 +97,13 @@ class PlanStreamHandler:
             ask_console.print_to_live(line)
 
     def _on_refresh_start(self, event: RefreshEvent) -> None:
-        self._saw_refresh = True
         if event.hook and event.hook.resource:
             self._in_flight.add(event.hook.resource.addr)
-        self._maybe_enable_progress()
 
     def _on_refresh_complete(self, event: RefreshEvent) -> None:
-        self._saw_refresh = True
         if event.hook and event.hook.resource:
             self._in_flight.discard(event.hook.resource.addr)
         self._done += 1
-        self._maybe_enable_progress()
         if not self._in_flight:
             self._leave_refresh_phase()
 
@@ -111,28 +119,26 @@ class PlanStreamHandler:
         self._planning_emitted = True
         ask_console.print_to_live("plan: computing changes…")
 
-    def _maybe_enable_progress(self) -> None:
-        if self._progress_enabled:
-            return
-        if not self._saw_refresh:
-            return
-        if time.monotonic() - self._started < REFRESH_PROGRESS_THRESHOLD_S:
-            return
-        self._progress_enabled = True
+    def _status_line(self) -> str | None:
+        if self._phase == _Phase.DONE:
+            return None
+        if self._phase == _Phase.PLANNING:
+            return self._with_context("planning…")
+        return self._with_context(self._refresh_detail(time.monotonic() - self._started))
 
-    def _maybe_heartbeat(self) -> None:
-        if not self._progress_enabled or self._phase != _Phase.REFRESH:
-            return
-        now = time.monotonic()
-        if now - self._last_heartbeat < REFRESH_HEARTBEAT_INTERVAL_S:
-            return
-        self._last_heartbeat = now
-        ask_console.print_to_live(self._refresh_line(now - self._started))
+    def _with_context(self, detail: str) -> str:
+        return f"{self._context_label}  {detail}"
 
-    def _refresh_line(self, elapsed_s: float) -> str:
+    def _refresh_detail(self, elapsed_s: float) -> str:
         mins, secs = divmod(int(elapsed_s), 60)
         elapsed = f"{mins}m {secs:02d}s" if mins else f"{secs}s"
         return f"refresh: {self._done} complete, {len(self._in_flight)} in progress ({elapsed})"
+
+    def _remove_status_panel(self) -> None:
+        if self._remove_panel is None:
+            return
+        self._remove_panel()
+        self._remove_panel = None
 
 
 def plan_stream_callback(handler: PlanStreamHandler):

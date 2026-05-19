@@ -22,6 +22,9 @@ class DiscoveryPattern(BaseModel):
             return {k: v for k, v in m.groupdict().items() if v is not None}
         return None
 
+    def context_label(self, selectors: dict[str, str]) -> str:
+        return "/".join(selectors[name] for name in self.selector_names if name in selectors)
+
 
 def parse_discovery_pattern(pattern: str) -> DiscoveryPattern:
     if not pattern.strip():
