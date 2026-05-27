@@ -9,6 +9,7 @@ from ask_shell._internal.rich_live import get_live, reset_live
 from rich.console import Console
 
 from tfdo._internal.output import plan_render_input
+from tfdo._internal.output.complex_render import ComplexRenderConfig
 from tfdo._internal.output.models import PlanOutput
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_display import PlanDisplayOptions
@@ -188,6 +189,7 @@ def render_fixture(
         collection_kind=lookups.collection_kind,
         computed_at_path=lookups.computed_at_path,
         resource_schema=lookups.resource_schema,
+        complex_config=ComplexRenderConfig(max_structural_lines=display.max_inline_lines),
         show_unknown_outputs=show_unknown_outputs,
         plan_display=display,
     )

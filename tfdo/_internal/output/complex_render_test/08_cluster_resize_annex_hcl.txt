@@ -1,7 +1,6 @@
-# module.cluster.mongodbatlas_advanced_cluster.this
-# Annex: replication_specs after (sensitive and unknown paths stripped)
-
-resource "mongodbatlas_advanced_cluster" "this" {
+      (see above for full config)
+--- replication_specs (module.cluster.mongodbatlas_advanced_cluster.this) ---
+after:
   replication_specs = [
     {
       region_configs = [
@@ -29,4 +28,3 @@ resource "mongodbatlas_advanced_cluster" "this" {
       ],
     },
   ]
-}

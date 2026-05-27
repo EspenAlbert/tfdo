@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
+
+import pytest
 
 from tfdo._internal.output.complex_render import (
     SEE_ABOVE_FOR_FULL_CONFIG,
     ComplexRenderConfig,
+    ComplexRenderResult,
     render_complex_value,
 )
 from tfdo._internal.output.models import Change
@@ -195,6 +199,56 @@ def test_create_nested_attr_uses_inline_hcl() -> None:
 def _cluster_resize_change() -> Change:
     payload = json.loads((TESTDATA_DIR / "08_cluster_resize.json").read_text())
     return Change.model_validate(payload["resource_changes"][0]["change"])
+
+
+def _format_complex_render(result: ComplexRenderResult) -> str:
+    lines = list(result.inline_lines)
+    if result.hcl_body_lines:
+        lines.extend(result.hcl_body_lines)
+    if result.detail_block:
+        lines.extend(result.detail_block.body_lines)
+    return "\n".join(lines)
+
+
+def _render_cluster_resize_annex(*, show_json_annex: bool = False) -> ComplexRenderResult:
+    change = _cluster_resize_change()
+    before = change.before or {}
+    after = change.after or {}
+    return render_complex_value(
+        before.get("replication_specs"),
+        after.get("replication_specs"),
+        attr_name="replication_specs",
+        resource_address="module.cluster.mongodbatlas_advanced_cluster.this",
+        indent=_INDENT,
+        terminal_width=_WIDE,
+        config=ComplexRenderConfig(max_structural_lines=2),
+        show_full_config_annex=True,
+        show_json_annex=show_json_annex,
+        change=change,
+        schema=_cluster_schema(),
+    )
+
+
+@dataclass(frozen=True)
+class AnnexRenderCase:
+    basename: str
+    show_json_annex: bool
+
+
+ANNEX_RENDER_CASES = (
+    AnnexRenderCase("08_cluster_resize_annex_hcl", False),
+    AnnexRenderCase("08_cluster_resize_annex_json", True),
+)
+
+
+@pytest.mark.parametrize("case", ANNEX_RENDER_CASES, ids=lambda case: case.basename)
+def test_hoisted_annex_render(case: AnnexRenderCase, file_regression) -> None:
+    result = _render_cluster_resize_annex(show_json_annex=case.show_json_annex)
+    file_regression.check(
+        _format_complex_render(result),
+        basename=case.basename,
+        extension=".txt",
+    )
 
 
 def test_annex_guard_skips_computed_only_normalization() -> None:
