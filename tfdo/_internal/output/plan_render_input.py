@@ -30,10 +30,12 @@ def _attr_lines_for_node(
     *,
     required_attrs: RequiredAttrsLookup,
     provider_by_addr: dict[str, str],
+    show_create_defaults: bool,
 ) -> list[AttrLine]:
     return compute_attr_lines(
         node.change,
         required_attrs(provider_by_addr.get(node.address, ""), node.type),
+        show_create_defaults=show_create_defaults,
     )
 
 
@@ -42,23 +44,33 @@ def build_attr_lines_by_addr(
     *,
     required_attrs: RequiredAttrsLookup,
     provider_by_addr: dict[str, str],
+    show_create_defaults: bool = False,
 ) -> ResourceAttrLines:
     planned: dict[str, list[AttrLine]] = {}
     drift: dict[str, list[AttrLine]] = {}
     for node in tree.drift:
         drift[node.address] = _attr_lines_for_node(
-            node, required_attrs=required_attrs, provider_by_addr=provider_by_addr
+            node,
+            required_attrs=required_attrs,
+            provider_by_addr=provider_by_addr,
+            show_create_defaults=show_create_defaults,
         )
     for node in tree.root_resources:
         planned[node.address] = _attr_lines_for_node(
-            node, required_attrs=required_attrs, provider_by_addr=provider_by_addr
+            node,
+            required_attrs=required_attrs,
+            provider_by_addr=provider_by_addr,
+            show_create_defaults=show_create_defaults,
         )
 
     def walk(modules: list[ModuleNode]) -> None:
         for module in modules:
             for node in module.child_resources:
                 planned[node.address] = _attr_lines_for_node(
-                    node, required_attrs=required_attrs, provider_by_addr=provider_by_addr
+                    node,
+                    required_attrs=required_attrs,
+                    provider_by_addr=provider_by_addr,
+                    show_create_defaults=show_create_defaults,
                 )
             walk(module.child_modules)
 

@@ -4,6 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
+from tfdo._internal.output.create_filter import is_empty_create_value
 from tfdo._internal.output.display_path import resolve_replace_display_keys, values_for_display_key
 from tfdo._internal.output.models import Change, ResourceAction
 
@@ -31,13 +32,18 @@ class AttrLine(BaseModel):
     value_kind: ValueKind = ValueKind.SCALAR
 
 
-def compute_attr_lines(change: Change, required_attrs: frozenset[str]) -> list[AttrLine]:
+def compute_attr_lines(
+    change: Change,
+    required_attrs: frozenset[str],
+    *,
+    show_create_defaults: bool = False,
+) -> list[AttrLine]:
     action = change.action()
     before = change.before or {}
     after = change.after or {}
     match action:
         case ResourceAction.CREATE:
-            lines = _create_lines(before, after, change, required_attrs)
+            lines = _create_lines(before, after, change, required_attrs, show_create_defaults)
         case ResourceAction.UPDATE:
             lines = _update_lines(before, after, change, required_attrs)
         case ResourceAction.DELETE:
@@ -54,6 +60,7 @@ def _create_lines(
     after: dict[str, object],
     change: Change,
     required_attrs: frozenset[str],
+    show_create_defaults: bool,
 ) -> list[AttrLine]:
     lines: list[AttrLine] = []
     for name in sorted(required_attrs):
@@ -65,8 +72,15 @@ def _create_lines(
     for name in sorted(after):
         if name in required_attrs or _is_after_unknown(change.after_unknown, name):
             continue
-        lines.append(_line(name, AttrPrefix.ADD, None, after[name], change))
+        value = after[name]
+        if not show_create_defaults and _skip_create_attr(value):
+            continue
+        lines.append(_line(name, AttrPrefix.ADD, None, value, change))
     return lines
+
+
+def _skip_create_attr(value: object) -> bool:
+    return is_empty_create_value(value)
 
 
 def _update_lines(

@@ -2,18 +2,22 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from tfdo._internal.output.attr_diff import AttrLine
+from tfdo._internal.output.attr_diff import AttrLine, AttrPrefix
 from tfdo._internal.output.display_path import parse_display_key, path_get_value
 from tfdo._internal.output.models import Change, ResourceAction
 from tfdo._internal.output.tree_builder import ResourceNode
 
 ComputedOnlyLookup = Callable[[str, str, tuple[str | int, ...]], bool | None]
 
+_CREATE_ACTIONS = frozenset({ResourceAction.CREATE})
 _DRIFT_ALLOWLIST = frozenset({"updated", "labels", "effective_labels", "terraform_labels"})
 
 
 def after_unknown_at(change: Change, path: tuple[str | int, ...]) -> bool:
-    unknown = change.after_unknown
+    return after_unknown_at_map(change.after_unknown, path)
+
+
+def after_unknown_at_map(unknown: object | bool | None, path: tuple[str | int, ...]) -> bool:
     if unknown is True:
         return True
     if not isinstance(unknown, dict):
@@ -43,6 +47,8 @@ def is_computed_only_plan_delta(
     provider: str,
     resource_type: str,
 ) -> bool:
+    if change.action() in _CREATE_ACTIONS:
+        return after_unknown_at(change, path)
     before_val, after_val = (
         path_get_value(change.before, list(path)),
         path_get_value(change.after, list(path)),
@@ -114,6 +120,15 @@ def is_computed_only_drift_resource(
     )
 
 
+def format_computed_delta_line(name: str, prefix: AttrPrefix) -> AttrLine:
+    return AttrLine(
+        name=f"{name} (computed, omitted from config)",
+        prefix=prefix,
+        old_value=None,
+        new_value=None,
+    )
+
+
 def filter_attr_lines(
     lines: list[AttrLine],
     *,
@@ -123,8 +138,6 @@ def filter_attr_lines(
     resource_type: str,
     show_computed_deltas: bool,
 ) -> list[AttrLine]:
-    if show_computed_deltas:
-        return lines
     kept: list[AttrLine] = []
     for line in lines:
         if line.prefix is None:
@@ -138,6 +151,8 @@ def filter_attr_lines(
             provider=provider,
             resource_type=resource_type,
         ):
+            if show_computed_deltas:
+                kept.append(format_computed_delta_line(line.name, line.prefix))
             continue
         kept.append(line)
     return kept

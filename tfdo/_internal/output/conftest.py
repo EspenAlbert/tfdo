@@ -106,6 +106,11 @@ def cluster_resize_plan() -> Path:
     return TESTDATA_DIR / "08_cluster_resize.json"
 
 
+@pytest.fixture
+def create_atlas_compact_plan() -> Path:
+    return TESTDATA_DIR / "09_create_atlas_compact.json"
+
+
 def _load_fixture_schemas() -> dict[str, ResourceSchema]:
     index: dict[str, ResourceSchema] = {}
     if not SCHEMAS_DIR.is_dir():
@@ -134,6 +139,7 @@ def build_attr_lines_by_addr(
     *,
     plan: PlanOutput,
     schema_lookups: SchemaLookups | None = None,
+    show_create_defaults: bool = False,
 ) -> plan_render_input.ResourceAttrLines:
     provider_by_addr = _provider_by_addr(plan)
 
@@ -148,6 +154,7 @@ def build_attr_lines_by_addr(
         tree,
         required_attrs=required_attrs,
         provider_by_addr=provider_by_addr,
+        show_create_defaults=show_create_defaults,
     )
 
 
@@ -167,14 +174,20 @@ def render_fixture(
     tree = build_plan_tree(plan)
     provider_by_addr = _provider_by_addr(plan)
     lookups = schema_lookups or build_schema_lookups_from_index(_load_fixture_schemas())
+    display = plan_display or PlanDisplayOptions()
     render_plan(
         tree,
-        build_attr_lines_by_addr(tree, plan=plan, schema_lookups=lookups),
+        build_attr_lines_by_addr(
+            tree,
+            plan=plan,
+            schema_lookups=lookups,
+            show_create_defaults=display.show_create_defaults,
+        ),
         terminal_width=terminal_width,
         provider_by_addr=provider_by_addr,
         collection_kind=lookups.collection_kind,
         computed_at_path=lookups.computed_at_path,
         show_unknown_outputs=show_unknown_outputs,
-        plan_display=plan_display or PlanDisplayOptions(),
+        plan_display=display,
     )
     return capture_console.end_capture()

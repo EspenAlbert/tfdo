@@ -1,0 +1,61 @@
+📋 Plan: 🟢 9 to add
+
+🟢 mongodbatlas_project.this
+       name: "example-project-name"
+     + org_id: "000000000000000000000003"
+     + with_default_alerts_settings: true
+cluster
+└── 🟢 module.cluster.mongodbatlas_advanced_cluster.this
+    ├── cluster_type: "SHARDED"
+    ├── name: "example-cluster-name"
+    ├── + advanced_configuration:
+    ├── {"default_write_concern":"majority","javascript_enabled":false,"minimum_enabled_tls_protocol":"TLS1_2"}
+    ├── + backup_enabled: true
+    ├── + delete_on_create_timeout: true
+    ├── + pit_enabled: true
+    ├── + redact_client_log_data: true
+    ├── + replication_specs[0].region_configs[0].analytics_auto_scaling.compute_enabled: false
+    ├── + replication_specs[0].region_configs[0].analytics_auto_scaling.disk_gb_enabled: false
+    ├── + replication_specs[0].region_configs[0].auto_scaling.compute_enabled: false
+    ├── + replication_specs[0].region_configs[0].auto_scaling.disk_gb_enabled: false
+    ├── + replication_specs[0].region_configs[0].electable_specs.instance_size: "M40"
+    ├── + replication_specs[0].region_configs[0].electable_specs.node_count: 3
+    ├── + replication_specs[0].region_configs[0].priority: 7
+    ├── + replication_specs[0].region_configs[0].provider_name: "GCP"
+    ├── + replication_specs[0].region_configs[0].region_name: "US_EAST_4"
+    └── + retain_backups_enabled: true
+gcp
+├── 🟢 module.gcp.terraform_data.region_validations
+├── cloud_provider_access[0]
+│   ├── 🟢 module.gcp.module.cloud_provider_access[0].mongodbatlas_cloud_provider_access_authorization.this
+│   └── 🟢 module.gcp.module.cloud_provider_access[0].mongodbatlas_cloud_provider_access_setup.this
+│       ├── + provider_name: "GCP"
+│       └── + timeouts: {"create":"30m"}
+└── log_integration[0]
+    ├── 🟢 module.gcp.module.log_integration[0].google_storage_bucket.atlas[0]
+    │   ├── + deletion_policy: "DELETE"
+    │   ├── + effective_labels: {"goog-terraform-provisioned":"true"}
+    │   ├── + force_destroy: true
+    │   ├── + lifecycle_rule[0].action[0].type: "Delete"
+    │   ├── + lifecycle_rule[0].condition[0].age: 90
+    │   ├── + location: "US-EAST4"
+    │   ├── + public_access_prevention: "enforced"
+    │   ├── + storage_class: "STANDARD"
+    │   ├── + terraform_labels: {"goog-terraform-provisioned":"true"}
+    │   ├── + timeouts: {"create":"30m","read":null,"update":"30m"}
+    │   ├── + uniform_bucket_level_access: true
+    │   └── + versioning: [{"enabled":false}]
+    ├── 🟢 module.gcp.module.log_integration[0].google_storage_bucket_iam_member.atlas["default"]
+    │   ├── + role: "roles/storage.objectCreator"
+    │   └── + timeouts: {"create":"30m"}
+    ├── 🟢 module.gcp.module.log_integration[0].mongodbatlas_log_integration.this[0]
+    │   ├── + log_types: ["MONGOD","MONGOD_AUDIT","MONGOS","MONGOS_AUDIT"]
+    │   ├── + prefix_path: "creator_logs"
+    │   └── + type: "GCS_LOG_EXPORT"
+    └── 🟢 module.gcp.module.log_integration[0].time_sleep.iam_propagation[0]
+        └── + create_duration: "30s"
+
+📤 Outputs (🟢 1 new)
+  + bucket_url: (known after apply)
+
+📋 Plan: 🟢 9 to add

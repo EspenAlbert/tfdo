@@ -120,6 +120,7 @@ def render_plan(
         lookup=lookup,
         show_computed_deltas=display.show_computed_deltas,
         show_full_config_annex=display.show_full_config_annex,
+        show_create_defaults=display.show_create_defaults,
     )
     state = _PrintState()
     if display.show_full_config_annex:
@@ -407,6 +408,7 @@ def _build_complex_results(
     lookup: ComputedOnlyLookup,
     show_computed_deltas: bool,
     show_full_config_annex: bool,
+    show_create_defaults: bool,
 ) -> dict[_ComplexKey, ComplexRenderResult]:
     depths = _module_depth_by_address(tree)
     results: dict[_ComplexKey, ComplexRenderResult] = {}
@@ -435,6 +437,12 @@ def _build_complex_results(
                 collection_kind=kind,
                 is_sensitive=line.is_sensitive,
                 show_full_config_annex=show_full_config_annex,
+                show_create_defaults=show_create_defaults,
+                change=node.change,
+                computed_lookup=lookup,
+                provider=provider,
+                resource_type=node.type,
+                show_computed_deltas=show_computed_deltas,
             )
             filtered = _filter_structural_result(
                 result,
@@ -722,8 +730,6 @@ def _filter_structural_result(
     resource_type: str,
     show_computed_deltas: bool,
 ) -> ComplexRenderResult | None:
-    if show_computed_deltas:
-        return result
     kept: list[str] = []
     for line in result.inline_lines:
         stripped = line.strip()
@@ -738,6 +744,10 @@ def _filter_structural_result(
             provider=provider,
             resource_type=resource_type,
         ):
+            if show_computed_deltas:
+                key = stripped.split(":", 1)[0]
+                marker, _, path_s = key.partition(" ")
+                kept.append(f"{line[: len(line) - len(stripped)]}{marker} {path_s} (computed, omitted from config)")
             continue
         kept.append(line)
     if not kept:

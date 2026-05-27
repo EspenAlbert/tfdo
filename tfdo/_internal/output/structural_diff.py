@@ -4,6 +4,8 @@ from enum import StrEnum
 from typing import NamedTuple
 
 from tfdo._internal.output import display_path
+from tfdo._internal.output.create_filter import is_empty_create_value
+from tfdo._internal.output.plan_filters import after_unknown_at_map
 
 
 class DiffPrefix(StrEnum):
@@ -27,8 +29,11 @@ class BudgetResult(NamedTuple):
 def compute_structural_diff(
     before: object | None,
     after: object | None,
+    *,
+    show_create_defaults: bool = True,
+    after_unknown: object | bool | None = None,
 ) -> list[DiffLine]:
-    return _walk(before, after, [])
+    return _walk(before, after, [], show_create_defaults=show_create_defaults, after_unknown=after_unknown)
 
 
 def format_diff_line(line: DiffLine, *, budget: int) -> str:
@@ -58,44 +63,98 @@ def apply_line_budget(lines: list[DiffLine], max_lines: int, *, budget: int) -> 
     return BudgetResult(lines=rendered, hidden_count=hidden)
 
 
-def _walk(before: object | None, after: object | None, path: list[str | int]) -> list[DiffLine]:
+def _walk(
+    before: object | None,
+    after: object | None,
+    path: list[str | int],
+    *,
+    show_create_defaults: bool,
+    after_unknown: object | bool | None,
+) -> list[DiffLine]:
     if before == after:
         return []
     if before is None:
-        return _emit_create(after, path)
+        return _emit_create(
+            after,
+            path,
+            show_create_defaults=show_create_defaults,
+            after_unknown=after_unknown,
+        )
     if after is None:
         return _emit_delete(before, path)
     match before, after:
         case dict(), dict():
             lines: list[DiffLine] = []
             for key in sorted(set(before) | set(after), key=str):
-                lines.extend(_walk(before.get(key), after.get(key), [*path, key]))
+                lines.extend(
+                    _walk(
+                        before.get(key),
+                        after.get(key),
+                        [*path, key],
+                        show_create_defaults=show_create_defaults,
+                        after_unknown=after_unknown,
+                    )
+                )
             return lines
         case list(), list():
             lines = []
             for i in range(max(len(before), len(after))):
                 old = before[i] if i < len(before) else None
                 new = after[i] if i < len(after) else None
-                lines.extend(_walk(old, new, [*path, i]))
+                lines.extend(
+                    _walk(
+                        old,
+                        new,
+                        [*path, i],
+                        show_create_defaults=show_create_defaults,
+                        after_unknown=after_unknown,
+                    )
+                )
             return lines
         case _:
             return [DiffLine(path, DiffPrefix.CHANGE, before, after)]
 
 
-def _emit_create(after: object, path: list[str | int]) -> list[DiffLine]:
+def _emit_create(
+    after: object,
+    path: list[str | int],
+    *,
+    show_create_defaults: bool,
+    after_unknown: object | bool | None,
+) -> list[DiffLine]:
     match after:
         case dict() as mapping:
             lines: list[DiffLine] = []
             for key in sorted(mapping):
-                lines.extend(_emit_create(mapping[key], [*path, key]))
+                lines.extend(
+                    _emit_create(
+                        mapping[key],
+                        [*path, key],
+                        show_create_defaults=show_create_defaults,
+                        after_unknown=after_unknown,
+                    )
+                )
             return lines
         case list() as items:
             lines = []
             for i, item in enumerate(items):
-                lines.extend(_emit_create(item, [*path, i]))
+                lines.extend(
+                    _emit_create(
+                        item,
+                        [*path, i],
+                        show_create_defaults=show_create_defaults,
+                        after_unknown=after_unknown,
+                    )
+                )
             return lines
         case _:
+            if not show_create_defaults and (is_empty_create_value(after) or _create_leaf_unknown(path, after_unknown)):
+                return []
             return [DiffLine(path, DiffPrefix.ADD, None, after)]
+
+
+def _create_leaf_unknown(path: list[str | int], after_unknown: object | bool | None) -> bool:
+    return after_unknown_at_map(after_unknown, tuple(path))
 
 
 def _emit_delete(before: object, path: list[str | int]) -> list[DiffLine]:

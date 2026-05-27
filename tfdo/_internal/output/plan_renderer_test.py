@@ -10,6 +10,7 @@ from tfdo._internal.output.complex_render import ComplexRenderConfig
 from tfdo._internal.output.conftest import build_attr_lines_by_addr, render_fixture
 from tfdo._internal.output.models import Change, OutputChange, PlanOutput, ResourceChange
 from tfdo._internal.output.parser import parse_plan_file
+from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.plan_renderer import (
     _build_complex_results,
     _build_module_tree,
@@ -34,6 +35,7 @@ def test_module_resource_header_not_dim(create_modules_plan: Path) -> None:
         lookup=lambda _p, _t, _path: None,
         show_computed_deltas=False,
         show_full_config_annex=False,
+        show_create_defaults=False,
     )
     renderable = _build_module_tree(
         tree.modules[0],
@@ -70,6 +72,7 @@ def test_module_attr_lines_not_green(create_modules_plan: Path) -> None:
         lookup=lambda _p, _t, _path: None,
         show_computed_deltas=False,
         show_full_config_annex=False,
+        show_create_defaults=False,
     )
     renderable = _build_module_tree(
         tree.modules[0],
@@ -82,14 +85,14 @@ def test_module_attr_lines_not_green(create_modules_plan: Path) -> None:
     for seg in console.render(renderable):
         if not isinstance(seg, Segment):
             continue
-        if "content_base64" in seg.text:
+        if "directory_permission" in seg.text:
             assert seg.style is not None
             assert seg.style.color is None
             return
     pytest.fail("module attribute segment not found")
 
 
-def test_compact_complex_attr_on_one_line(capture_console) -> None:
+def test_compact_create_hides_empty_attrs(capture_console) -> None:
     plan = PlanOutput(
         format_version="1.2",
         errored=False,
@@ -113,11 +116,19 @@ def test_compact_complex_attr_on_one_line(capture_console) -> None:
         ],
     )
     rendered = render_fixture(None, capture_console, plan=plan, terminal_width=120)
-    assert "+ tags: {}" in rendered
-    assert "+ teams: []" in rendered
-    assert "+ limits: []" in rendered
-    assert not any(line.strip() == "{}" for line in rendered.splitlines())
-    assert not any(line.strip() == "[]" for line in rendered.splitlines())
+    assert "+ tags:" not in rendered
+    assert "+ teams:" not in rendered
+
+    console = capture_console
+    console.begin_capture()
+    verbose = render_fixture(
+        None,
+        console,
+        plan=plan,
+        terminal_width=120,
+        plan_display=PlanDisplayOptions(show_create_defaults=True),
+    )
+    assert "+ tags: {}" in verbose
 
 
 def test_create_flat(create_flat_plan: Path, capture_console) -> None:

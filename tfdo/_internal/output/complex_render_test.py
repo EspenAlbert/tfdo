@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import json
+
 from tfdo._internal.output.complex_render import (
     SEE_ABOVE_FOR_FULL_CONFIG,
     ComplexRenderConfig,
     render_complex_value,
 )
-from tfdo._internal.output.schema_lookup import CollectionKind
+from tfdo._internal.output.models import Change
+from tfdo._internal.output.schema_lookup import CollectionKind, build_schema_lookups_from_index
+from tfdo._internal.output.testdata_paths import TESTDATA_DIR
 
 _ADDR = "aws_security_group.allow_tls"
 _WIDE = 200
@@ -151,6 +155,33 @@ def test_per_item_when_list_fits_count_but_not_width() -> None:
     lines, header = _render(before, after, attr_name="ingress", collection_kind="list")
     assert header is None
     assert any("+ ingress[1]" in line for line in lines)
+
+
+def _cluster_resize_change() -> Change:
+    payload = json.loads((TESTDATA_DIR / "08_cluster_resize.json").read_text())
+    return Change.model_validate(payload["resource_changes"][0]["change"])
+
+
+def test_annex_guard_skips_computed_only_normalization() -> None:
+    change = _cluster_resize_change()
+    before = change.before or {}
+    after = change.after or {}
+    lookups = build_schema_lookups_from_index({})
+    result = render_complex_value(
+        before.get("advanced_configuration"),
+        after.get("advanced_configuration"),
+        attr_name="advanced_configuration",
+        resource_address="module.cluster.mongodbatlas_advanced_cluster.this",
+        indent=_INDENT,
+        terminal_width=_WIDE,
+        config=ComplexRenderConfig(),
+        show_full_config_annex=True,
+        change=change,
+        computed_lookup=lookups.computed_at_path,
+        provider="registry.terraform.io/mongodb/mongodbatlas",
+        resource_type="mongodbatlas_advanced_cluster",
+    )
+    assert result.detail_block is None
 
 
 def test_none_collection_kind_uses_list_matching() -> None:

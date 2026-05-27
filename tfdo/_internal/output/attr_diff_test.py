@@ -165,6 +165,20 @@ def test_update_required_context_with_config_only_after() -> None:
     assert "project_id" not in changed_names
 
 
+def test_create_compact_hides_empty_top_level(create_atlas_compact_plan: Path) -> None:
+    plan = parse_plan_file(create_atlas_compact_plan)
+    project = _change(plan, "mongodbatlas_project.this")
+    compact = {line.name for line in compute_attr_lines(project, frozenset({"name"}))}
+    assert "tags" not in compact
+    assert "limits" not in compact
+    verbose = {line.name for line in compute_attr_lines(project, frozenset({"name"}), show_create_defaults=True)}
+    assert "tags" in verbose
+
+    cluster = _change(plan, "module.cluster.mongodbatlas_advanced_cluster.this")
+    cluster_compact = {line.name for line in compute_attr_lines(cluster, frozenset({"name", "project_id"}))}
+    assert "aws" not in cluster_compact
+
+
 def test_update_changed_required_attr_shows_delta_not_context() -> None:
     change = _cluster_change()
     before = dict(change.before or {})

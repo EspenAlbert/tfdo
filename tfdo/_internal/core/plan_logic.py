@@ -79,6 +79,7 @@ def run_plan(input_model: PlanInput) -> PlanResult:
         tree,
         required_attrs=lookups.required_attrs,
         provider_by_addr=provider_by_addr,
+        show_create_defaults=plan_display.show_create_defaults,
     )
     console = ask_console.get_live_console()
     terminal_width = console.size.width or 120

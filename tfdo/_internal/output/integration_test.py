@@ -30,6 +30,17 @@ def test_render_empty(empty_plan, capture_console, file_regression) -> None:
     file_regression.check(rendered, basename="empty", extension=".txt")
 
 
+def test_render_create_atlas_compact(
+    create_atlas_compact_plan, capture_console, fixture_schema_lookups, file_regression
+) -> None:
+    rendered = render_fixture(
+        create_atlas_compact_plan,
+        capture_console,
+        schema_lookups=fixture_schema_lookups,
+    )
+    file_regression.check(rendered, basename="09_create_atlas_compact", extension=".txt")
+
+
 def test_render_cluster_resize(cluster_resize_plan, capture_console, fixture_schema_lookups, file_regression) -> None:
     rendered = render_fixture(
         cluster_resize_plan,

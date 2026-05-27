@@ -7,6 +7,11 @@ from typing import NamedTuple
 from pydantic import BaseModel
 
 from tfdo._internal.output import display_path
+from tfdo._internal.output.models import Change
+from tfdo._internal.output.plan_filters import (
+    ComputedOnlyLookup,
+    is_computed_only_plan_delta,
+)
 from tfdo._internal.output.render_thresholds import (
     INLINE_MIN_WIDTH,
     MAX_STRUCTURAL_LINES,
@@ -70,6 +75,12 @@ def render_complex_value(
     collection_kind: CollectionKind | None = None,
     is_sensitive: bool = False,
     show_full_config_annex: bool = False,
+    show_create_defaults: bool = True,
+    change: Change | None = None,
+    computed_lookup: ComputedOnlyLookup | None = None,
+    provider: str = "",
+    resource_type: str = "",
+    show_computed_deltas: bool = False,
 ) -> ComplexRenderResult:
     pad = " " * indent
     if is_sensitive:
@@ -101,17 +112,33 @@ def render_complex_value(
         if per_item is not None:
             return ComplexRenderResult(inline_lines=_pad_lines(per_item, pad))
 
+    after_unknown = change.after_unknown if change is not None else None
     structural = _render_structural(
         old,
         new,
         attr_name=attr_name,
         budget=budget,
         max_lines=config.max_structural_lines,
+        show_create_defaults=show_create_defaults,
+        after_unknown=after_unknown,
     )
     if structural is not None and structural.lines and not (structural.hidden_count and show_full_config_annex):
         return ComplexRenderResult(inline_lines=_pad_lines(structural.lines, pad))
 
-    if show_full_config_annex:
+    if show_full_config_annex and _should_hoist_detail_block(
+        old,
+        new,
+        attr_name=attr_name,
+        budget=budget,
+        max_lines=config.max_structural_lines,
+        show_create_defaults=show_create_defaults,
+        after_unknown=after_unknown,
+        change=change,
+        lookup=computed_lookup,
+        provider=provider,
+        resource_type=resource_type,
+        show_computed_deltas=show_computed_deltas,
+    ):
         _, block = _render_detail_block(
             old,
             new,
@@ -161,14 +188,61 @@ def _render_structural(
     attr_name: str,
     budget: int,
     max_lines: int,
+    show_create_defaults: bool = True,
+    after_unknown: object | bool | None = None,
 ) -> BudgetResult | None:
     if not _structural_eligible(old, new):
         return None
-    diff = compute_structural_diff(old, new)
+    diff = compute_structural_diff(
+        old,
+        new,
+        show_create_defaults=show_create_defaults,
+        after_unknown=after_unknown,
+    )
     if not diff:
         return None
     rooted = [line._replace(path=[attr_name, *line.path]) for line in diff]
     return apply_line_budget(rooted, max_lines, budget=budget)
+
+
+def _should_hoist_detail_block(
+    old: object | None,
+    new: object | None,
+    *,
+    attr_name: str,
+    budget: int,
+    max_lines: int,
+    show_create_defaults: bool,
+    after_unknown: object | bool | None,
+    change: Change | None,
+    lookup: ComputedOnlyLookup | None,
+    provider: str,
+    resource_type: str,
+    show_computed_deltas: bool,
+) -> bool:
+    if _detail_body_lines(old, new) == _detail_body_lines(old, old):
+        return False
+    diff = compute_structural_diff(
+        old,
+        new,
+        show_create_defaults=show_create_defaults,
+        after_unknown=after_unknown,
+    )
+    if not diff:
+        return False
+    rooted = [line._replace(path=[attr_name, *line.path]) for line in diff]
+    if change is None or lookup is None or show_computed_deltas:
+        return bool(rooted)
+    return any(
+        not is_computed_only_plan_delta(
+            tuple(line.path),
+            change,
+            lookup,
+            provider=provider,
+            resource_type=resource_type,
+        )
+        for line in rooted
+    )
 
 
 def _inline_tier_applies(old: object | None, new: object | None, budget: int) -> bool:
