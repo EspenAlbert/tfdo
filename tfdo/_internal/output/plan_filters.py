@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from tfdo._internal.output.attr_diff import AttrLine, AttrPrefix
+from tfdo._internal.output import display_path
+from tfdo._internal.output.attr_diff import AttrLine, AttrPrefix, ValueKind
 from tfdo._internal.output.display_path import parse_display_key, path_get_value
 from tfdo._internal.output.models import Change, ResourceAction
 from tfdo._internal.output.tree_builder import ResourceNode
@@ -11,6 +12,7 @@ ComputedOnlyLookup = Callable[[str, str, tuple[str | int, ...]], bool | None]
 
 _CREATE_ACTIONS = frozenset({ResourceAction.CREATE})
 _DRIFT_ALLOWLIST = frozenset({"updated", "labels", "effective_labels", "terraform_labels"})
+KNOWN_AFTER_APPLY = "(known after apply)"
 
 
 def after_unknown_at(change: Change, path: tuple[str | int, ...]) -> bool:
@@ -120,13 +122,57 @@ def is_computed_only_drift_resource(
     )
 
 
-def format_computed_delta_line(name: str, prefix: AttrPrefix) -> AttrLine:
+def truncate_inline_rendered(rendered: str, *, budget: int) -> str:
+    if len(rendered) <= budget:
+        return rendered
+    return rendered[: max(1, budget - 1)] + "…"
+
+
+def format_computed_before_value(value: object, *, budget: int) -> str:
+    return truncate_inline_rendered(display_path.inline_json(value), budget=budget)
+
+
+def format_computed_delta_line(
+    line: AttrLine,
+    *,
+    change: Change,
+    path: tuple[str | int, ...],
+    budget: int,
+) -> AttrLine:
+    unknown = after_unknown_at(change, path)
+    prefix = AttrPrefix.CHANGE if unknown else line.prefix
+    old_value = line.old_value
+    value_kind = line.value_kind
+    if old_value is not None and value_kind == ValueKind.COMPLEX:
+        old_value = format_computed_before_value(old_value, budget=budget)
+        value_kind = ValueKind.SCALAR
+    new_value = KNOWN_AFTER_APPLY if unknown else line.new_value
     return AttrLine(
-        name=f"{name} (computed, omitted from config)",
+        name=line.name,
         prefix=prefix,
-        old_value=None,
-        new_value=None,
+        old_value=old_value,
+        new_value=new_value,
+        is_sensitive=line.is_sensitive,
+        value_kind=value_kind,
     )
+
+
+def format_computed_structural_line(
+    line: str,
+    stripped: str,
+    *,
+    change: Change,
+    path: tuple[str | int, ...],
+    budget: int,
+) -> str:
+    indent = line[: len(line) - len(stripped)]
+    key, _, value_part = stripped.partition(": ")
+    marker, _, path_s = key.partition(" ")
+    if after_unknown_at(change, path):
+        marker = AttrPrefix.CHANGE
+        old_s = value_part.split(" -> ", 1)[0] if " -> " in value_part else value_part
+        value_part = f"{truncate_inline_rendered(old_s, budget=budget)} -> {KNOWN_AFTER_APPLY}"
+    return f"{indent}{marker} {path_s}: {value_part}"
 
 
 def filter_attr_lines(
@@ -137,6 +183,7 @@ def filter_attr_lines(
     provider: str,
     resource_type: str,
     show_computed_deltas: bool,
+    budget: int,
 ) -> list[AttrLine]:
     kept: list[AttrLine] = []
     for line in lines:
@@ -152,7 +199,14 @@ def filter_attr_lines(
             resource_type=resource_type,
         ):
             if show_computed_deltas:
-                kept.append(format_computed_delta_line(line.name, line.prefix))
+                kept.append(
+                    format_computed_delta_line(
+                        line,
+                        change=change,
+                        path=path,
+                        budget=budget,
+                    )
+                )
             continue
         kept.append(line)
     return kept

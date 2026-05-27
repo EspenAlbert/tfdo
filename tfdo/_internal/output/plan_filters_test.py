@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from tfdo._internal.output.attr_diff import AttrPrefix, compute_attr_lines
 from tfdo._internal.output.create_filter import is_empty_create_value
+from tfdo._internal.output.models import Change
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_filters import (
+    KNOWN_AFTER_APPLY,
     filter_attr_lines,
-    format_computed_delta_line,
+    format_computed_structural_line,
     is_computed_only_drift_resource,
     is_computed_only_plan_delta,
 )
 from tfdo._internal.output.plan_render_input import build_attr_lines_by_addr
+from tfdo._internal.output.render_thresholds import INLINE_MIN_WIDTH
 from tfdo._internal.output.testdata_paths import TESTDATA_DIR
 from tfdo._internal.output.tree_builder import build_plan_tree
 
@@ -65,6 +68,7 @@ def test_filter_attr_lines_computed_expanded(fixture_schema_lookups) -> None:
     assert cluster is not None
     provider = "registry.terraform.io/mongodb/mongodbatlas"
     lines = compute_attr_lines(cluster.change, frozenset({"name", "project_id"}))
+    budget = INLINE_MIN_WIDTH
     compact = filter_attr_lines(
         lines,
         change=cluster.change,
@@ -72,6 +76,7 @@ def test_filter_attr_lines_computed_expanded(fixture_schema_lookups) -> None:
         provider=provider,
         resource_type=cluster.type,
         show_computed_deltas=False,
+        budget=budget,
     )
     assert "connection_strings" not in {line.name for line in compact if line.prefix}
     expanded = filter_attr_lines(
@@ -81,11 +86,28 @@ def test_filter_attr_lines_computed_expanded(fixture_schema_lookups) -> None:
         provider=provider,
         resource_type=cluster.type,
         show_computed_deltas=True,
+        budget=budget,
     )
+    cfg = next(line for line in expanded if line.name.startswith("config_server_type"))
+    assert cfg.prefix == AttrPrefix.CHANGE
+    assert cfg.old_value == "EMBEDDED"
+    assert cfg.new_value == KNOWN_AFTER_APPLY
     conn = next(line for line in expanded if line.name.startswith("connection_strings"))
-    assert conn.prefix == AttrPrefix.REMOVE
-    assert "(computed, omitted from config)" in conn.name
-    assert format_computed_delta_line("state_name", AttrPrefix.CHANGE).name.endswith("(computed, omitted from config)")
+    assert conn.prefix == AttrPrefix.CHANGE
+    assert isinstance(conn.old_value, str)
+    assert conn.new_value == KNOWN_AFTER_APPLY
+
+
+def test_format_computed_structural_line_known_after() -> None:
+    change = Change(actions=["update"], before={"x": 1}, after={}, after_unknown={"x": True})
+    out = format_computed_structural_line(
+        '     - x: "1"',
+        '- x: "1"',
+        change=change,
+        path=("x",),
+        budget=80,
+    )
+    assert '~ x: "1" -> (known after apply)' in out
 
 
 def test_cluster_resize_drift_filtering(fixture_schema_lookups) -> None:

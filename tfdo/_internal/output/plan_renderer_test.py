@@ -164,6 +164,8 @@ def test_drift_create_same_address_keeps_planned_attrs(drift_plan: Path) -> None
         providers,
         lookup=lambda _p, _t, _path: None,
         show_computed_deltas=False,
+        terminal_width=120,
+        inline_min_width=120,
     )
     planned_lines = filtered.planned["local_file.config"]
     assert planned_lines

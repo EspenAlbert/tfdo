@@ -19,8 +19,10 @@ from tfdo._internal.output.complex_render import (
 from tfdo._internal.output.models import Change, OutputChange, ResourceAction
 from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.plan_filters import (
+    KNOWN_AFTER_APPLY,
     ComputedOnlyLookup,
     filter_attr_lines,
+    format_computed_structural_line,
     is_computed_only_drift_resource,
     is_computed_only_plan_delta,
 )
@@ -31,6 +33,7 @@ from tfdo._internal.output.render_thresholds import (
     OUTPUT_WRAP_WIDTH,
     TREE_BASE_PREFIX_CHARS,
     TREE_GUIDE_CHARS_PER_LEVEL,
+    inline_budget,
 )
 from tfdo._internal.output.schema_lookup import CollectionKindLookup, ResourceSchemaLookup
 from tfdo._internal.output.tree_builder import ModuleNode, PlanTree, ResourceNode
@@ -47,7 +50,6 @@ _MODULE_TREE_GUIDE_STYLE = "dim"
 
 _REPLACE_ACTIONS = frozenset({ResourceAction.REPLACE_DESTROY_FIRST, ResourceAction.REPLACE_CREATE_FIRST})
 _SENSITIVE = "(sensitive)"
-_KNOWN_AFTER_APPLY = "(known after apply)"
 
 
 class PlanActionCounts(NamedTuple):
@@ -110,6 +112,8 @@ def render_plan(
         provider_by_addr or {},
         lookup=lookup,
         show_computed_deltas=display.show_computed_deltas,
+        terminal_width=terminal_width,
+        inline_min_width=config.inline_min_width,
     )
     complex_results = _build_complex_results(
         tree,
@@ -371,7 +375,10 @@ def _filter_attr_lines_by_addr(
     *,
     lookup: ComputedOnlyLookup,
     show_computed_deltas: bool,
+    terminal_width: int,
+    inline_min_width: int,
 ) -> ResourceAttrLines:
+    budget = inline_budget(inline_min_width, terminal_width, ATTR_CHANGED_INDENT)
     planned: dict[str, list[AttrLine]] = {}
     drift: dict[str, list[AttrLine]] = {}
 
@@ -383,6 +390,7 @@ def _filter_attr_lines_by_addr(
             provider=providers.get(node.address, ""),
             resource_type=node.type,
             show_computed_deltas=show_computed_deltas,
+            budget=budget,
         )
 
     for node in tree.drift:
@@ -452,6 +460,11 @@ def _build_complex_results(
                 show_json_annex=show_json_annex,
                 schema=schema,
             )
+            line_budget = inline_budget(
+                config.inline_min_width,
+                terminal_width - extra_prefix,
+                MODULE_TREE_ATTR_INDENT if in_module_tree else ATTR_CHANGED_INDENT,
+            )
             filtered = _filter_structural_result(
                 result,
                 change=node.change,
@@ -459,6 +472,7 @@ def _build_complex_results(
                 provider=provider,
                 resource_type=node.type,
                 show_computed_deltas=show_computed_deltas,
+                budget=line_budget,
             )
             if filtered is not None:
                 results[key] = filtered
@@ -557,7 +571,22 @@ def _format_drift_resource_header(node: ResourceNode) -> Text:
 
 
 def _format_scalar(value: object) -> str:
+    if value == KNOWN_AFTER_APPLY:
+        return KNOWN_AFTER_APPLY
     return display_path.inline_json(value)
+
+
+def _format_attr_value(line: AttrLine, value: object) -> str:
+    if value == KNOWN_AFTER_APPLY:
+        return KNOWN_AFTER_APPLY
+    if (
+        isinstance(value, str)
+        and line.prefix == AttrPrefix.CHANGE
+        and line.new_value == KNOWN_AFTER_APPLY
+        and value.strip()[:1] in "{["
+    ):
+        return value
+    return _format_scalar(value)
 
 
 def _format_attr_value_line(line: AttrLine) -> str:
@@ -747,6 +776,7 @@ def _filter_structural_result(
     provider: str,
     resource_type: str,
     show_computed_deltas: bool,
+    budget: int,
 ) -> ComplexRenderResult | None:
     if result.hcl_body_lines:
         return result
@@ -765,9 +795,15 @@ def _filter_structural_result(
             resource_type=resource_type,
         ):
             if show_computed_deltas:
-                key = stripped.split(":", 1)[0]
-                marker, _, path_s = key.partition(" ")
-                kept.append(f"{line[: len(line) - len(stripped)]}{marker} {path_s} (computed, omitted from config)")
+                kept.append(
+                    format_computed_structural_line(
+                        line,
+                        stripped,
+                        change=change,
+                        path=path,
+                        budget=budget,
+                    )
+                )
             continue
         kept.append(line)
     if not kept:
@@ -789,18 +825,18 @@ def _style_scalar_attr_line(line: AttrLine, *, in_module_tree: bool = False) -> 
         return text
     match line.prefix:
         case AttrPrefix.ADD:
-            text.append(_format_scalar(line.new_value))
+            text.append(_format_attr_value(line, line.new_value))
         case AttrPrefix.REMOVE:
-            text.append(_format_scalar(line.old_value), style="dim")
+            text.append(_format_attr_value(line, line.old_value), style="dim")
         case AttrPrefix.CHANGE | AttrPrefix.REPLACE:
             if line.old_value is not None and line.new_value is not None:
-                text.append(_format_scalar(line.old_value), style="dim")
+                text.append(_format_attr_value(line, line.old_value), style="dim")
                 text.append(" -> ")
-                text.append(_format_scalar(line.new_value))
+                text.append(_format_attr_value(line, line.new_value))
             elif line.new_value is not None:
-                text.append(_format_scalar(line.new_value))
+                text.append(_format_attr_value(line, line.new_value))
             else:
-                text.append(_format_scalar(line.old_value), style="dim")
+                text.append(_format_attr_value(line, line.old_value), style="dim")
     return text
 
 
@@ -832,7 +868,7 @@ def _scalar_value_for_line(line: AttrLine) -> str | None:
             return None
     if value is None:
         return None
-    return _format_scalar(value)
+    return _format_attr_value(line, value)
 
 
 def _scalar_old_new_split(line: AttrLine, terminal_width: int, *, tree_extra_prefix: int) -> list[Text] | None:
@@ -847,8 +883,8 @@ def _scalar_old_new_split(line: AttrLine, terminal_width: int, *, tree_extra_pre
         return None
     in_module_tree = tree_extra_prefix > 0
     pad = " " * _attr_pad_len(line, in_module_tree=in_module_tree)
-    old_s = _format_scalar(line.old_value)
-    new_s = _format_scalar(line.new_value)
+    old_s = _format_attr_value(line, line.old_value)
+    new_s = _format_attr_value(line, line.new_value)
     head = f"{pad}{prefix} {line.name}: "
     if len(head) + len(old_s) + 4 + len(new_s) <= _attr_line_width(terminal_width, tree_extra_prefix=tree_extra_prefix):
         return None
@@ -1048,7 +1084,7 @@ def _output_value_text(change: OutputChange) -> str:
     if change.before_sensitive or change.after_sensitive:
         return _SENSITIVE
     if change.after_unknown:
-        return _KNOWN_AFTER_APPLY
+        return KNOWN_AFTER_APPLY
     key = "+".join(change.actions)
     match key:
         case "create":

@@ -247,6 +247,7 @@ def _render_cluster_resize_annex(
         provider=_CLUSTER_PROVIDER,
         resource_type=_CLUSTER_TYPE,
         show_computed_deltas=False,
+        budget=_WIDE,
     )
     assert filtered is not None
     return filtered
