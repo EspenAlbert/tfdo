@@ -32,6 +32,7 @@ from tfdo._internal.models import (
     ApplyInput,
     ApplyResult,
     DestroyInput,
+    DestroyResult,
     InitInput,
     InitMode,
     InitResult,
@@ -269,12 +270,21 @@ def test_apply_auto_approve(tmp_path: Path):
 def test_destroy_auto_approve(tmp_path: Path):
     settings = _make_settings(tmp_path)
     run = _mock_run(exit_code=0)
-    with patch(_patch_lifecycle_run, return_value=run) as mock_raw:
-        result = destroy(DestroyInput(settings=settings, auto_approve=True))
+    bin_path = plan_bin_path(tmp_path)
+    bin_path.parent.mkdir(parents=True, exist_ok=True)
+    bin_path.write_bytes(b"")
+    with (
+        patch(_patch_plan_and_render, return_value=PlanResult(exit_code=0)),
+        patch(_patch_lifecycle_run, return_value=run) as mock_raw,
+    ):
+        result = destroy(DestroyInput(settings=settings, auto_approve=True, var_file=Path("prod.tfvars")))
     assert result.exit_code == 0
     cmd = mock_raw.call_args[0][0]
-    assert "terraform destroy" in cmd
+    assert "terraform apply" in cmd
+    assert "terraform destroy" not in cmd
     assert "-auto-approve" in cmd
+    assert str(bin_path) in cmd
+    assert "-var-file=prod.tfvars" in cmd
 
 
 def test_lifecycle_always_init_then_command(tmp_path: Path):
@@ -373,11 +383,13 @@ def test_apply_cmd_via_cli(tmp_path: Path):
 
 
 def test_destroy_cmd_via_cli(tmp_path: Path):
-    from tfdo._internal.core import cmd_destroy  # noqa: F401
+    from tfdo._internal.core import (
+        cmd_destroy,  # noqa: F401
+        destroy_logic,
+    )
     from tfdo._internal.typer_app import app
 
-    run = _mock_run(exit_code=0)
-    with patch(_patch_lifecycle_run, return_value=run):
+    with patch.object(destroy_logic, "run_destroy", return_value=DestroyResult(exit_code=0)):
         result = runner.invoke(app, ["--work-dir", str(tmp_path), "destroy", "--auto-approve"])
     assert result.exit_code == 0
 
@@ -403,6 +415,16 @@ def test_plan_with_tf_version(tmp_path: Path):
     cmd = mock_raw.call_args[0][0]
     assert cmd.startswith("mise x terraform@1.14.0 -- terraform plan")
     assert "-json" in cmd
+
+
+def test_destroy_plan_adds_destroy_flag(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0)
+    with patch(_patch_plan_run, return_value=run) as mock_raw:
+        result = run_streaming_plan(PlanInput(settings=settings, destroy_plan=True))
+    assert result.exit_code == 0
+    cmd = mock_raw.call_args[0][0]
+    assert " plan -destroy " in f" {cmd} "
 
 
 # --- interactive / approval validation ---

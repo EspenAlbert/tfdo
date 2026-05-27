@@ -338,6 +338,7 @@ def _dispatch_command(
                 init_mode=mode,
                 extra_args=extra_flags,
                 init_backend_args=backend_args,
+                plan_display_cli=inp.plan_display_cli,
             )
         )
     else:

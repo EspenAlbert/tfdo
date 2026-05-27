@@ -46,12 +46,15 @@ def run_streaming_plan(input_model: PlanInput) -> PlanResult:
     settings = input_model.settings
     bin_path = plan_bin_path(settings.work_dir)
     extra_flags = ["-json", f"-out={bin_path}"]
+    if input_model.destroy_plan:
+        extra_flags.insert(0, "-destroy")
     all_flags = [*extra_flags, *input_model.extra_args]
     cmd = build_lifecycle_command(binary.resolve_binary(settings), "plan", input_model.var_file, all_flags)
 
     def run_once() -> PlanResult:
         handler = PlanStreamHandler()
-        print_prefix = f"{input_model.run_context_label} plan"
+        plan_label = "destroy plan" if input_model.destroy_plan else "plan"
+        print_prefix = f"{input_model.run_context_label} {plan_label}"
         return _run_streaming_command(settings, cmd, handler, print_prefix=print_prefix)
 
     return run_with_init_retry(input_model, "plan", PlanResult, run_once)

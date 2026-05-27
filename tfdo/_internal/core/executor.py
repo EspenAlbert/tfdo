@@ -4,7 +4,7 @@ import logging
 from ask_shell._internal.models import EmptyOutputError
 from ask_shell.shell import ShellError, run_and_wait
 
-from tfdo._internal.core import apply_logic, binary, lifecycle_shell, plan_logic
+from tfdo._internal.core import apply_logic, binary, destroy_logic, plan_logic
 from tfdo._internal.models import (
     ApplyInput,
     ApplyResult,
@@ -28,10 +28,7 @@ def apply(input_model: ApplyInput) -> ApplyResult:
 
 
 def destroy(input_model: DestroyInput) -> DestroyResult:
-    extra_flags: list[str] = []
-    if input_model.auto_approve:
-        extra_flags.append("-auto-approve")
-    return lifecycle_shell.run_lifecycle(input_model, "destroy", extra_flags, DestroyResult)
+    return destroy_logic.run_destroy(input_model)
 
 
 def _parse_tf_outputs(raw: dict) -> dict[str, object]:

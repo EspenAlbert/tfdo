@@ -157,11 +157,26 @@ def run_destroy_cmd(
     auto_approve: bool = cmd_options.auto_approve_option(),
     var_file: Path | None = cmd_options.var_file_option(),
     init_mode: InitMode = cmd_options.init_mode_option(),
+    show_computed_drift: bool | None = cmd_options.show_computed_drift_option(),
+    show_computed_deltas: bool | None = cmd_options.show_computed_deltas_option(),
+    show_create_defaults: bool | None = cmd_options.show_create_defaults_option(),
+    show_full_config_annex: bool | None = cmd_options.show_full_config_annex_option(),
+    show_json_annex: bool | None = cmd_options.show_json_annex_option(),
 ) -> None:
     """Run destroy across multiple run directories."""
     run_ctx = _get_run_context(ctx)
     inp = run_ctx.build_input(
-        LifecycleCommand.DESTROY, auto_approve=auto_approve, var_file=var_file, init_mode=init_mode
+        LifecycleCommand.DESTROY,
+        auto_approve=auto_approve,
+        var_file=var_file,
+        init_mode=init_mode,
+        plan_display_cli=cmd_options.plan_display_cli_overrides(
+            show_computed_drift=show_computed_drift,
+            show_computed_deltas=show_computed_deltas,
+            show_create_defaults=show_create_defaults,
+            show_full_config_annex=show_full_config_annex,
+            show_json_annex=show_json_annex,
+        ),
     )
     result = orchestration.run_orchestration(inp)
     raise typer.Exit(result.exit_code)
