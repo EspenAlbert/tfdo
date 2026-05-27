@@ -1033,3 +1033,30 @@ message: 'fix(ci): Register private API symbols and fix pyright import
 
   Co-authored-by: Cursor <cursoragent@cursor.com>'
 short_sha: 031418
+---
+name: print_plan_footer
+ts: 2026-05-27 18:29:12.674010+00:00
+type: keep_private
+full_path: _internal.output.plan_footer.print_plan_footer
+---
+name: detail_preset
+ts: 2026-05-27 18:29:16.406392+00:00
+type: keep_private
+full_path: _internal.output.plan_display.detail_preset
+---
+name: detail_option
+ts: 2026-05-27 18:29:21.970474+00:00
+type: keep_private
+full_path: _internal.cmd_options.detail_option
+---
+name: config
+ts: 2026-05-27 18:29:40.925454+00:00
+type: group_module
+module_path: _internal.output.plan_display
+---
+name: DetailLevel
+ts: 2026-05-27 18:29:40.929855+00:00
+type: make_public
+details: created in _internal/output/plan_display.py
+full_path: _internal.output.plan_display.DetailLevel
+group: config

@@ -20,11 +20,11 @@
 <a id="apply_cmd_def"></a>
 
 ### cli_command: `apply_cmd`
-- [source](../../tfdo/_internal/core/cmd_apply.py#L11)
+- [source](../../tfdo/_internal/core/cmd_apply.py#L12)
 > **Since:** 0.1.0
 
 ```python
-def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None) -> None:
+def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>) -> None:
     ...
 ```
 
@@ -42,6 +42,7 @@ Run terraform apply.
 | `--show-create-defaults` | `bool | None` | `None` | - | - |
 | `--show-full-config-annex` | `bool | None` | `None` | - | - |
 | `--show-json-annex` | `bool | None` | `None` | - | - |
+| `--detail` | `DetailLevel` | `<DetailLevel.COMPACT: 'compact'>` | - | Plan display depth: compact (default) or full [compact, full] |
 
 ### Changes
 
@@ -85,11 +86,11 @@ Run terraform fmt check + validate (ruff-style).
 <a id="destroy_cmd_def"></a>
 
 ### cli_command: `destroy_cmd`
-- [source](../../tfdo/_internal/core/cmd_destroy.py#L11)
+- [source](../../tfdo/_internal/core/cmd_destroy.py#L12)
 > **Since:** 0.1.0
 
 ```python
-def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None) -> None:
+def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>) -> None:
     ...
 ```
 
@@ -107,6 +108,7 @@ Run terraform destroy.
 | `--show-create-defaults` | `bool | None` | `None` | - | - |
 | `--show-full-config-annex` | `bool | None` | `None` | - | - |
 | `--show-json-annex` | `bool | None` | `None` | - | - |
+| `--detail` | `DetailLevel` | `<DetailLevel.COMPACT: 'compact'>` | - | Plan display depth: compact (default) or full [compact, full] |
 
 ### Changes
 
@@ -145,11 +147,11 @@ Run terraform init with retry on transient errors.
 <a id="plan_cmd_def"></a>
 
 ### cli_command: `plan_cmd`
-- [source](../../tfdo/_internal/core/cmd_plan.py#L11)
+- [source](../../tfdo/_internal/core/cmd_plan.py#L12)
 > **Since:** 0.1.0
 
 ```python
-def plan_cmd(*, out: Path | None = None, json_output: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None) -> None:
+def plan_cmd(*, out: Path | None = None, json_output: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>) -> None:
     ...
 ```
 
@@ -168,6 +170,7 @@ Run terraform plan.
 | `--show-create-defaults` | `bool | None` | `None` | - | - |
 | `--show-full-config-annex` | `bool | None` | `None` | - | - |
 | `--show-json-annex` | `bool | None` | `None` | - | - |
+| `--detail` | `DetailLevel` | `<DetailLevel.COMPACT: 'compact'>` | - | Plan display depth: compact (default) or full [compact, full] |
 
 ### Changes
 

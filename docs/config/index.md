@@ -7,6 +7,7 @@
 - [`BackendType`](#backendtype_def)
 - [`CiConfig`](#ciconfig_def)
 - [DependencyRef](./dependencyref.md)
+- [`DetailLevel`](#detaillevel_def)
 - [`HookConfig`](#hookconfig_def)
 - [`HookOnError`](#hookonerror_def)
 - [`LifecycleEvent`](#lifecycleevent_def)
@@ -280,3 +281,21 @@ class ProviderConstraint(BaseModel):
 |---------|--------|
 | 0.7.0 | Made public |
 <!-- === OK_EDIT: pkg-ext providerconstraint_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext detaillevel_def === -->
+<a id="detaillevel_def"></a>
+
+### class: `DetailLevel`
+- [source](../../tfdo/_internal/output/plan_display.py#L12)
+> **Since:** unreleased
+
+```python
+class DetailLevel(StrEnum):
+    ...
+```
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| unreleased | Made public |
+<!-- === OK_EDIT: pkg-ext detaillevel_def === -->
