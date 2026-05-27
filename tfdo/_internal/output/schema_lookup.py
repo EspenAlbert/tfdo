@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Literal, NamedTuple
 
-from tfdo._internal.hcl_read import LOCK_FILENAME, REGISTRY_HOST_PREFIX, parse_lock_file_versions
+from tfdo._internal.hcl_read import LOCK_FILENAME, REGISTRY_HOST_PREFIX, find_lock_file, parse_lock_file_versions
 from tfdo._internal.schema import cache as schema_cache
 from tfdo._internal.schema.inspect_logic import pick_provider_key
 from tfdo._internal.schema.models import ResourceSchema, SchemaBlock
@@ -141,15 +141,7 @@ def attribute_collection_kind(
 
 
 def _cache_paths_for_source_version(schema_cache_dir: Path, source: str, version: str) -> list[Path]:
-    parts = source.split("/")
-    suffix = Path(*parts) / f"{version}.json"
-    suffix_len = len(suffix.parts)
-    return sorted(
-        p
-        for p in schema_cache_dir.rglob(f"{version}.json")
-        if len(p.relative_to(schema_cache_dir).parts) >= suffix_len
-        and Path(*p.relative_to(schema_cache_dir).parts[-suffix_len:]) == suffix
-    )
+    return schema_cache.find_schema_cache_files(schema_cache_dir, source, version)
 
 
 def _load_schemas_from_cache(
@@ -199,9 +191,12 @@ def _build_schema_index(
     workspace_root: Path,
     schema_cache_dir: Path,
 ) -> dict[tuple[str, str], ResourceSchema]:
-    lock_path = workspace_root / LOCK_FILENAME
-    if not lock_path.is_file():
+    lock_path = find_lock_file(workspace_root)
+    if lock_path is None:
         return {}
+    local_lock = workspace_root / LOCK_FILENAME
+    if lock_path != local_lock:
+        logger.debug(f"using lock file {lock_path} for schema lookups (work_dir={workspace_root})")
     try:
         versions = parse_lock_file_versions(lock_path)
     except (OSError, ValueError):

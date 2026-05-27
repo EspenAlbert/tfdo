@@ -4,7 +4,7 @@ import json
 import logging
 from pathlib import Path
 
-from tfdo._internal.hcl_read import LOCK_FILENAME, REGISTRY_HOST_PREFIX, lock_provider_version
+from tfdo._internal.hcl_read import LOCK_FILENAME, REGISTRY_HOST_PREFIX, find_lock_file, lock_provider_version
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +14,9 @@ def lock_provider_address(source: str) -> str:
 
 
 def read_resolved_version_from_lock(*, workspace_root: Path, source: str) -> str:
-    lock_path = workspace_root / LOCK_FILENAME
-    if not lock_path.is_file():
-        raise ValueError(f"{LOCK_FILENAME} missing under {workspace_root}")
+    lock_path = find_lock_file(workspace_root)
+    if lock_path is None:
+        raise ValueError(f"{LOCK_FILENAME} missing at or above {workspace_root}")
     return lock_provider_version(lock_path, source)
 
 
@@ -37,6 +37,25 @@ def try_read_cached_schema(path: Path) -> dict | None:
         logger.warning("ignoring non-object schema cache at %s", path)
         return None
     return obj
+
+
+def find_schema_cache_files(schema_cache_dir: Path, source: str, version: str) -> list[Path]:
+    parts = [p for p in source.split("/") if p]
+    suffix = Path(*parts) / f"{version}.json"
+    suffix_len = len(suffix.parts)
+    return sorted(
+        p
+        for p in schema_cache_dir.rglob(f"{version}.json")
+        if len(p.relative_to(schema_cache_dir).parts) >= suffix_len
+        and Path(*p.relative_to(schema_cache_dir).parts[-suffix_len:]) == suffix
+    )
+
+
+def schema_cache_hit(schema_cache_dir: Path, source: str, version: str) -> bool:
+    matches = find_schema_cache_files(schema_cache_dir, source, version)
+    if not matches:
+        return False
+    return try_read_cached_schema(matches[0]) is not None
 
 
 def write_cached_schema(cache_root: Path, relative_path: Path, payload: dict) -> None:

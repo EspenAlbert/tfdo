@@ -8,6 +8,7 @@ from ask_shell.shell import ShellError, ShellRun
 
 from tfdo._internal.models import InitResult
 from tfdo._internal.schema import inspect as schema_inspect
+from tfdo._internal.schema import providers_schema as providers_schema_mod
 from tfdo._internal.schema import terraform_cli_config as tf_cli
 from tfdo._internal.settings import TfDoSettings
 
@@ -15,7 +16,7 @@ _executor_init = schema_inspect.terraform_init.init
 _read_resolved_version_from_lock = schema_inspect.schema_cache.read_resolved_version_from_lock
 _try_read_cached_schema = schema_inspect.schema_cache.try_read_cached_schema
 _write_cached_schema = schema_inspect.schema_cache.write_cached_schema
-_run_and_wait = schema_inspect.run_and_wait
+_run_and_wait = providers_schema_mod.run_and_wait
 
 
 @pytest.fixture(autouse=True)
@@ -55,7 +56,7 @@ def test_fetch_tf_cli_config_file_skips_cache_and_sets_env(monkeypatch: pytest.M
     run = MagicMock(exit_code=0)
     run.parse_output = MagicMock(return_value=payload)
     run_mock = MagicMock(return_value=run)
-    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, run_mock)
+    monkeypatch.setattr(providers_schema_mod, _run_and_wait.__name__, run_mock)
     schema_inspect.fetch_providers_schema_json(
         TfDoSettings(),
         local_name="aws",
@@ -84,7 +85,7 @@ def test_fetch_providers_schema_json_cache_hit(monkeypatch: pytest.MonkeyPatch, 
     )
     monkeypatch.setattr(schema_inspect.schema_cache, _try_read_cached_schema.__name__, lambda _p: payload)
     run_mock = MagicMock()
-    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, run_mock)
+    monkeypatch.setattr(providers_schema_mod, _run_and_wait.__name__, run_mock)
     out = schema_inspect.fetch_providers_schema_json(
         TfDoSettings(),
         local_name="aws",
@@ -111,7 +112,7 @@ def test_fetch_providers_schema_json_miss_writes_cache(monkeypatch: pytest.Monke
     monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
     run = MagicMock(exit_code=0)
     run.parse_output = MagicMock(return_value=payload)
-    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(return_value=run))
+    monkeypatch.setattr(providers_schema_mod, _run_and_wait.__name__, MagicMock(return_value=run))
     out = schema_inspect.fetch_providers_schema_json(
         TfDoSettings(),
         local_name="aws",
@@ -139,7 +140,7 @@ def test_fetch_providers_schema_json_bad_lock_raises(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
     run = MagicMock(exit_code=0)
     run.parse_output = MagicMock(return_value={"provider_schemas": {}})
-    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(return_value=run))
+    monkeypatch.setattr(providers_schema_mod, _run_and_wait.__name__, MagicMock(return_value=run))
     with pytest.raises(ValueError, match="no provider in lock"):
         schema_inspect.fetch_providers_schema_json(
             TfDoSettings(),
@@ -168,7 +169,7 @@ def test_fetch_providers_schema_json_no_cache_skips_cache_io(monkeypatch: pytest
     monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
     run = MagicMock(exit_code=0)
     run.parse_output = MagicMock(return_value=payload)
-    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(return_value=run))
+    monkeypatch.setattr(providers_schema_mod, _run_and_wait.__name__, MagicMock(return_value=run))
     schema_inspect.fetch_providers_schema_json(
         TfDoSettings(),
         local_name="aws",
@@ -215,7 +216,7 @@ def test_fetch_providers_schema_json_shell_error_wraps_stderr(monkeypatch: pytes
         _read_resolved_version_from_lock.__name__,
         lambda **_: "1.0.0",
     )
-    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(side_effect=err))
+    monkeypatch.setattr(providers_schema_mod, _run_and_wait.__name__, MagicMock(side_effect=err))
     with pytest.raises(RuntimeError, match="terraform providers schema failed"):
         schema_inspect.fetch_providers_schema_json(
             TfDoSettings(),
@@ -238,7 +239,7 @@ def test_fetch_providers_schema_json_nonzero_exit_raises(monkeypatch: pytest.Mon
     run = MagicMock()
     run.exit_code = 3
     run.stderr = "stderr detail"
-    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, MagicMock(return_value=run))
+    monkeypatch.setattr(providers_schema_mod, _run_and_wait.__name__, MagicMock(return_value=run))
     with pytest.raises(RuntimeError, match="exit 3"):
         schema_inspect.fetch_providers_schema_json(
             TfDoSettings(),
@@ -277,7 +278,7 @@ def test_fetch_use_dev_overrides_false_strips_tf_cli_config_and_uses_cache(
     write_mock = MagicMock()
     monkeypatch.setattr(schema_inspect.schema_cache, _write_cached_schema.__name__, write_mock)
     run_mock = MagicMock()
-    monkeypatch.setattr(schema_inspect, _run_and_wait.__name__, run_mock)
+    monkeypatch.setattr(providers_schema_mod, _run_and_wait.__name__, run_mock)
     out = schema_inspect.fetch_providers_schema_json(
         TfDoSettings(),
         local_name="aws",

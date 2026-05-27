@@ -7,6 +7,7 @@ from ask_shell import console as ask_console
 from pydantic import ValidationError
 
 from tfdo._internal.core import plan_subprocess
+from tfdo._internal.hcl_read import find_lock_file
 from tfdo._internal.models import PlanInput, PlanResult
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_artifacts import (
@@ -22,6 +23,7 @@ from tfdo._internal.output.plan_render_input import build_attr_lines_by_addr
 from tfdo._internal.output.plan_renderer import render_plan
 from tfdo._internal.output.schema_lookup import build_schema_lookups
 from tfdo._internal.output.tree_builder import build_plan_tree
+from tfdo._internal.schema.plan_warm import warm_plan_schema_cache
 from tfdo._internal.settings import load_user_config
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,14 @@ def run_plan(input_model: PlanInput) -> PlanResult:
         logger.error(f"failed to parse plan JSON at {json_path}")
         return PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)
 
+    lock_path = find_lock_file(settings.work_dir)
+    if lock_path is not None:
+        warm_plan_schema_cache(
+            settings,
+            lock_path=lock_path,
+            plan=plan,
+            schema_cache_dir=settings.schema_cache_dir,
+        )
     lookups = build_schema_lookups(
         workspace_root=settings.work_dir,
         schema_cache_dir=settings.schema_cache_dir,

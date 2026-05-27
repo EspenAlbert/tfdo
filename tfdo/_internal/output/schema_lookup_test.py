@@ -97,6 +97,33 @@ provider "{_AWS_PROVIDER}" {{
     assert hit.required_attrs(_AWS_PROVIDER, "aws_s3_bucket") == frozenset({"bucket"})
 
 
+def test_build_schema_lookups_finds_lock_in_parent(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    run_dir = repo / "envs" / "dev" / "run"
+    run_dir.mkdir(parents=True)
+    (repo / ".git").mkdir()
+    (repo / ".terraform.lock.hcl").write_text(
+        f'provider "{_AWS_PROVIDER}" {{ version = "5.0.0" }}\n',
+        encoding="utf-8",
+    )
+    cache_root = tmp_path / "schemas"
+    bucket_schema = _load_fixture("aws_s3_bucket_resource_schema.json")
+    payload = {
+        "format_version": "1.0",
+        "provider_schemas": {
+            "registry.terraform.io/hashicorp/aws": {
+                "provider": {"version": 0},
+                "resource_schemas": {"aws_s3_bucket": bucket_schema.model_dump(mode="json", exclude_none=True)},
+            },
+        },
+    }
+    rel = schema_cache.cache_relative_path(local_name="aws", source="hashicorp/aws", resolved_version="5.0.0")
+    schema_cache.write_cached_schema(cache_root, rel, payload)
+
+    lookups = build_schema_lookups(workspace_root=run_dir, schema_cache_dir=cache_root)
+    assert lookups.required_attrs(_AWS_PROVIDER, "aws_s3_bucket") == frozenset({"bucket"})
+
+
 def test_build_schema_lookups_warns_on_duplicate_cache(caplog: pytest.LogCaptureFixture, tmp_path: Path) -> None:
     caplog.set_level(logging.WARNING)
     (tmp_path / ".terraform.lock.hcl").write_text(
