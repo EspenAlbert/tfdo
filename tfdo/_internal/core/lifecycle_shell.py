@@ -4,7 +4,8 @@ from pathlib import Path
 
 from ask_shell.shell import ShellError, run_and_wait
 
-from tfdo._internal.models import LifecycleResult
+from tfdo._internal.core import binary, lifecycle_init_retry
+from tfdo._internal.models import LifecycleInput, LifecycleResult
 from tfdo._internal.settings import TfDoSettings
 
 
@@ -32,3 +33,16 @@ def run_lifecycle_command[T: LifecycleResult](
         return result_cls(exit_code=run.exit_code or 0, stdout=run.stdout, stderr=run.stderr or None)
     except ShellError as e:
         return result_cls(exit_code=e.exit_code or 1, stderr=e.stderr or None)
+
+
+def run_lifecycle[T: LifecycleResult](
+    input_model: LifecycleInput, subcommand: str, extra_flags: list[str], result_cls: type[T]
+) -> T:
+    settings = input_model.settings
+    all_flags = [*extra_flags, *input_model.extra_args]
+    cmd = build_lifecycle_command(binary.resolve_binary(settings), subcommand, input_model.var_file, all_flags)
+
+    def run_once() -> T:
+        return run_lifecycle_command(settings, cmd, result_cls)
+
+    return lifecycle_init_retry.run_with_init_retry(input_model, subcommand, result_cls, run_once)

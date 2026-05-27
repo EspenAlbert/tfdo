@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import logging
-import sys
 from pathlib import Path
 
-from tfdo._internal.core import binary, executor, lifecycle_init_retry, plan_logic
-from tfdo._internal.core.lifecycle_shell import build_lifecycle_command, run_lifecycle_command
+from ask_shell import ask
+
+from tfdo._internal.core import binary, lifecycle_init_retry, lifecycle_shell, plan_logic
 from tfdo._internal.models import ApplyInput, ApplyResult, PlanInput
-from tfdo._internal.output.plan_artifacts import plan_bin_path
+from tfdo._internal.output import plan_artifacts
 
 logger = logging.getLogger(__name__)
 
-APPLY_PROMPT = "Apply this plan? [y/N]: "
+APPLY_PROMPT = "Apply this plan?"
 
 
 def _plan_input_from_apply(input_model: ApplyInput) -> PlanInput:
@@ -26,19 +26,18 @@ def _plan_input_from_apply(input_model: ApplyInput) -> PlanInput:
 
 
 def _confirm_apply() -> bool:
-    if not sys.stdin.isatty():
-        return False
-    answer = input(APPLY_PROMPT).strip().lower()
-    return answer in ("y", "yes")
+    return ask.confirm(APPLY_PROMPT, default=False)
 
 
 def _apply_saved_plan(input_model: ApplyInput, plan_bin: Path) -> ApplyResult:
     settings = input_model.settings
     extra_flags = ["-auto-approve", str(plan_bin), *input_model.extra_args]
-    cmd = build_lifecycle_command(binary.resolve_binary(settings), "apply", input_model.var_file, extra_flags)
+    cmd = lifecycle_shell.build_lifecycle_command(
+        binary.resolve_binary(settings), "apply", input_model.var_file, extra_flags
+    )
 
     def run_once() -> ApplyResult:
-        return run_lifecycle_command(settings, cmd, ApplyResult, user_input=False)
+        return lifecycle_shell.run_lifecycle_command(settings, cmd, ApplyResult, user_input=False)
 
     return lifecycle_init_retry.run_with_init_retry(input_model, "apply", ApplyResult, run_once)
 
@@ -48,13 +47,13 @@ def run_apply(input_model: ApplyInput) -> ApplyResult:
         extra_flags: list[str] = []
         if input_model.auto_approve:
             extra_flags.append("-auto-approve")
-        return executor._run_lifecycle(input_model, "apply", extra_flags, ApplyResult)
+        return lifecycle_shell.run_lifecycle(input_model, "apply", extra_flags, ApplyResult)
 
     plan_result = plan_logic.plan_and_render(_plan_input_from_apply(input_model))
     if plan_result.exit_code != 0:
         return ApplyResult(exit_code=plan_result.exit_code, stderr=plan_result.stderr)
 
-    bin_path = plan_bin_path(input_model.settings.work_dir)
+    bin_path = plan_artifacts.plan_bin_path(input_model.settings.work_dir)
     if not bin_path.is_file():
         return ApplyResult(exit_code=plan_result.exit_code, stderr=plan_result.stderr)
 

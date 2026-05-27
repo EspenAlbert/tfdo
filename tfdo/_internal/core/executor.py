@@ -4,16 +4,12 @@ import logging
 from ask_shell._internal.models import EmptyOutputError
 from ask_shell.shell import ShellError, run_and_wait
 
-from tfdo._internal.core import binary
-from tfdo._internal.core import lifecycle_init_retry as lifecycle_init_retry
-from tfdo._internal.core.lifecycle_shell import build_lifecycle_command, run_lifecycle_command
+from tfdo._internal.core import apply_logic, binary, lifecycle_shell, plan_logic
 from tfdo._internal.models import (
     ApplyInput,
     ApplyResult,
     DestroyInput,
     DestroyResult,
-    LifecycleInput,
-    LifecycleResult,
     OutputInput,
     OutputResult,
     PlanInput,
@@ -23,28 +19,11 @@ from tfdo._internal.models import (
 logger = logging.getLogger(__name__)
 
 
-def _run_lifecycle[T: LifecycleResult](
-    input_model: LifecycleInput, subcommand: str, extra_flags: list[str], result_cls: type[T]
-) -> T:
-    settings = input_model.settings
-    all_flags = [*extra_flags, *input_model.extra_args]
-    cmd = build_lifecycle_command(binary.resolve_binary(settings), subcommand, input_model.var_file, all_flags)
-
-    def run_once() -> T:
-        return run_lifecycle_command(settings, cmd, result_cls)
-
-    return lifecycle_init_retry.run_with_init_retry(input_model, subcommand, result_cls, run_once)
-
-
 def plan(input_model: PlanInput) -> PlanResult:
-    from tfdo._internal.core import plan_logic
-
     return plan_logic.run_plan(input_model)
 
 
 def apply(input_model: ApplyInput) -> ApplyResult:
-    from tfdo._internal.core import apply_logic
-
     return apply_logic.run_apply(input_model)
 
 
@@ -52,7 +31,7 @@ def destroy(input_model: DestroyInput) -> DestroyResult:
     extra_flags: list[str] = []
     if input_model.auto_approve:
         extra_flags.append("-auto-approve")
-    return _run_lifecycle(input_model, "destroy", extra_flags, DestroyResult)
+    return lifecycle_shell.run_lifecycle(input_model, "destroy", extra_flags, DestroyResult)
 
 
 def _parse_tf_outputs(raw: dict) -> dict[str, object]:

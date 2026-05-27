@@ -4,6 +4,7 @@ from pathlib import Path
 import typer
 
 from tfdo._internal.models import InitMode
+from tfdo._internal.output.plan_display import PlanDisplayCliOverrides
 
 
 def var_file_option() -> Path | None:
@@ -53,4 +54,41 @@ def skip_check_providers_option() -> bool | None:
         "--skip-check-providers/--no-skip-check-providers",
         envvar="TFDO_SKIP_CHECK_PROVIDERS",
         help="Skip provider declaration and credential checks",
+    )
+
+
+def show_computed_drift_option() -> bool | None:
+    return typer.Option(None, "--show-computed-drift")
+
+
+def show_computed_deltas_option() -> bool | None:
+    return typer.Option(None, "--show-computed-deltas")
+
+
+def show_create_defaults_option() -> bool | None:
+    return typer.Option(None, "--show-create-defaults")
+
+
+def show_full_config_annex_option() -> bool | None:
+    return typer.Option(None, "--show-full-config-annex")
+
+
+def show_json_annex_option() -> bool | None:
+    return typer.Option(None, "--show-json-annex")
+
+
+def plan_display_cli_overrides(
+    *,
+    show_computed_drift: bool | None = None,
+    show_computed_deltas: bool | None = None,
+    show_create_defaults: bool | None = None,
+    show_full_config_annex: bool | None = None,
+    show_json_annex: bool | None = None,
+) -> PlanDisplayCliOverrides:
+    return PlanDisplayCliOverrides(
+        show_computed_drift=show_computed_drift,
+        show_computed_deltas=show_computed_deltas,
+        show_create_defaults=show_create_defaults,
+        show_full_config_annex=show_full_config_annex,
+        show_json_annex=show_json_annex,
     )
