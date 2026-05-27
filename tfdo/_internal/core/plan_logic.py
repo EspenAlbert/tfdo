@@ -17,10 +17,12 @@ from tfdo._internal.output.plan_artifacts import (
     resolve_plan_out,
     tfdo_dir,
 )
+from tfdo._internal.output.plan_display import merge_plan_display
 from tfdo._internal.output.plan_render_input import build_attr_lines_by_addr
 from tfdo._internal.output.plan_renderer import render_plan
 from tfdo._internal.output.schema_lookup import build_schema_lookups
 from tfdo._internal.output.tree_builder import build_plan_tree
+from tfdo._internal.settings import load_user_config
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +62,7 @@ def run_plan(input_model: PlanInput) -> PlanResult:
         workspace_root=settings.work_dir,
         schema_cache_dir=settings.schema_cache_dir,
     )
+    plan_display = merge_plan_display(load_user_config(settings).plan_display, input_model.plan_display_cli)
     tree = build_plan_tree(plan)
     provider_by_addr = {rc.address: rc.provider_name or "" for rc in [*plan.resource_changes, *plan.resource_drift]}
     attr_lines = build_attr_lines_by_addr(
@@ -75,5 +78,7 @@ def run_plan(input_model: PlanInput) -> PlanResult:
         terminal_width=terminal_width,
         provider_by_addr=provider_by_addr,
         collection_kind=lookups.collection_kind,
+        computed_at_path=lookups.computed_at_path,
+        plan_display=plan_display,
     )
     return PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)

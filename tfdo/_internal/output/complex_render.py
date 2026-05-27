@@ -9,14 +9,17 @@ from pydantic import BaseModel
 from tfdo._internal.output import display_path
 from tfdo._internal.output.render_thresholds import (
     INLINE_MIN_WIDTH,
+    MAX_STRUCTURAL_LINES,
     PER_ITEM_MIN_ITEMS,
     inline_budget,
 )
 from tfdo._internal.output.schema_lookup import CollectionKind
+from tfdo._internal.output.structural_diff import BudgetResult, apply_line_budget, compute_structural_diff
 
 
 class _RenderTier(StrEnum):
     INLINE = "inline"  # compact sorted-keys JSON when the value fits the inline budget
+    STRUCTURAL = "structural"  # recursive leaf-path deltas for nested dicts and lists
     PER_ITEM = "per_item"  # per-element diff for flat lists (set or positional list matching)
     DETAIL = "detail"  # hoisted block above the plan; tree line shows (see above)
 
@@ -31,6 +34,11 @@ class _PerItemKind(StrEnum):
 class ComplexRenderConfig(BaseModel):
     inline_min_width: int = INLINE_MIN_WIDTH
     per_item_min_items: int = PER_ITEM_MIN_ITEMS
+    max_structural_lines: int = MAX_STRUCTURAL_LINES
+
+
+SEE_ABOVE_FOR_FULL_CONFIG = "(see above for full config)"
+SEE_ABOVE_LEGACY = "(see above)"
 
 
 class DetailBlock(BaseModel):
@@ -61,17 +69,28 @@ def render_complex_value(
     config: ComplexRenderConfig,
     collection_kind: CollectionKind | None = None,
     is_sensitive: bool = False,
+    show_full_config_annex: bool = False,
 ) -> ComplexRenderResult:
     pad = " " * indent
     if is_sensitive:
         return ComplexRenderResult(inline_lines=[f"{pad}(sensitive)"])
 
     budget = inline_budget(config.inline_min_width, terminal_width, indent)
-    tier = _choose_tier(old, new, budget, config)
-    if tier is _RenderTier.INLINE:
+    if _inline_tier_applies(old, new, budget):
         return ComplexRenderResult(inline_lines=_pad_lines(_render_inline(old, new), pad))
 
-    if tier is _RenderTier.PER_ITEM:
+    if (
+        isinstance(old, list)
+        and isinstance(new, list)
+        and not old
+        and new
+        and display_path.inline_json_fits(new, budget)
+    ):
+        return ComplexRenderResult(
+            inline_lines=_pad_lines([display_path.inline_json(old), f"-> {display_path.inline_json(new)}"], pad)
+        )
+
+    if _per_item_eligible(old, new, budget, config):
         per_item = _render_per_item(
             old,
             new,
@@ -82,16 +101,32 @@ def render_complex_value(
         if per_item is not None:
             return ComplexRenderResult(inline_lines=_pad_lines(per_item, pad))
 
-    inline, block = _render_detail_block(
+    structural = _render_structural(
         old,
         new,
         attr_name=attr_name,
-        resource_address=resource_address,
+        budget=budget,
+        max_lines=config.max_structural_lines,
     )
-    return ComplexRenderResult(
-        inline_lines=[f"{pad}(see above)"],
-        detail_block=block,
-    )
+    if structural is not None and structural.lines and not (structural.hidden_count and show_full_config_annex):
+        return ComplexRenderResult(inline_lines=_pad_lines(structural.lines, pad))
+
+    if show_full_config_annex:
+        _, block = _render_detail_block(
+            old,
+            new,
+            attr_name=attr_name,
+            resource_address=resource_address,
+        )
+        return ComplexRenderResult(
+            inline_lines=[f"{pad}{SEE_ABOVE_FOR_FULL_CONFIG}"],
+            detail_block=block,
+        )
+
+    if structural is not None and structural.lines:
+        return ComplexRenderResult(inline_lines=_pad_lines(structural.lines, pad))
+
+    return ComplexRenderResult(inline_lines=_pad_lines(_render_inline(old, new), pad))
 
 
 def _pad_lines(lines: list[str], pad: str) -> list[str]:
@@ -108,9 +143,32 @@ def _choose_tier(
 ) -> _RenderTier:
     if _inline_tier_applies(old, new, budget):
         return _RenderTier.INLINE
+    if _structural_eligible(old, new):
+        return _RenderTier.STRUCTURAL
     if _per_item_eligible(old, new, budget, config):
         return _RenderTier.PER_ITEM
     return _RenderTier.DETAIL
+
+
+def _structural_eligible(old: object | None, new: object | None) -> bool:
+    return isinstance(old, dict | list) or isinstance(new, dict | list)
+
+
+def _render_structural(
+    old: object | None,
+    new: object | None,
+    *,
+    attr_name: str,
+    budget: int,
+    max_lines: int,
+) -> BudgetResult | None:
+    if not _structural_eligible(old, new):
+        return None
+    diff = compute_structural_diff(old, new)
+    if not diff:
+        return None
+    rooted = [line._replace(path=[attr_name, *line.path]) for line in diff]
+    return apply_line_budget(rooted, max_lines, budget=budget)
 
 
 def _inline_tier_applies(old: object | None, new: object | None, budget: int) -> bool:

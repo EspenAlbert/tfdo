@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -10,15 +11,24 @@ from rich.console import Console
 from tfdo._internal.output import plan_render_input
 from tfdo._internal.output.models import PlanOutput
 from tfdo._internal.output.parser import parse_plan_file
+from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.plan_renderer import render_plan
+from tfdo._internal.output.schema_lookup import SchemaLookups, build_schema_lookups_from_index
 from tfdo._internal.output.testdata_paths import TESTDATA_DIR
 from tfdo._internal.output.tree_builder import PlanTree, build_plan_tree
+from tfdo._internal.schema.models import ResourceSchema
 
 REQUIRED_ATTRS_BY_TYPE: dict[str, frozenset[str]] = {
     "random_string": frozenset({"length"}),
     "random_pet": frozenset({"length", "prefix"}),
     "local_file": frozenset({"filename"}),
+    "mongodbatlas_advanced_cluster": frozenset({"name", "project_id"}),
+    "mongodbatlas_project": frozenset({"name"}),
+    "mongodbatlas_cloud_provider_access_authorization": frozenset({"project_id"}),
+    "google_storage_bucket": frozenset({"name"}),
 }
+
+SCHEMAS_DIR = TESTDATA_DIR / "schemas"
 
 
 def create_capture_console(*, width: int = 120, height: int = 80) -> Console:
@@ -91,6 +101,26 @@ def drift_plan() -> Path:
     return TESTDATA_DIR / "07_drift.json"
 
 
+@pytest.fixture
+def cluster_resize_plan() -> Path:
+    return TESTDATA_DIR / "08_cluster_resize.json"
+
+
+def _load_fixture_schemas() -> dict[str, ResourceSchema]:
+    index: dict[str, ResourceSchema] = {}
+    if not SCHEMAS_DIR.is_dir():
+        return index
+    for path in SCHEMAS_DIR.glob("*.json"):
+        raw = json.loads(path.read_text())
+        index[path.stem] = ResourceSchema.model_validate(raw)
+    return index
+
+
+@pytest.fixture
+def fixture_schema_lookups() -> SchemaLookups:
+    return build_schema_lookups_from_index(_load_fixture_schemas())
+
+
 def _required_attrs(_provider: str, resource_type: str) -> frozenset[str]:
     return REQUIRED_ATTRS_BY_TYPE.get(resource_type, frozenset())
 
@@ -99,11 +129,24 @@ def _provider_by_addr(plan: PlanOutput) -> dict[str, str]:
     return {rc.address: rc.provider_name or "" for rc in [*plan.resource_changes, *plan.resource_drift]}
 
 
-def build_attr_lines_by_addr(tree: PlanTree, *, plan: PlanOutput) -> plan_render_input.ResourceAttrLines:
+def build_attr_lines_by_addr(
+    tree: PlanTree,
+    *,
+    plan: PlanOutput,
+    schema_lookups: SchemaLookups | None = None,
+) -> plan_render_input.ResourceAttrLines:
     provider_by_addr = _provider_by_addr(plan)
+
+    def required_attrs(provider: str, resource_type: str) -> frozenset[str]:
+        if schema_lookups is not None:
+            from_schema = schema_lookups.required_attrs(provider, resource_type)
+            if from_schema:
+                return from_schema
+        return REQUIRED_ATTRS_BY_TYPE.get(resource_type, frozenset())
+
     return plan_render_input.build_attr_lines_by_addr(
         tree,
-        required_attrs=_required_attrs,
+        required_attrs=required_attrs,
         provider_by_addr=provider_by_addr,
     )
 
@@ -115,17 +158,23 @@ def render_fixture(
     plan: PlanOutput | None = None,
     terminal_width: int = 120,
     show_unknown_outputs: bool = True,
+    plan_display: PlanDisplayOptions | None = None,
+    schema_lookups: SchemaLookups | None = None,
 ) -> str:
     if plan is None:
         assert path is not None
         plan = parse_plan_file(path)
     tree = build_plan_tree(plan)
     provider_by_addr = _provider_by_addr(plan)
+    lookups = schema_lookups or build_schema_lookups_from_index(_load_fixture_schemas())
     render_plan(
         tree,
-        build_attr_lines_by_addr(tree, plan=plan),
+        build_attr_lines_by_addr(tree, plan=plan, schema_lookups=lookups),
         terminal_width=terminal_width,
         provider_by_addr=provider_by_addr,
+        collection_kind=lookups.collection_kind,
+        computed_at_path=lookups.computed_at_path,
         show_unknown_outputs=show_unknown_outputs,
+        plan_display=plan_display or PlanDisplayOptions(),
     )
     return capture_console.end_capture()

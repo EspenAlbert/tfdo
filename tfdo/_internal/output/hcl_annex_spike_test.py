@@ -21,6 +21,7 @@ CLUSTER_ADDRESS = "module.cluster.mongodbatlas_advanced_cluster.this"
 BUCKET_ADDRESS = "module.gcp.module.log_integration[0].google_storage_bucket.atlas[0]"
 _SCHEMA_DIR = TESTDATA_DIR / "schemas"
 
+
 @dataclass(frozen=True)
 class AnnexTfCase:
     fixture_name: str

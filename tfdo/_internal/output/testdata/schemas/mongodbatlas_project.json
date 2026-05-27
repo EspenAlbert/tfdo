@@ -1,0 +1,22 @@
+{
+  "version": 0,
+  "block": {
+    "attributes": {
+      "name": {
+        "type": "string",
+        "required": true
+      },
+      "cluster_count": {
+        "type": "number",
+        "computed": true
+      },
+      "ip_addresses": {
+        "nested_type": {
+          "nesting_mode": "single",
+          "attributes": {}
+        },
+        "computed": true
+      }
+    }
+  }
+}

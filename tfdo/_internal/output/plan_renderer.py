@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 from ask_shell import console as ask_console
 from rich.console import RenderableType
@@ -16,7 +16,14 @@ from tfdo._internal.output.complex_render import (
     DetailBlock,
     render_complex_value,
 )
-from tfdo._internal.output.models import OutputChange, ResourceAction
+from tfdo._internal.output.models import Change, OutputChange, ResourceAction
+from tfdo._internal.output.plan_display import PlanDisplayOptions
+from tfdo._internal.output.plan_filters import (
+    ComputedOnlyLookup,
+    filter_attr_lines,
+    is_computed_only_drift_resource,
+    is_computed_only_plan_delta,
+)
 from tfdo._internal.output.plan_render_input import ResourceAttrLines, iter_nodes_with_attr_lines
 from tfdo._internal.output.render_thresholds import (
     OUTPUT_MULTILINE_CHARS,
@@ -88,21 +95,35 @@ def render_plan(
     terminal_width: int,
     provider_by_addr: dict[str, str] | None = None,
     collection_kind: CollectionKindLookup | None = None,
+    computed_at_path: ComputedOnlyLookup | None = None,
     complex_config: ComplexRenderConfig | None = None,
     show_unknown_outputs: bool = True,
+    plan_display: PlanDisplayOptions | None = None,
 ) -> None:
+    display = plan_display or PlanDisplayOptions()
     config = complex_config or ComplexRenderConfig()
-    complex_results = _build_complex_results(
+    lookup = computed_at_path or (lambda _p, _t, _path: None)
+    filtered = _filter_attr_lines_by_addr(
         tree,
         attr_lines,
+        provider_by_addr or {},
+        lookup=lookup,
+        show_computed_deltas=display.show_computed_deltas,
+    )
+    complex_results = _build_complex_results(
+        tree,
+        filtered,
         terminal_width=terminal_width,
         config=config,
         providers=provider_by_addr or {},
         collection_kind=collection_kind,
+        lookup=lookup,
+        show_computed_deltas=display.show_computed_deltas,
+        show_full_config_annex=display.show_full_config_annex,
     )
     state = _PrintState()
-    _print_detail_blocks(state, _collect_detail_blocks(complex_results))
-    _print_drift(state, tree, attr_lines.drift, complex_results, terminal_width)
+    if display.show_full_config_annex:
+        _print_detail_blocks(state, _collect_detail_blocks(complex_results))
 
     header = _plan_header_line(tree, _action_counts(tree))
     state.emit(header.line)
@@ -113,7 +134,17 @@ def render_plan(
 
     state.blank()
     _print_destroy_warning(state, tree)
-    _print_resources(state, tree, attr_lines.planned, complex_results, terminal_width)
+    _print_drift(
+        state,
+        tree,
+        filtered.drift,
+        complex_results,
+        terminal_width,
+        provider_by_addr=provider_by_addr or {},
+        lookup=lookup,
+        show_computed_drift=display.show_computed_drift,
+    )
+    _print_resources(state, tree, filtered.planned, complex_results, terminal_width)
     _print_outputs(
         state,
         tree.output_changes,
@@ -138,12 +169,19 @@ def _print_drift(
     drift_attr_lines: dict[str, list[AttrLine]],
     complex_results: dict[_ComplexKey, ComplexRenderResult],
     terminal_width: int,
+    *,
+    provider_by_addr: dict[str, str],
+    lookup: ComputedOnlyLookup,
+    show_computed_drift: bool,
 ) -> None:
     drift_lines = _drift_section(
         tree,
         drift_attr_lines,
         complex_results=complex_results,
         terminal_width=terminal_width,
+        provider_by_addr=provider_by_addr,
+        lookup=lookup,
+        show_computed_drift=show_computed_drift,
     )
     if not drift_lines:
         return
@@ -322,6 +360,35 @@ def _tree_extra_prefix(module_depth: int) -> int:
     return TREE_BASE_PREFIX_CHARS + (module_depth - 1) * TREE_GUIDE_CHARS_PER_LEVEL
 
 
+def _filter_attr_lines_by_addr(
+    tree: PlanTree,
+    attr_lines: ResourceAttrLines,
+    providers: dict[str, str],
+    *,
+    lookup: ComputedOnlyLookup,
+    show_computed_deltas: bool,
+) -> ResourceAttrLines:
+    planned: dict[str, list[AttrLine]] = {}
+    drift: dict[str, list[AttrLine]] = {}
+    drift_addrs = {node.address for node in tree.drift}
+    for node in _iter_all_resources(tree):
+        source = attr_lines.drift if node.address in drift_addrs else attr_lines.planned
+        lines = source.get(node.address, [])
+        filtered = filter_attr_lines(
+            lines,
+            change=node.change,
+            lookup=lookup,
+            provider=providers.get(node.address, ""),
+            resource_type=node.type,
+            show_computed_deltas=show_computed_deltas,
+        )
+        if node.address in drift_addrs:
+            drift[node.address] = filtered
+        else:
+            planned[node.address] = filtered
+    return ResourceAttrLines(planned=planned, drift=drift)
+
+
 def _build_complex_results(
     tree: PlanTree,
     attr_lines: ResourceAttrLines,
@@ -330,11 +397,15 @@ def _build_complex_results(
     config: ComplexRenderConfig,
     providers: dict[str, str],
     collection_kind: CollectionKindLookup | None,
+    lookup: ComputedOnlyLookup,
+    show_computed_deltas: bool,
+    show_full_config_annex: bool,
 ) -> dict[_ComplexKey, ComplexRenderResult]:
     depths = _module_depth_by_address(tree)
     results: dict[_ComplexKey, ComplexRenderResult] = {}
     for node, lines in iter_nodes_with_attr_lines(tree, attr_lines):
         extra_prefix = _tree_extra_prefix(depths.get(node.address, 0))
+        provider = providers.get(node.address, "")
         for line in lines:
             if line.value_kind != ValueKind.COMPLEX:
                 continue
@@ -344,9 +415,9 @@ def _build_complex_results(
             kind = None
             if collection_kind is not None:
                 path = tuple(display_path.parse_display_key(line.name))
-                kind = collection_kind(providers.get(node.address, ""), node.type, path)
+                kind = collection_kind(provider, node.type, path)
             in_module_tree = extra_prefix > 0
-            results[key] = render_complex_value(
+            result = render_complex_value(
                 line.old_value,
                 line.new_value,
                 attr_name=line.name,
@@ -356,7 +427,18 @@ def _build_complex_results(
                 config=config,
                 collection_kind=kind,
                 is_sensitive=line.is_sensitive,
+                show_full_config_annex=show_full_config_annex,
             )
+            filtered = _filter_structural_result(
+                result,
+                change=node.change,
+                lookup=lookup,
+                provider=provider,
+                resource_type=node.type,
+                show_computed_deltas=show_computed_deltas,
+            )
+            if filtered is not None:
+                results[key] = filtered
     return results
 
 
@@ -377,12 +459,28 @@ def _drift_section(
     *,
     complex_results: dict[_ComplexKey, ComplexRenderResult],
     terminal_width: int,
+    provider_by_addr: dict[str, str],
+    lookup: ComputedOnlyLookup,
+    show_computed_drift: bool,
 ) -> list[Text | str]:
     if not tree.drift:
         return []
-    noun = "resource" if len(tree.drift) == 1 else "resources"
-    lines: list[Text | str] = [f"⚠️ Drift: {len(tree.drift)} {noun} changed outside terraform"]
-    for node in tree.drift:
+    visible = [
+        node
+        for node in tree.drift
+        if show_computed_drift
+        or not is_computed_only_drift_resource(
+            node,
+            drift_attr_lines.get(node.address, []),
+            lookup,
+            provider=provider_by_addr.get(node.address, ""),
+        )
+    ]
+    if not visible:
+        return []
+    noun = "resource" if len(visible) == 1 else "resources"
+    lines: list[Text | str] = [f"⚠️ Drift: {len(visible)} {noun} changed outside terraform"]
+    for node in visible:
         lines.append(_format_drift_resource_header(node))
         if node.action == ResourceAction.DELETE:
             continue
@@ -508,12 +606,136 @@ def _render_complex_attr(
     tree_extra_prefix: int,
 ) -> list[Text | str]:
     in_module_tree = tree_extra_prefix > 0
+    if _is_structural_inline(result.inline_lines):
+        pad = " " * _attr_pad_len(line, in_module_tree=in_module_tree)
+        return [
+            _style_structural_line(f"{pad}{content.strip()}" if content.strip() else content)
+            for content in result.inline_lines
+        ]
+    if (
+        result.detail_block is None
+        and len(result.inline_lines) == 2
+        and result.inline_lines[1].strip().startswith("-> ")
+    ):
+        value_s = f"{result.inline_lines[0].strip()} {result.inline_lines[1].strip()}"
+        if _header_value_fits(line, value_s, terminal_width, tree_extra_prefix=tree_extra_prefix):
+            return [_style_complex_inline_attr(line, value_s, in_module_tree=in_module_tree)]
+        if split := _complex_inline_old_new_split(
+            line,
+            result.inline_lines[0].strip(),
+            result.inline_lines[1].strip().removeprefix("->").strip(),
+            terminal_width,
+            tree_extra_prefix=tree_extra_prefix,
+        ):
+            return cast(list[Text | str], split)
     if result.detail_block is not None or len(result.inline_lines) != 1:
         return [_style_attr_header(line, in_module_tree=in_module_tree), *result.inline_lines]
     value_s = result.inline_lines[0].strip()
     if _header_value_fits(line, value_s, terminal_width, tree_extra_prefix=tree_extra_prefix):
         return [_style_complex_inline_attr(line, value_s, in_module_tree=in_module_tree)]
     return [_style_attr_header(line, in_module_tree=in_module_tree), *result.inline_lines]
+
+
+def _complex_inline_old_new_split(
+    line: AttrLine,
+    old_s: str,
+    new_s: str,
+    terminal_width: int,
+    *,
+    tree_extra_prefix: int,
+) -> list[Text] | None:
+    in_module_tree = tree_extra_prefix > 0
+    pad = " " * _attr_pad_len(line, in_module_tree=in_module_tree)
+    prefix = line.prefix
+    if prefix is None:
+        return None
+    head = f"{pad}{prefix} {line.name}: "
+    if len(head) + len(old_s) + 4 + len(new_s) <= _attr_line_width(terminal_width, tree_extra_prefix=tree_extra_prefix):
+        return None
+    first = Text()
+    first.append(pad)
+    first.append(f"{prefix} ")
+    first.append(line.name, style="bold")
+    first.append(": ")
+    first.append(old_s, style="dim")
+    second = Text()
+    second.append(pad)
+    second.append("-> ")
+    second.append(new_s)
+    return [first, second]
+
+
+def _is_structural_inline(lines: list[str]) -> bool:
+    for line in lines:
+        stripped = line.strip()
+        if not stripped.startswith(("~ ", "+ ", "- ")):
+            continue
+        key = stripped.split(":", 1)[0]
+        if "." in key or "[" in key:
+            return True
+    return False
+
+
+def _style_structural_line(line: str) -> Text:
+    stripped = line.strip()
+    if ": " not in stripped:
+        return Text(line)
+    prefix_part, value_part = stripped.split(": ", 1)
+    space = line[: len(line) - len(line.lstrip())]
+    text = Text()
+    text.append(space)
+    if " -> " in value_part:
+        old_s, new_s = value_part.split(" -> ", 1)
+        text.append(prefix_part)
+        text.append(": ")
+        text.append(old_s, style="dim")
+        text.append(" -> ")
+        text.append(new_s)
+        return text
+    text.append(prefix_part)
+    text.append(": ")
+    text.append(value_part)
+    return text
+
+
+def _path_from_structural_line(line: str) -> tuple[str | int, ...]:
+    stripped = line.strip()
+    key = stripped.split(":", 1)[0]
+    marker, _, path_s = key.partition(" ")
+    _ = marker
+    return tuple(display_path.parse_display_key(path_s))
+
+
+def _filter_structural_result(
+    result: ComplexRenderResult,
+    *,
+    change: Change,
+    lookup: ComputedOnlyLookup,
+    provider: str,
+    resource_type: str,
+    show_computed_deltas: bool,
+) -> ComplexRenderResult | None:
+    if show_computed_deltas:
+        return result
+    kept: list[str] = []
+    for line in result.inline_lines:
+        stripped = line.strip()
+        if not _is_structural_inline([line]):
+            kept.append(line)
+            continue
+        path = _path_from_structural_line(stripped)
+        if is_computed_only_plan_delta(
+            path,
+            change,
+            lookup,
+            provider=provider,
+            resource_type=resource_type,
+        ):
+            continue
+        kept.append(line)
+    if not kept:
+        return None
+    return result.model_copy(update={"inline_lines": kept})
 
 
 def _style_scalar_attr_line(line: AttrLine, *, in_module_tree: bool = False) -> Text:
@@ -661,7 +883,10 @@ def _resource_attr_lines(
     rendered: list[Text | str] = []
     for line in lines:
         if line.value_kind == ValueKind.COMPLEX:
-            result = complex_results[_ComplexKey(node.address, line.name)]
+            key = _ComplexKey(node.address, line.name)
+            if key not in complex_results:
+                continue
+            result = complex_results[key]
             rendered.extend(
                 _render_complex_attr(
                     line,

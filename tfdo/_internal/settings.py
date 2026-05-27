@@ -12,6 +12,8 @@ from ask_shell.console import interactive_shell
 from model_lib import StaticSettings
 from pydantic import BaseModel, ConfigDict, Field
 
+from tfdo._internal.output.plan_display import PlanDisplayOptions
+
 logger = logging.getLogger(__name__)
 
 ENV_PREFIX = "TFDO_"
@@ -137,6 +139,7 @@ class CheckConfig(BaseModel):
 
 class TfDoUserConfig(BaseModel):
     check: CheckConfig | None = None
+    plan_display: PlanDisplayOptions | None = None
 
 
 def load_user_config(settings: TfDoSettings) -> TfDoUserConfig:

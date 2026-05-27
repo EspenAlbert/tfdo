@@ -1,0 +1,23 @@
+{
+  "version": 0,
+  "block": {
+    "attributes": {
+      "project_id": {
+        "type": "string",
+        "required": true
+      },
+      "feature_usages": {
+        "nested_type": {
+          "nesting_mode": "list",
+          "attributes": {
+            "feature_type": {
+              "type": "string",
+              "optional": true
+            }
+          }
+        },
+        "optional": true
+      }
+    }
+  }
+}

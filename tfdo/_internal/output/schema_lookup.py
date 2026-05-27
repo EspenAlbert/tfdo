@@ -15,11 +15,13 @@ logger = logging.getLogger(__name__)
 CollectionKind = Literal["set", "list"]
 RequiredAttrsLookup = Callable[[str, str], frozenset[str]]
 CollectionKindLookup = Callable[[str, str, tuple[str | int, ...]], CollectionKind | None]
+ComputedOnlyLookup = Callable[[str, str, tuple[str | int, ...]], bool | None]
 
 
 class SchemaLookups(NamedTuple):
     required_attrs: RequiredAttrsLookup
     collection_kind: CollectionKindLookup
+    computed_at_path: ComputedOnlyLookup
 
 
 class SchemaFieldInfo(NamedTuple):
@@ -83,6 +85,36 @@ def schema_field_at_path(schema: ResourceSchema, path: tuple[str | int, ...]) ->
     if segment is None:
         return None
     return SchemaFieldInfo(is_block=segment.is_block, nesting_mode=segment.nesting_mode)
+
+
+def attribute_computed_at_path(
+    schema: ResourceSchema,
+    path: tuple[str | int, ...],
+) -> bool | None:
+    if not path:
+        return None
+    str_parts = [part for part in path if isinstance(part, str)]
+    if not str_parts:
+        return None
+    terminal = str_parts[-1]
+    block = schema.block
+    for part in path:
+        if isinstance(part, int):
+            continue
+        if part == terminal:
+            attr = (block.attributes or {}).get(part)
+            if attr is None:
+                return None
+            if attr.computed is True:
+                return True
+            if attr.computed is False:
+                return False
+            return None
+        resolved = _resolve_segment(block, part)
+        if resolved is None:
+            return None
+        block = resolved.block
+    return None
 
 
 def attribute_collection_kind(
@@ -212,4 +244,62 @@ def build_schema_lookups(
             return None
         return attribute_collection_kind(schema, path)
 
-    return SchemaLookups(required_attrs=required_attrs, collection_kind=collection_kind)
+    def computed_at_path(
+        provider_name: str,
+        resource_type: str,
+        path: tuple[str | int, ...],
+    ) -> bool | None:
+        schema = index.get((provider_name, resource_type))
+        if schema is None:
+            return None
+        str_path = tuple(part for part in path if isinstance(part, str))
+        if not str_path:
+            return None
+        return attribute_computed_at_path(schema, str_path)
+
+    return SchemaLookups(
+        required_attrs=required_attrs,
+        collection_kind=collection_kind,
+        computed_at_path=computed_at_path,
+    )
+
+
+def build_schema_lookups_from_index(
+    index: dict[str, ResourceSchema],
+) -> SchemaLookups:
+    # Fixture index is keyed by resource_type only; provider_name stays in the
+    # signature to match SchemaLookups (production uses provider_addr + type).
+    def required_attrs(_provider_name: str, resource_type: str) -> frozenset[str]:
+        schema = index.get(resource_type)
+        if schema is None:
+            return frozenset()
+        return resource_schema_required_attrs(schema)
+
+    def collection_kind(
+        _provider_name: str,
+        resource_type: str,
+        path: tuple[str | int, ...],
+    ) -> CollectionKind | None:
+        schema = index.get(resource_type)
+        if schema is None:
+            return None
+        return attribute_collection_kind(schema, path)
+
+    def computed_at_path(
+        _provider_name: str,
+        resource_type: str,
+        path: tuple[str | int, ...],
+    ) -> bool | None:
+        schema = index.get(resource_type)
+        if schema is None:
+            return None
+        str_path = tuple(part for part in path if isinstance(part, str))
+        if not str_path:
+            return None
+        return attribute_computed_at_path(schema, str_path)
+
+    return SchemaLookups(
+        required_attrs=required_attrs,
+        collection_kind=collection_kind,
+        computed_at_path=computed_at_path,
+    )

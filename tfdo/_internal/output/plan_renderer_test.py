@@ -30,6 +30,9 @@ def test_module_resource_header_not_dim(create_modules_plan: Path) -> None:
         config=ComplexRenderConfig(),
         providers={},
         collection_kind=None,
+        lookup=lambda _p, _t, _path: None,
+        show_computed_deltas=False,
+        show_full_config_annex=False,
     )
     renderable = _build_module_tree(
         tree.modules[0],
@@ -63,6 +66,9 @@ def test_module_attr_lines_not_green(create_modules_plan: Path) -> None:
         config=ComplexRenderConfig(),
         providers={},
         collection_kind=None,
+        lookup=lambda _p, _t, _path: None,
+        show_computed_deltas=False,
+        show_full_config_annex=False,
     )
     renderable = _build_module_tree(
         tree.modules[0],
@@ -131,11 +137,11 @@ def test_long_scalar_splits_old_new_at_arrow(update_plan: Path, capture_console)
     assert lines[content_i + 1].startswith("     -> ")
 
 
-def test_drift_before_plan_header(drift_plan: Path, capture_console) -> None:
+def test_drift_after_plan_header(drift_plan: Path, capture_console) -> None:
     rendered = render_fixture(drift_plan, capture_console)
     drift_idx = rendered.index("⚠️ Drift:")
     header_idx = rendered.index("📋 Plan:")
-    assert drift_idx < header_idx
+    assert header_idx < drift_idx
     assert "⚠️ local_file.config" in rendered
     assert "🟢 local_file.config" in rendered
 

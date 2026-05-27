@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from tfdo._internal.output.complex_render import ComplexRenderConfig, render_complex_value
+from tfdo._internal.output.complex_render import (
+    SEE_ABOVE_FOR_FULL_CONFIG,
+    ComplexRenderConfig,
+    render_complex_value,
+)
 from tfdo._internal.output.schema_lookup import CollectionKind
 
 _ADDR = "aws_security_group.allow_tls"
@@ -18,6 +22,7 @@ def _render(
     indent: int = _INDENT,
     config: ComplexRenderConfig | None = None,
     is_sensitive: bool = False,
+    show_full_config_annex: bool = False,
 ) -> tuple[list[str], str | None]:
     result = render_complex_value(
         old,
@@ -29,6 +34,7 @@ def _render(
         config=config or ComplexRenderConfig(),
         collection_kind=collection_kind,
         is_sensitive=is_sensitive,
+        show_full_config_annex=show_full_config_annex,
     )
     header = result.detail_block.header if result.detail_block else None
     return result.inline_lines, header
@@ -88,18 +94,32 @@ def test_per_item_list_middle_insert() -> None:
 
 
 def test_detail_block_large_dict() -> None:
+    old = "x" * 500
+    new = "y" * 500
+    lines, header = _render(old, new, attr_name="user_data", show_full_config_annex=True)
+    assert header == f"--- user_data ({_ADDR}) ---"
+    assert any(SEE_ABOVE_FOR_FULL_CONFIG in line for line in lines)
+
+
+def test_detail_block_suppressed_by_default() -> None:
     old = {"layer": {f"k{i}": "x" * 40 for i in range(8)}}
     new = {"layer": {f"k{i}": "y" * 40 for i in range(8)}}
     lines, header = _render(old, new, attr_name="user_data")
-    assert header == f"--- user_data ({_ADDR}) ---"
-    assert any("(see above)" in line for line in lines)
+    assert header is None
+    assert any("layer" in line for line in lines)
 
 
 def test_narrow_terminal_uses_inline_min_width() -> None:
     config = ComplexRenderConfig(inline_min_width=120)
-    old = {"key": "x" * 200}
-    new = {"key": "y" * 200}
-    lines, header = _render(old, new, terminal_width=40, config=config)
+    old = "x" * 200
+    new = "y" * 200
+    lines, header = _render(
+        old,
+        new,
+        terminal_width=40,
+        config=config,
+        show_full_config_annex=True,
+    )
     assert header is not None
 
 
@@ -111,17 +131,17 @@ def test_sensitive_masks_values() -> None:
 
 
 def test_extra_indent_forces_detail_block() -> None:
-    medium = {"default_write_concern": "majority", "javascript_enabled": False}
     lines, header = _render(
         None,
-        medium,
-        attr_name="advanced_configuration",
+        "z" * 300,
+        attr_name="user_data",
         terminal_width=120,
         indent=100,
         config=ComplexRenderConfig(inline_min_width=120),
+        show_full_config_annex=True,
     )
     assert header is not None
-    assert any("(see above)" in line for line in lines)
+    assert any(SEE_ABOVE_FOR_FULL_CONFIG in line for line in lines)
 
 
 def test_per_item_when_list_fits_count_but_not_width() -> None:
