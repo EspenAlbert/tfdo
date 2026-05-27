@@ -12,7 +12,8 @@ from tfdo._internal.output.complex_render import (
     render_complex_value,
 )
 from tfdo._internal.output.models import Change
-from tfdo._internal.output.schema_lookup import CollectionKind, build_schema_lookups_from_index
+from tfdo._internal.output.plan_renderer import _filter_structural_result
+from tfdo._internal.output.schema_lookup import CollectionKind, SchemaLookups, build_schema_lookups_from_index
 from tfdo._internal.output.testdata_paths import TESTDATA_DIR
 from tfdo._internal.schema.models import ResourceSchema
 
@@ -196,6 +197,11 @@ def test_create_nested_attr_uses_inline_hcl() -> None:
     assert "replication_specs[0]" not in body
 
 
+_CLUSTER_ADDR = "module.cluster.mongodbatlas_advanced_cluster.this"
+_CLUSTER_PROVIDER = "registry.terraform.io/mongodb/mongodbatlas"
+_CLUSTER_TYPE = "mongodbatlas_advanced_cluster"
+
+
 def _cluster_resize_change() -> Change:
     payload = json.loads((TESTDATA_DIR / "08_cluster_resize.json").read_text())
     return Change.model_validate(payload["resource_changes"][0]["change"])
@@ -210,23 +216,40 @@ def _format_complex_render(result: ComplexRenderResult) -> str:
     return "\n".join(lines)
 
 
-def _render_cluster_resize_annex(*, show_json_annex: bool = False) -> ComplexRenderResult:
+def _render_cluster_resize_annex(
+    *,
+    lookups: SchemaLookups,
+    show_json_annex: bool = False,
+) -> ComplexRenderResult:
     change = _cluster_resize_change()
     before = change.before or {}
     after = change.after or {}
-    return render_complex_value(
+    result = render_complex_value(
         before.get("replication_specs"),
         after.get("replication_specs"),
         attr_name="replication_specs",
-        resource_address="module.cluster.mongodbatlas_advanced_cluster.this",
+        resource_address=_CLUSTER_ADDR,
         indent=_INDENT,
         terminal_width=_WIDE,
-        config=ComplexRenderConfig(max_structural_lines=2),
+        config=ComplexRenderConfig(),
         show_full_config_annex=True,
         show_json_annex=show_json_annex,
         change=change,
+        computed_lookup=lookups.computed_at_path,
+        provider=_CLUSTER_PROVIDER,
+        resource_type=_CLUSTER_TYPE,
         schema=_cluster_schema(),
     )
+    filtered = _filter_structural_result(
+        result,
+        change=change,
+        lookup=lookups.computed_at_path,
+        provider=_CLUSTER_PROVIDER,
+        resource_type=_CLUSTER_TYPE,
+        show_computed_deltas=False,
+    )
+    assert filtered is not None
+    return filtered
 
 
 @dataclass(frozen=True)
@@ -242,8 +265,15 @@ ANNEX_RENDER_CASES = (
 
 
 @pytest.mark.parametrize("case", ANNEX_RENDER_CASES, ids=lambda case: case.basename)
-def test_hoisted_annex_render(case: AnnexRenderCase, file_regression) -> None:
-    result = _render_cluster_resize_annex(show_json_annex=case.show_json_annex)
+def test_hoisted_annex_render(
+    case: AnnexRenderCase,
+    fixture_schema_lookups: SchemaLookups,
+    file_regression,
+) -> None:
+    result = _render_cluster_resize_annex(
+        lookups=fixture_schema_lookups,
+        show_json_annex=case.show_json_annex,
+    )
     file_regression.check(
         _format_complex_render(result),
         basename=case.basename,

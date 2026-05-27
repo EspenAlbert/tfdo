@@ -5,6 +5,7 @@ import json
 import pytest
 
 from tfdo._internal.output.conftest import render_fixture
+from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.structural_diff import DiffPrefix, apply_line_budget, compute_structural_diff
 from tfdo._internal.output.testdata_paths import TESTDATA_DIR
 
@@ -48,6 +49,18 @@ def test_render_cluster_resize(cluster_resize_plan, capture_console, fixture_sch
         schema_lookups=fixture_schema_lookups,
     )
     file_regression.check(rendered, basename="08_cluster_resize", extension=".txt")
+
+
+def test_render_cluster_resize_annex(
+    cluster_resize_plan, capture_console, fixture_schema_lookups, file_regression
+) -> None:
+    rendered = render_fixture(
+        cluster_resize_plan,
+        capture_console,
+        schema_lookups=fixture_schema_lookups,
+        plan_display=PlanDisplayOptions(show_full_config_annex=True),
+    )
+    file_regression.check(rendered, basename="08_cluster_resize_annex", extension=".txt")
 
 
 def test_cluster_resize_structural_instance_size_paths(cluster_resize_plan) -> None:

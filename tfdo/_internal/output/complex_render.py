@@ -142,9 +142,6 @@ def render_complex_value(
         show_create_defaults=show_create_defaults,
         after_unknown=after_unknown,
     )
-    if structural is not None and structural.lines and not (structural.hidden_count and show_full_config_annex):
-        return ComplexRenderResult(inline_lines=_pad_lines(structural.lines, pad))
-
     if show_full_config_annex and _should_hoist_detail_block(
         old,
         new,
@@ -165,10 +162,9 @@ def render_complex_value(
             show_json_annex=show_json_annex,
             schema=schema,
         )
-        return ComplexRenderResult(
-            inline_lines=[f"{pad}{SEE_ABOVE_FOR_FULL_CONFIG}"],
-            detail_block=block,
-        )
+        inline = _pad_lines(structural.lines, pad) if structural is not None and structural.lines else []
+        inline.append(f"{pad}{SEE_ABOVE_FOR_FULL_CONFIG}")
+        return ComplexRenderResult(inline_lines=inline, detail_block=block)
 
     if structural is not None and structural.lines:
         return ComplexRenderResult(inline_lines=_pad_lines(structural.lines, pad))
