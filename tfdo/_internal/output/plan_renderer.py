@@ -32,7 +32,7 @@ from tfdo._internal.output.render_thresholds import (
     TREE_BASE_PREFIX_CHARS,
     TREE_GUIDE_CHARS_PER_LEVEL,
 )
-from tfdo._internal.output.schema_lookup import CollectionKindLookup
+from tfdo._internal.output.schema_lookup import CollectionKindLookup, ResourceSchemaLookup
 from tfdo._internal.output.tree_builder import ModuleNode, PlanTree, ResourceNode
 
 ATTR_CONTEXT_INDENT = 7
@@ -96,6 +96,7 @@ def render_plan(
     provider_by_addr: dict[str, str] | None = None,
     collection_kind: CollectionKindLookup | None = None,
     computed_at_path: ComputedOnlyLookup | None = None,
+    resource_schema: ResourceSchemaLookup | None = None,
     complex_config: ComplexRenderConfig | None = None,
     show_unknown_outputs: bool = True,
     plan_display: PlanDisplayOptions | None = None,
@@ -121,6 +122,8 @@ def render_plan(
         show_computed_deltas=display.show_computed_deltas,
         show_full_config_annex=display.show_full_config_annex,
         show_create_defaults=display.show_create_defaults,
+        show_json_annex=display.show_json_annex,
+        resource_schema=resource_schema,
     )
     state = _PrintState()
     if display.show_full_config_annex:
@@ -409,6 +412,8 @@ def _build_complex_results(
     show_computed_deltas: bool,
     show_full_config_annex: bool,
     show_create_defaults: bool,
+    show_json_annex: bool,
+    resource_schema: ResourceSchemaLookup | None,
 ) -> dict[_ComplexKey, ComplexRenderResult]:
     depths = _module_depth_by_address(tree)
     results: dict[_ComplexKey, ComplexRenderResult] = {}
@@ -426,6 +431,7 @@ def _build_complex_results(
                 path = tuple(display_path.parse_display_key(line.name))
                 kind = collection_kind(provider, node.type, path)
             in_module_tree = extra_prefix > 0
+            schema = resource_schema(provider, node.type) if resource_schema is not None else None
             result = render_complex_value(
                 line.old_value,
                 line.new_value,
@@ -443,6 +449,8 @@ def _build_complex_results(
                 provider=provider,
                 resource_type=node.type,
                 show_computed_deltas=show_computed_deltas,
+                show_json_annex=show_json_annex,
+                schema=schema,
             )
             filtered = _filter_structural_result(
                 result,
@@ -621,6 +629,16 @@ def _render_complex_attr(
     tree_extra_prefix: int,
 ) -> list[Text | str]:
     in_module_tree = tree_extra_prefix > 0
+    if result.hcl_body_lines:
+        pad = " " * _attr_pad_len(line, in_module_tree=in_module_tree)
+        header = _style_attr_header(line, in_module_tree=in_module_tree)
+        body: list[Text | str] = []
+        for content in result.hcl_body_lines:
+            text = Text()
+            text.append(pad)
+            text.append(content, style="dim")
+            body.append(text)
+        return [header, *body]
     if _is_structural_inline(result.inline_lines):
         pad = " " * _attr_pad_len(line, in_module_tree=in_module_tree)
         return [
@@ -730,6 +748,8 @@ def _filter_structural_result(
     resource_type: str,
     show_computed_deltas: bool,
 ) -> ComplexRenderResult | None:
+    if result.hcl_body_lines:
+        return result
     kept: list[str] = []
     for line in result.inline_lines:
         stripped = line.strip()

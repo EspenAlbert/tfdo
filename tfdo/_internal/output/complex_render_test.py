@@ -10,6 +10,7 @@ from tfdo._internal.output.complex_render import (
 from tfdo._internal.output.models import Change
 from tfdo._internal.output.schema_lookup import CollectionKind, build_schema_lookups_from_index
 from tfdo._internal.output.testdata_paths import TESTDATA_DIR
+from tfdo._internal.schema.models import ResourceSchema
 
 _ADDR = "aws_security_group.allow_tls"
 _WIDE = 200
@@ -155,6 +156,40 @@ def test_per_item_when_list_fits_count_but_not_width() -> None:
     lines, header = _render(before, after, attr_name="ingress", collection_kind="list")
     assert header is None
     assert any("+ ingress[1]" in line for line in lines)
+
+
+def _create_cluster_change() -> Change:
+    payload = json.loads((TESTDATA_DIR / "09_create_atlas_compact.json").read_text())
+    for rc in payload["resource_changes"]:
+        if rc["address"] == "module.cluster.mongodbatlas_advanced_cluster.this":
+            return Change.model_validate(rc["change"])
+    raise AssertionError("cluster change not found")
+
+
+def _cluster_schema() -> ResourceSchema:
+    return ResourceSchema.model_validate(
+        json.loads((TESTDATA_DIR / "schemas/mongodbatlas_advanced_cluster.json").read_text())
+    )
+
+
+def test_create_nested_attr_uses_inline_hcl() -> None:
+    change = _create_cluster_change()
+    after = change.after or {}
+    result = render_complex_value(
+        None,
+        after["replication_specs"],
+        attr_name="replication_specs",
+        resource_address="module.cluster.mongodbatlas_advanced_cluster.this",
+        indent=_INDENT,
+        terminal_width=_WIDE,
+        config=ComplexRenderConfig(),
+        change=change,
+        schema=_cluster_schema(),
+    )
+    body = "\n".join(result.hcl_body_lines)
+    assert "replication_specs = [" in body
+    assert "instance_size" in body
+    assert "replication_specs[0]" not in body
 
 
 def _cluster_resize_change() -> Change:

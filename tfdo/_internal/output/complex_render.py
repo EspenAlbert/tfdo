@@ -4,9 +4,10 @@ import json
 from enum import StrEnum
 from typing import NamedTuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from tfdo._internal.output import display_path
+from tfdo._internal.output.hcl_annex import annex_attr_slice, render_hcl_annex, render_json_annex
 from tfdo._internal.output.models import Change
 from tfdo._internal.output.plan_filters import (
     ComputedOnlyLookup,
@@ -15,15 +16,18 @@ from tfdo._internal.output.plan_filters import (
 from tfdo._internal.output.render_thresholds import (
     INLINE_MIN_WIDTH,
     MAX_STRUCTURAL_LINES,
+    MIN_LINES_FOR_HCL_INLINE,
     PER_ITEM_MIN_ITEMS,
     inline_budget,
 )
 from tfdo._internal.output.schema_lookup import CollectionKind
 from tfdo._internal.output.structural_diff import BudgetResult, apply_line_budget, compute_structural_diff
+from tfdo._internal.schema.models import ResourceSchema
 
 
 class _RenderTier(StrEnum):
     INLINE = "inline"  # compact sorted-keys JSON when the value fits the inline budget
+    HCL_INLINE = "hcl_inline"  # create-only inline HCL under the attr header
     STRUCTURAL = "structural"  # recursive leaf-path deltas for nested dicts and lists
     PER_ITEM = "per_item"  # per-element diff for flat lists (set or positional list matching)
     DETAIL = "detail"  # hoisted block above the plan; tree line shows (see above)
@@ -40,6 +44,7 @@ class ComplexRenderConfig(BaseModel):
     inline_min_width: int = INLINE_MIN_WIDTH
     per_item_min_items: int = PER_ITEM_MIN_ITEMS
     max_structural_lines: int = MAX_STRUCTURAL_LINES
+    min_lines_for_hcl_inline: int = MIN_LINES_FOR_HCL_INLINE
 
 
 SEE_ABOVE_FOR_FULL_CONFIG = "(see above for full config)"
@@ -53,6 +58,7 @@ class DetailBlock(BaseModel):
 
 class ComplexRenderResult(BaseModel):
     inline_lines: list[str]
+    hcl_body_lines: list[str] = Field(default_factory=list)
     detail_block: DetailBlock | None = None
 
 
@@ -81,10 +87,25 @@ def render_complex_value(
     provider: str = "",
     resource_type: str = "",
     show_computed_deltas: bool = False,
+    show_json_annex: bool = False,
+    schema: ResourceSchema | None = None,
 ) -> ComplexRenderResult:
     pad = " " * indent
     if is_sensitive:
         return ComplexRenderResult(inline_lines=[f"{pad}(sensitive)"])
+
+    after_unknown = change.after_unknown if change is not None else None
+    if hcl_body := _try_create_hcl_inline(
+        old,
+        new,
+        attr_name=attr_name,
+        change=change,
+        schema=schema,
+        show_create_defaults=show_create_defaults,
+        after_unknown=after_unknown,
+        min_lines=config.min_lines_for_hcl_inline,
+    ):
+        return ComplexRenderResult(inline_lines=[], hcl_body_lines=_pad_lines(hcl_body, pad))
 
     budget = inline_budget(config.inline_min_width, terminal_width, indent)
     if _inline_tier_applies(old, new, budget):
@@ -112,7 +133,6 @@ def render_complex_value(
         if per_item is not None:
             return ComplexRenderResult(inline_lines=_pad_lines(per_item, pad))
 
-    after_unknown = change.after_unknown if change is not None else None
     structural = _render_structural(
         old,
         new,
@@ -129,8 +149,6 @@ def render_complex_value(
         old,
         new,
         attr_name=attr_name,
-        budget=budget,
-        max_lines=config.max_structural_lines,
         show_create_defaults=show_create_defaults,
         after_unknown=after_unknown,
         change=change,
@@ -140,10 +158,12 @@ def render_complex_value(
         show_computed_deltas=show_computed_deltas,
     ):
         _, block = _render_detail_block(
-            old,
             new,
             attr_name=attr_name,
             resource_address=resource_address,
+            change=change,
+            show_json_annex=show_json_annex,
+            schema=schema,
         )
         return ComplexRenderResult(
             inline_lines=[f"{pad}{SEE_ABOVE_FOR_FULL_CONFIG}"],
@@ -162,6 +182,67 @@ def _pad_lines(lines: list[str], pad: str) -> list[str]:
     return [f"{pad}{line}" for line in lines]
 
 
+def _create_structural_line_count(
+    new: object,
+    *,
+    show_create_defaults: bool,
+    after_unknown: object | bool | None,
+) -> int:
+    if not isinstance(new, dict | list):
+        return 0
+    return len(
+        compute_structural_diff(
+            None,
+            new,
+            show_create_defaults=show_create_defaults,
+            after_unknown=after_unknown,
+        )
+    )
+
+
+def _try_create_hcl_inline(
+    old: object | None,
+    new: object | None,
+    *,
+    attr_name: str,
+    change: Change | None,
+    schema: ResourceSchema | None,
+    show_create_defaults: bool,
+    after_unknown: object | bool | None,
+    min_lines: int,
+) -> list[str] | None:
+    if old is not None or new is None or change is None:
+        return None
+    if not isinstance(new, dict | list):
+        return None
+    if isinstance(new, list) and all(not isinstance(item, dict | list) for item in new):
+        return None
+    if (
+        _create_structural_line_count(
+            new,
+            show_create_defaults=show_create_defaults,
+            after_unknown=after_unknown,
+        )
+        < min_lines
+    ):
+        return None
+    try:
+        annex_slice = annex_attr_slice(change, attr_name)
+    except ValueError:
+        return None
+    hcl = render_hcl_annex(
+        annex_slice.value,
+        attr_name=attr_name,
+        before_sensitive=annex_slice.before_sensitive,
+        after_sensitive=annex_slice.after_sensitive,
+        after_unknown=annex_slice.after_unknown,
+        schema=schema,
+    )
+    if hcl is None:
+        return None
+    return hcl.splitlines()
+
+
 def _choose_tier(
     old: object | None,
     new: object | None,
@@ -170,6 +251,8 @@ def _choose_tier(
 ) -> _RenderTier:
     if _inline_tier_applies(old, new, budget):
         return _RenderTier.INLINE
+    if old is None and isinstance(new, dict | list):
+        return _RenderTier.HCL_INLINE
     if _structural_eligible(old, new):
         return _RenderTier.STRUCTURAL
     if _per_item_eligible(old, new, budget, config):
@@ -210,8 +293,6 @@ def _should_hoist_detail_block(
     new: object | None,
     *,
     attr_name: str,
-    budget: int,
-    max_lines: int,
     show_create_defaults: bool,
     after_unknown: object | bool | None,
     change: Change | None,
@@ -220,7 +301,7 @@ def _should_hoist_detail_block(
     resource_type: str,
     show_computed_deltas: bool,
 ) -> bool:
-    if _detail_body_lines(old, new) == _detail_body_lines(old, old):
+    if old is not None and new is not None and json.dumps(old, sort_keys=True) == json.dumps(new, sort_keys=True):
         return False
     diff = compute_structural_diff(
         old,
@@ -396,39 +477,66 @@ def _format_per_item_row(
 
 
 def _render_detail_block(
-    old: object | None,
     new: object | None,
     *,
     attr_name: str,
     resource_address: str,
+    change: Change | None,
+    show_json_annex: bool,
+    schema: ResourceSchema | None,
 ) -> tuple[list[str], DetailBlock]:
     header = f"--- {attr_name} ({resource_address}) ---"
-    body = _detail_body_lines(old, new)
+    body = _detail_body_lines(
+        new,
+        attr_name=attr_name,
+        change=change,
+        show_json_annex=show_json_annex,
+        schema=schema,
+    )
     block = DetailBlock(header=header, body_lines=[header, *body])
     return [], block
 
 
-def _detail_body_lines(old: object | None, new: object | None) -> list[str]:
-    lines: list[str] = []
-    if isinstance(old, str) and "\n" in old:
-        lines.extend(_literal_block("before", old))
-    elif old is not None:
-        lines.append(f"before: {_detail_value(old)}")
-    if isinstance(new, str) and "\n" in new:
-        lines.extend(_literal_block("after", new))
-    elif new is not None:
-        lines.append(f"after: {_detail_value(new)}")
-    return lines
+def _detail_body_lines(
+    new: object | None,
+    *,
+    attr_name: str,
+    change: Change | None,
+    show_json_annex: bool,
+    schema: ResourceSchema | None,
+) -> list[str]:
+    if new is None or change is None:
+        return []
+    try:
+        annex_slice = annex_attr_slice(change, attr_name)
+    except ValueError:
+        return []
+    if show_json_annex:
+        payload = render_json_annex(
+            annex_slice.value,
+            before_sensitive=annex_slice.before_sensitive,
+            after_sensitive=annex_slice.after_sensitive,
+            after_unknown=annex_slice.after_unknown,
+        )
+        return [f"after: {payload}"]
+    hcl = render_hcl_annex(
+        annex_slice.value,
+        attr_name=attr_name,
+        before_sensitive=annex_slice.before_sensitive,
+        after_sensitive=annex_slice.after_sensitive,
+        after_unknown=annex_slice.after_unknown,
+        schema=schema,
+    )
+    if hcl is not None:
+        return ["after:", *_indent_annex_hcl(hcl)]
+    payload = render_json_annex(
+        annex_slice.value,
+        before_sensitive=annex_slice.before_sensitive,
+        after_sensitive=annex_slice.after_sensitive,
+        after_unknown=annex_slice.after_unknown,
+    )
+    return [f"after: {payload}"]
 
 
-def _literal_block(label: str, text: str) -> list[str]:
-    body = text.splitlines()
-    return [f"{label}: |", *[f"  {line}" for line in body]]
-
-
-def _detail_value(value: object) -> str:
-    match value:
-        case dict() | list():
-            return json.dumps(value, sort_keys=True, indent=2)
-        case _:
-            return display_path.inline_json(value)
+def _indent_annex_hcl(hcl: str) -> list[str]:
+    return [f"  {line}" if line else "" for line in hcl.splitlines()]

@@ -36,6 +36,8 @@ def test_module_resource_header_not_dim(create_modules_plan: Path) -> None:
         show_computed_deltas=False,
         show_full_config_annex=False,
         show_create_defaults=False,
+        show_json_annex=False,
+        resource_schema=None,
     )
     renderable = _build_module_tree(
         tree.modules[0],
@@ -73,6 +75,8 @@ def test_module_attr_lines_not_green(create_modules_plan: Path) -> None:
         show_computed_deltas=False,
         show_full_config_annex=False,
         show_create_defaults=False,
+        show_json_annex=False,
+        resource_schema=None,
     )
     renderable = _build_module_tree(
         tree.modules[0],

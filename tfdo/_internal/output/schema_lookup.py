@@ -16,12 +16,14 @@ CollectionKind = Literal["set", "list"]
 RequiredAttrsLookup = Callable[[str, str], frozenset[str]]
 CollectionKindLookup = Callable[[str, str, tuple[str | int, ...]], CollectionKind | None]
 ComputedOnlyLookup = Callable[[str, str, tuple[str | int, ...]], bool | None]
+ResourceSchemaLookup = Callable[[str, str], ResourceSchema | None]
 
 
 class SchemaLookups(NamedTuple):
     required_attrs: RequiredAttrsLookup
     collection_kind: CollectionKindLookup
     computed_at_path: ComputedOnlyLookup
+    resource_schema: ResourceSchemaLookup
 
 
 class SchemaFieldInfo(NamedTuple):
@@ -252,10 +254,14 @@ def build_schema_lookups(
             return None
         return attribute_computed_at_path(schema, str_path)
 
+    def resource_schema(provider_name: str, resource_type: str) -> ResourceSchema | None:
+        return index.get((provider_name, resource_type))
+
     return SchemaLookups(
         required_attrs=required_attrs,
         collection_kind=collection_kind,
         computed_at_path=computed_at_path,
+        resource_schema=resource_schema,
     )
 
 
@@ -293,8 +299,12 @@ def build_schema_lookups_from_index(
             return None
         return attribute_computed_at_path(schema, str_path)
 
+    def resource_schema(_provider_name: str, resource_type: str) -> ResourceSchema | None:
+        return index.get(resource_type)
+
     return SchemaLookups(
         required_attrs=required_attrs,
         collection_kind=collection_kind,
         computed_at_path=computed_at_path,
+        resource_schema=resource_schema,
     )

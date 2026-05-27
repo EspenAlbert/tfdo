@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from tfdo._internal.output.hcl_annex_spike import (
+from tfdo._internal.output.hcl_annex import (
     annex_attr_slice,
     find_resource_change,
     render_hcl_annex,

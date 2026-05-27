@@ -187,6 +187,7 @@ def render_fixture(
         provider_by_addr=provider_by_addr,
         collection_kind=lookups.collection_kind,
         computed_at_path=lookups.computed_at_path,
+        resource_schema=lookups.resource_schema,
         show_unknown_outputs=show_unknown_outputs,
         plan_display=display,
     )
