@@ -28,6 +28,8 @@ exclude = [
   "*_test.py",
   "conftest.py",
   "*_test/",
+  "testdata/",
+  "testdata_paths.py",
 ]
 
 [tool.hatch.build.targets.sdist]
