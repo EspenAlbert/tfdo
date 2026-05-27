@@ -30,20 +30,14 @@ from tfdo._internal.settings import load_user_config
 logger = logging.getLogger(__name__)
 
 
-def run_plan(input_model: PlanInput) -> PlanResult:
+def plan_and_render(input_model: PlanInput) -> PlanResult:
     settings = input_model.settings
-    if input_model.json_output:
-        logger.warning("--json is ignored; tfdo renders the plan instead of raw NDJSON")
-
     tfdo_dir(settings.work_dir).mkdir(parents=True, exist_ok=True)
     bin_path = plan_bin_path(settings.work_dir)
     json_path = plan_json_path(settings.work_dir)
 
     plan_result = plan_subprocess.run_streaming_plan(input_model)
     plan_exit_code = plan_result.exit_code
-
-    if input_model.out and bin_path.is_file():
-        export_plan_bin(bin_path, resolve_plan_out(settings.work_dir, input_model.out))
 
     if not bin_path.is_file():
         return PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)
@@ -96,3 +90,15 @@ def run_plan(input_model: PlanInput) -> PlanResult:
         plan_display=plan_display,
     )
     return PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)
+
+
+def run_plan(input_model: PlanInput) -> PlanResult:
+    if input_model.json_output:
+        logger.warning("--json is ignored; tfdo renders the plan instead of raw NDJSON")
+
+    result = plan_and_render(input_model)
+    if input_model.out:
+        bin_path = plan_bin_path(input_model.settings.work_dir)
+        if bin_path.is_file():
+            export_plan_bin(bin_path, resolve_plan_out(input_model.settings.work_dir, input_model.out))
+    return result

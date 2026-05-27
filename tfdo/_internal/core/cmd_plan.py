@@ -5,7 +5,7 @@ import typer
 from tfdo._internal import cmd_options
 from tfdo._internal.core import plan_logic
 from tfdo._internal.models import InitMode, PlanInput
-from tfdo._internal.output.plan_display import PlanDisplayCliOverrides
+from tfdo._internal.output.plan_display_cli import plan_display_cli_overrides
 from tfdo._internal.typer_app import app, get_settings
 
 
@@ -31,7 +31,7 @@ def plan_cmd(
         json_output=json_output,
         var_file=var_file,
         init_mode=init_mode,
-        plan_display_cli=PlanDisplayCliOverrides(
+        plan_display_cli=plan_display_cli_overrides(
             show_computed_drift=show_computed_drift,
             show_computed_deltas=show_computed_deltas,
             show_create_defaults=show_create_defaults,

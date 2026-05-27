@@ -43,10 +43,9 @@ def plan(input_model: PlanInput) -> PlanResult:
 
 
 def apply(input_model: ApplyInput) -> ApplyResult:
-    extra_flags: list[str] = []
-    if input_model.auto_approve:
-        extra_flags.append("-auto-approve")
-    return _run_lifecycle(input_model, "apply", extra_flags, ApplyResult)
+    from tfdo._internal.core import apply_logic
+
+    return apply_logic.run_apply(input_model)
 
 
 def destroy(input_model: DestroyInput) -> DestroyResult:

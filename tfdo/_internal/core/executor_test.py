@@ -6,7 +6,7 @@ import pytest
 from ask_shell.shell import AbortRetryError, ShellRun
 from typer.testing import CliRunner
 
-from tfdo._internal.core import binary, plan_logic, plan_subprocess, terraform_init
+from tfdo._internal.core import apply_logic, binary, plan_logic, plan_subprocess, terraform_init
 from tfdo._internal.core.executor import (
     _parse_tf_outputs,
     apply,
@@ -30,6 +30,7 @@ from tfdo._internal.core.terraform_init import (
 )
 from tfdo._internal.models import (
     ApplyInput,
+    ApplyResult,
     DestroyInput,
     InitInput,
     InitMode,
@@ -47,6 +48,7 @@ _patch_lifecycle_run = "tfdo._internal.core.lifecycle_shell.run_and_wait"
 _patch_plan_run = "tfdo._internal.core.plan_subprocess.run_and_wait"
 _patch_output_run = "tfdo._internal.core.executor.run_and_wait"
 _patch_which = f"{binary.resolve_binary.__module__}.{which.__name__}"
+_patch_plan_and_render = f"{plan_logic.__name__}.{plan_logic.plan_and_render.__name__}"
 
 
 def _make_settings(
@@ -246,11 +248,18 @@ def test_plan_always_init_aborts_on_failure(tmp_path: Path):
 def test_apply_auto_approve(tmp_path: Path):
     settings = _make_settings(tmp_path)
     run = _mock_run(exit_code=0)
-    with patch(_patch_lifecycle_run, return_value=run) as mock_raw:
+    bin_path = plan_bin_path(tmp_path)
+    bin_path.parent.mkdir(parents=True, exist_ok=True)
+    bin_path.write_bytes(b"")
+    with (
+        patch(_patch_plan_and_render, return_value=PlanResult(exit_code=0)),
+        patch(_patch_lifecycle_run, return_value=run) as mock_raw,
+    ):
         result = apply(ApplyInput(settings=settings, auto_approve=True, var_file=Path("prod.tfvars")))
     assert result.exit_code == 0
     cmd = mock_raw.call_args[0][0]
     assert "-auto-approve" in cmd
+    assert str(bin_path) in cmd
     assert "-var-file=prod.tfvars" in cmd
 
 
@@ -272,7 +281,11 @@ def test_lifecycle_always_init_then_command(tmp_path: Path):
     settings = _make_settings(tmp_path)
     init_run = _mock_run(exit_code=0, attempt=1)
     apply_run = _mock_run(exit_code=0)
+    bin_path = plan_bin_path(tmp_path)
+    bin_path.parent.mkdir(parents=True, exist_ok=True)
+    bin_path.write_bytes(b"")
     with (
+        patch(_patch_plan_and_render, return_value=PlanResult(exit_code=0)),
         patch(_patch_init_run, return_value=init_run),
         patch(_patch_lifecycle_run, return_value=apply_run) as mock_apply,
     ):
@@ -354,8 +367,7 @@ def test_apply_cmd_via_cli(tmp_path: Path):
     from tfdo._internal.core import cmd_apply  # noqa: F401
     from tfdo._internal.typer_app import app
 
-    run = _mock_run(exit_code=0)
-    with patch(_patch_lifecycle_run, return_value=run):
+    with patch.object(apply_logic, "run_apply", return_value=ApplyResult(exit_code=0)):
         result = runner.invoke(app, ["--work-dir", str(tmp_path), "apply", "--auto-approve"])
     assert result.exit_code == 0
 

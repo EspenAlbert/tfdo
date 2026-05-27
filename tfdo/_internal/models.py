@@ -74,6 +74,7 @@ def _check_interactive_approval(subcommand: str, auto_approve: bool, settings: T
 
 class ApplyInput(LifecycleInput):
     auto_approve: bool = False
+    plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
 
     @model_validator(mode="after")
     def _require_approval_source(self) -> Self:

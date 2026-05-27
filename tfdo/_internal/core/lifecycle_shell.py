@@ -16,7 +16,10 @@ def build_lifecycle_command(binary: str, subcommand: str, var_file: Path | None,
     return " ".join(parts)
 
 
-def run_lifecycle_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, result_cls: type[T]) -> T:
+def run_lifecycle_command[T: LifecycleResult](
+    settings: TfDoSettings, cmd: str, result_cls: type[T], *, user_input: bool | None = None
+) -> T:
+    resolved_input = settings.is_interactive if user_input is None else user_input
     try:
         run = run_and_wait(
             cmd,
@@ -24,7 +27,7 @@ def run_lifecycle_command[T: LifecycleResult](settings: TfDoSettings, cmd: str, 
             allow_non_zero_exit=True,
             ansi_content=True,
             skip_binary_check=True,
-            user_input=settings.is_interactive,
+            user_input=resolved_input,
         )
         return result_cls(exit_code=run.exit_code or 0, stdout=run.stdout, stderr=run.stderr or None)
     except ShellError as e:
