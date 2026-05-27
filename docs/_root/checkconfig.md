@@ -2,7 +2,7 @@
 
 <!-- === DO_NOT_EDIT: pkg-ext checkconfig_def === -->
 ## class: CheckConfig
-- [source](../../tfdo/_internal/settings.py#L133)
+- [source](../../tfdo/_internal/settings.py#L135)
 > **Since:** 0.3.0
 
 ```python

@@ -7,7 +7,7 @@
 - [CheckConfig](./checkconfig.md)
 - [`InteractiveMode`](#interactivemode_def)
 - [TfDoSettings](./tfdosettings.md)
-- [`TfDoUserConfig`](#tfdouserconfig_def)
+- [TfDoUserConfig](./tfdouserconfig.md)
 - [`get_settings`](#get_settings_def)
 - [`info_cmd`](#info_cmd_def)
 - [`main_callback`](#main_callback_def)
@@ -69,7 +69,7 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = None, w
 <a id="interactivemode_def"></a>
 
 ### class: `InteractiveMode`
-- [source](../../tfdo/_internal/settings.py#L24)
+- [source](../../tfdo/_internal/settings.py#L26)
 > **Since:** 0.2.0
 
 ```python
@@ -83,28 +83,6 @@ class InteractiveMode(StrEnum):
 |---------|--------|
 | 0.2.0 | Made public |
 <!-- === OK_EDIT: pkg-ext interactivemode_def === -->
-<!-- === DO_NOT_EDIT: pkg-ext tfdouserconfig_def === -->
-<a id="tfdouserconfig_def"></a>
-
-### class: `TfDoUserConfig`
-- [source](../../tfdo/_internal/settings.py#L138)
-> **Since:** 0.3.0
-
-```python
-class TfDoUserConfig(BaseModel):
-    check: CheckConfig | None = None
-```
-
-| Field | Type | Default | Since |
-|---|---|---|---|
-| check | `CheckConfig | None` | `None` | 0.3.0 |
-
-### Changes
-
-| Version | Change |
-|---------|--------|
-| 0.3.0 | Made public |
-<!-- === OK_EDIT: pkg-ext tfdouserconfig_def === -->
 <!-- === DO_NOT_EDIT: pkg-ext info_cmd_def === -->
 <a id="info_cmd_def"></a>
 

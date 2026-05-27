@@ -998,17 +998,38 @@ field_name: plan_display
 group: __ROOT__
 ---
 name: ''
-ts: 2026-05-27 17:59:30+00:00
+ts: 2026-05-27 18:02:15.913216+00:00
 type: fix
 author: Espen Albert
+group: ''
+ignored: true
+message: 'fix: Fix module attr indent and green style bleed'
+short_sha: d85917
+---
+name: ''
+ts: 2026-05-27 18:02:17.851651+00:00
+type: fix
+author: Espen Albert
+group: ''
 ignored: true
 message: 'fix: Drop extra text indent for module tree attributes'
 short_sha: b10fc5
 ---
 name: ''
-ts: 2026-05-27 17:59:30+00:00
+ts: 2026-05-27 18:02:28.040341+00:00
 type: fix
 author: Espen Albert
+group: ''
 ignored: true
-message: 'fix: Fix module attr indent and green style bleed'
-short_sha: d85917
+message: 'fix(ci): Register private API symbols and fix pyright import
+
+
+  Adds pkg-ext keep_private decisions for new internal symbols, records
+
+  ignored fix commits for bot pre-commit, and imports ShellRunEventT from
+
+  ask_shell._internal.events for pyright.
+
+
+  Co-authored-by: Cursor <cursoragent@cursor.com>'
+short_sha: 031418

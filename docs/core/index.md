@@ -24,7 +24,7 @@
 > **Since:** 0.1.0
 
 ```python
-def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None) -> None:
     ...
 ```
 
@@ -37,6 +37,11 @@ Run terraform apply.
 | `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
 | `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
+| `--show-computed-drift` | `bool | None` | `None` | - | - |
+| `--show-computed-deltas` | `bool | None` | `None` | - | - |
+| `--show-create-defaults` | `bool | None` | `None` | - | - |
+| `--show-full-config-annex` | `bool | None` | `None` | - | - |
+| `--show-json-annex` | `bool | None` | `None` | - | - |
 
 ### Changes
 
@@ -84,7 +89,7 @@ Run terraform fmt check + validate (ruff-style).
 > **Since:** 0.1.0
 
 ```python
-def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None) -> None:
     ...
 ```
 
@@ -97,6 +102,11 @@ Run terraform destroy.
 | `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
 | `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
+| `--show-computed-drift` | `bool | None` | `None` | - | - |
+| `--show-computed-deltas` | `bool | None` | `None` | - | - |
+| `--show-create-defaults` | `bool | None` | `None` | - | - |
+| `--show-full-config-annex` | `bool | None` | `None` | - | - |
+| `--show-json-annex` | `bool | None` | `None` | - | - |
 
 ### Changes
 
@@ -139,7 +149,7 @@ Run terraform init with retry on transient errors.
 > **Since:** 0.1.0
 
 ```python
-def plan_cmd(*, out: Path | None = None, json_output: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def plan_cmd(*, out: Path | None = None, json_output: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None) -> None:
     ...
 ```
 
@@ -153,6 +163,11 @@ Run terraform plan.
 | `--json` | `bool` | `False` | - | Output plan in JSON format |
 | `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
+| `--show-computed-drift` | `bool | None` | `None` | - | - |
+| `--show-computed-deltas` | `bool | None` | `None` | - | - |
+| `--show-create-defaults` | `bool | None` | `None` | - | - |
+| `--show-full-config-annex` | `bool | None` | `None` | - | - |
+| `--show-json-annex` | `bool | None` | `None` | - | - |
 
 ### Changes
 
@@ -164,7 +179,7 @@ Run terraform plan.
 <a id="initmode_def"></a>
 
 ### class: `InitMode`
-- [source](../../tfdo/_internal/models.py#L17)
+- [source](../../tfdo/_internal/models.py#L19)
 > **Since:** 0.2.0
 
 ```python

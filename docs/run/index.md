@@ -23,7 +23,7 @@
 > **Since:** 0.6.0
 
 ```python
-def run_apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def run_apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None) -> None:
     ...
 ```
 
@@ -36,6 +36,11 @@ Run apply across multiple run directories.
 | `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
 | `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
+| `--show-computed-drift` | `bool | None` | `None` | - | - |
+| `--show-computed-deltas` | `bool | None` | `None` | - | - |
+| `--show-create-defaults` | `bool | None` | `None` | - | - |
+| `--show-full-config-annex` | `bool | None` | `None` | - | - |
+| `--show-json-annex` | `bool | None` | `None` | - | - |
 
 ### Changes
 
@@ -78,11 +83,11 @@ def run_callback(*, env: str | None = None, app_name: str | None = None, team: s
 <a id="run_destroy_cmd_def"></a>
 
 ### cli_command: `run_destroy_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L136)
+- [source](../../tfdo/_internal/run/cmd_run.py#L153)
 > **Since:** 0.6.0
 
 ```python
-def run_destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def run_destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None) -> None:
     ...
 ```
 
@@ -95,6 +100,11 @@ Run destroy across multiple run directories.
 | `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
 | `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
+| `--show-computed-drift` | `bool | None` | `None` | - | - |
+| `--show-computed-deltas` | `bool | None` | `None` | - | - |
+| `--show-create-defaults` | `bool | None` | `None` | - | - |
+| `--show-full-config-annex` | `bool | None` | `None` | - | - |
+| `--show-json-annex` | `bool | None` | `None` | - | - |
 
 ### Changes
 
