@@ -6,8 +6,7 @@ import time
 from enum import StrEnum
 
 from ask_shell import console as ask_console
-from ask_shell._internal.events import ShellRunStdOutput
-from ask_shell._internal.models import ShellRunEventT
+from ask_shell._internal.events import ShellRunEventT, ShellRunStdOutput
 from ask_shell.console import RemoveLivePart
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.text import Text
