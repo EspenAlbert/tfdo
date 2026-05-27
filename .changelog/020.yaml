@@ -1060,3 +1060,18 @@ type: make_public
 details: created in _internal/output/plan_display.py
 full_path: _internal.output.plan_display.DetailLevel
 group: config
+---
+name: truncate_inline_rendered
+ts: 2026-05-27 18:40:14.258430+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.truncate_inline_rendered
+---
+name: format_computed_before_value
+ts: 2026-05-27 18:40:14.258493+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.format_computed_before_value
+---
+name: format_computed_structural_line
+ts: 2026-05-27 18:40:14.258504+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.format_computed_structural_line
