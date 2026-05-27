@@ -22,6 +22,7 @@ def _plan_input_from_destroy(input_model: DestroyInput) -> PlanInput:
         extra_args=input_model.extra_args,
         init_backend_args=input_model.init_backend_args,
         plan_display_cli=input_model.plan_display_cli,
+        detail=input_model.detail,
         destroy_plan=True,
     )
 

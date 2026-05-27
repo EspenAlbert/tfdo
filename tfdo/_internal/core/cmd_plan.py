@@ -5,6 +5,7 @@ import typer
 from tfdo._internal import cmd_options
 from tfdo._internal.core import plan_logic
 from tfdo._internal.models import InitMode, PlanInput
+from tfdo._internal.output.plan_display import DetailLevel
 from tfdo._internal.typer_app import app, get_settings
 
 
@@ -21,6 +22,7 @@ def plan_cmd(
     show_create_defaults: bool | None = cmd_options.show_create_defaults_option(),
     show_full_config_annex: bool | None = cmd_options.show_full_config_annex_option(),
     show_json_annex: bool | None = cmd_options.show_json_annex_option(),
+    detail: DetailLevel = cmd_options.detail_option(),
 ) -> None:
     """Run terraform plan."""
     settings = get_settings(ctx)
@@ -30,6 +32,7 @@ def plan_cmd(
         json_output=json_output,
         var_file=var_file,
         init_mode=init_mode,
+        detail=detail,
         plan_display_cli=cmd_options.plan_display_cli_overrides(
             show_computed_drift=show_computed_drift,
             show_computed_deltas=show_computed_deltas,

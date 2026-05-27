@@ -4,7 +4,15 @@ from pathlib import Path
 import typer
 
 from tfdo._internal.models import InitMode
-from tfdo._internal.output.plan_display import PlanDisplayCliOverrides
+from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
+
+
+def detail_option() -> DetailLevel:
+    return typer.Option(
+        DetailLevel.COMPACT,
+        "--detail",
+        help="Plan display depth: compact (default) or full",
+    )
 
 
 def var_file_option() -> Path | None:

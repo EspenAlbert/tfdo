@@ -19,7 +19,8 @@ from tfdo._internal.output.plan_artifacts import (
     resolve_plan_out,
     tfdo_dir,
 )
-from tfdo._internal.output.plan_display import merge_plan_display
+from tfdo._internal.output.plan_display import detail_preset, merge_plan_display
+from tfdo._internal.output.plan_footer import print_plan_footer
 from tfdo._internal.output.plan_render_input import build_attr_lines_by_addr
 from tfdo._internal.output.plan_renderer import render_plan
 from tfdo._internal.output.schema_lookup import build_schema_lookups
@@ -67,7 +68,12 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         workspace_root=settings.work_dir,
         schema_cache_dir=settings.schema_cache_dir,
     )
-    plan_display = merge_plan_display(load_user_config(settings).plan_display, input_model.plan_display_cli)
+    user_config = load_user_config(settings)
+    plan_display = merge_plan_display(
+        detail_preset(input_model.detail),
+        user_config.plan_display,
+        input_model.plan_display_cli,
+    )
     tree = build_plan_tree(plan)
     provider_by_addr = {rc.address: rc.provider_name or "" for rc in [*plan.resource_changes, *plan.resource_drift]}
     attr_lines = build_attr_lines_by_addr(
@@ -89,6 +95,7 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         complex_config=ComplexRenderConfig(max_structural_lines=plan_display.max_inline_lines),
         plan_display=plan_display,
     )
+    print_plan_footer(settings, detail=input_model.detail)
     return PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)
 
 

@@ -24,7 +24,7 @@ from tfdo._internal.hooks.models import HookAbortError
 from tfdo._internal.hooks.registry import HookRegistry
 from tfdo._internal.hooks.runner import LocalHookRunner
 from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, OutputInput, PlanInput
-from tfdo._internal.output.plan_display import PlanDisplayCliOverrides
+from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
 from tfdo._internal.run import filtering, tags_injection, var_file_resolution
 from tfdo._internal.run.discovery import (
     DiscoveredRunDir,
@@ -61,6 +61,7 @@ class RunOrchestrationInput(BaseModel):
     var_file: Path | None = None
     extra_flags: list[str] = Field(default_factory=list)
     auto_approve: bool = False
+    detail: DetailLevel = DetailLevel.COMPACT
     plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
 
 
@@ -317,6 +318,7 @@ def _dispatch_command(
                 init_mode=mode,
                 extra_args=extra_flags,
                 init_backend_args=backend_args,
+                detail=inp.detail,
                 plan_display_cli=inp.plan_display_cli,
             )
         )
@@ -328,6 +330,7 @@ def _dispatch_command(
                 init_mode=mode,
                 extra_args=extra_flags,
                 init_backend_args=backend_args,
+                detail=inp.detail,
                 plan_display_cli=inp.plan_display_cli,
             )
         )
@@ -339,6 +342,7 @@ def _dispatch_command(
                 init_mode=mode,
                 extra_args=extra_flags,
                 init_backend_args=backend_args,
+                detail=inp.detail,
                 plan_display_cli=inp.plan_display_cli,
             )
         )

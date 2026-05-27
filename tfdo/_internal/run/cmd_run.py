@@ -7,6 +7,7 @@ from tfdo._internal import cmd_options
 from tfdo._internal.config.config_file import load_config
 from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.models import InitMode
+from tfdo._internal.output.plan_display import DetailLevel
 from tfdo._internal.run import orchestration, run_options
 from tfdo._internal.run.orchestration import FailureMode, LifecycleCommand, RunOrchestrationInput
 from tfdo._internal.settings import TfDoSettings
@@ -110,6 +111,7 @@ def run_plan_cmd(
     show_create_defaults: bool | None = cmd_options.show_create_defaults_option(),
     show_full_config_annex: bool | None = cmd_options.show_full_config_annex_option(),
     show_json_annex: bool | None = cmd_options.show_json_annex_option(),
+    detail: DetailLevel = cmd_options.detail_option(),
 ) -> None:
     """Run plan across multiple run directories."""
     extra_flags: list[str] = []
@@ -123,6 +125,7 @@ def run_plan_cmd(
         var_file=var_file,
         init_mode=init_mode,
         extra_flags=extra_flags,
+        detail=detail,
         plan_display_cli=cmd_options.plan_display_cli_overrides(
             show_computed_drift=show_computed_drift,
             show_computed_deltas=show_computed_deltas,
@@ -147,6 +150,7 @@ def run_apply_cmd(
     show_create_defaults: bool | None = cmd_options.show_create_defaults_option(),
     show_full_config_annex: bool | None = cmd_options.show_full_config_annex_option(),
     show_json_annex: bool | None = cmd_options.show_json_annex_option(),
+    detail: DetailLevel = cmd_options.detail_option(),
 ) -> None:
     """Run apply across multiple run directories."""
     run_ctx = _get_run_context(ctx)
@@ -155,6 +159,7 @@ def run_apply_cmd(
         auto_approve=auto_approve,
         var_file=var_file,
         init_mode=init_mode,
+        detail=detail,
         plan_display_cli=cmd_options.plan_display_cli_overrides(
             show_computed_drift=show_computed_drift,
             show_computed_deltas=show_computed_deltas,
@@ -179,6 +184,7 @@ def run_destroy_cmd(
     show_create_defaults: bool | None = cmd_options.show_create_defaults_option(),
     show_full_config_annex: bool | None = cmd_options.show_full_config_annex_option(),
     show_json_annex: bool | None = cmd_options.show_json_annex_option(),
+    detail: DetailLevel = cmd_options.detail_option(),
 ) -> None:
     """Run destroy across multiple run directories."""
     run_ctx = _get_run_context(ctx)
@@ -187,6 +193,7 @@ def run_destroy_cmd(
         auto_approve=auto_approve,
         var_file=var_file,
         init_mode=init_mode,
+        detail=detail,
         plan_display_cli=cmd_options.plan_display_cli_overrides(
             show_computed_drift=show_computed_drift,
             show_computed_deltas=show_computed_deltas,
