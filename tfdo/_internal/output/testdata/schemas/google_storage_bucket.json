@@ -1,0 +1,58 @@
+{
+  "version": 0,
+  "block": {
+    "attributes": {
+      "name": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "block_types": {
+      "lifecycle_rule": {
+        "nesting_mode": "list",
+        "block": {
+          "block_types": {
+            "action": {
+              "nesting_mode": "list",
+              "block": {
+                "attributes": {
+                  "storage_class": {
+                    "type": "string",
+                    "optional": true
+                  },
+                  "type": {
+                    "type": "string",
+                    "required": true
+                  }
+                }
+              }
+            },
+            "condition": {
+              "nesting_mode": "list",
+              "block": {
+                "attributes": {
+                  "age": {
+                    "type": "number",
+                    "optional": true
+                  },
+                  "created_before": {
+                    "type": "string",
+                    "optional": true
+                  },
+                  "custom_time_before": {
+                    "type": "string",
+                    "optional": true
+                  },
+                  "noncurrent_time_before": {
+                    "type": "string",
+                    "optional": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

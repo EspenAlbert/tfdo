@@ -22,6 +22,17 @@ class SchemaLookups(NamedTuple):
     collection_kind: CollectionKindLookup
 
 
+class SchemaFieldInfo(NamedTuple):
+    is_block: bool
+    nesting_mode: str | None
+
+
+class _Segment(NamedTuple):
+    block: SchemaBlock
+    nesting_mode: str | None
+    is_block: bool
+
+
 def resource_schema_required_attrs(schema: ResourceSchema) -> frozenset[str]:
     out: set[str] = set()
     for name, attr in (schema.block.attributes or {}).items():
@@ -41,19 +52,37 @@ def _nesting_to_kind(mode: str | None) -> CollectionKind | None:
     return None
 
 
-def _resolve_segment(block: SchemaBlock, name: str) -> tuple[SchemaBlock, CollectionKind | None] | None:
+def _resolve_segment(block: SchemaBlock, name: str) -> _Segment | None:
     attrs = block.attributes or {}
     if name in attrs:
         attr = attrs[name]
         nested = attr.nested_type
         if nested is None:
             return None
-        return nested, _nesting_to_kind(nested.nesting_mode)
+        return _Segment(nested, nested.nesting_mode, False)
     block_types = block.block_types or {}
     if name in block_types:
         bt = block_types[name]
-        return bt.block, _nesting_to_kind(bt.nesting_mode)
+        return _Segment(bt.block, bt.nesting_mode, True)
     return None
+
+
+def schema_field_at_path(schema: ResourceSchema, path: tuple[str | int, ...]) -> SchemaFieldInfo | None:
+    if not path:
+        return None
+    str_parts = [part for part in path if isinstance(part, str)]
+    if not str_parts:
+        return None
+    block = schema.block
+    segment: _Segment | None = None
+    for name in str_parts:
+        segment = _resolve_segment(block, name)
+        if segment is None:
+            return None
+        block = segment.block
+    if segment is None:
+        return None
+    return SchemaFieldInfo(is_block=segment.is_block, nesting_mode=segment.nesting_mode)
 
 
 def attribute_collection_kind(
@@ -73,10 +102,9 @@ def attribute_collection_kind(
         resolved = _resolve_segment(block, part)
         if resolved is None:
             return None
-        child_block, kind = resolved
         if i == terminal_i:
-            return kind
-        block = child_block
+            return _nesting_to_kind(resolved.nesting_mode)
+        block = resolved.block
     return None
 
 

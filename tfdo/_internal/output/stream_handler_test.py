@@ -64,5 +64,7 @@ def test_apply_events_and_planning_status(_add_mock: MagicMock) -> None:
     assert "refresh" in plain
     assert "0 done" in plain
     assert "1 running" in plain
-    assert handler._status_line().plain == "planning…"
+    planning_status = handler._status_line()
+    assert planning_status is not None
+    assert planning_status.plain == "planning…"
     assert "plan: computing changes…" in [c[0][0] for c in print_mock.call_args_list]
