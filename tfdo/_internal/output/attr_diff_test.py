@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
-from tfdo._internal.output.attr_diff import compute_attr_lines
+from tfdo._internal.output.attr_diff import AttrPrefix, compute_attr_lines
 from tfdo._internal.output.display_path import replace_display_key
 from tfdo._internal.output.models import Change, PlanOutput
 from tfdo._internal.output.parser import parse_plan_file
+from tfdo._internal.output.schema_lookup import resource_schema_required_attrs
+from tfdo._internal.output.testdata_paths import TESTDATA_DIR
+from tfdo._internal.schema.models import ResourceSchema
+
+_CLUSTER_SCHEMA_PATH = TESTDATA_DIR / "schemas" / "mongodbatlas_advanced_cluster.json"
 
 
 def _change(plan: PlanOutput, address: str) -> Change:
@@ -19,6 +25,20 @@ def _change(plan: PlanOutput, address: str) -> Change:
 
 def _names(lines: list) -> list[tuple[str, str | None]]:
     return [(line.name, line.prefix or None) for line in lines]
+
+
+def _context_names(lines: list) -> list[str]:
+    return [line.name for line in lines if line.prefix is None]
+
+
+def _cluster_change() -> Change:
+    payload = json.loads((TESTDATA_DIR / "08_cluster_resize.json").read_text())
+    return Change.model_validate(payload["resource_changes"][0]["change"])
+
+
+def _cluster_required_from_schema() -> frozenset[str]:
+    schema = ResourceSchema.model_validate(json.loads(_CLUSTER_SCHEMA_PATH.read_text()))
+    return resource_schema_required_attrs(schema)
 
 
 def test_create_hides_unknown_and_marks_user_set(create_flat_plan: Path) -> None:
@@ -121,3 +141,41 @@ def test_replace_fixture_multi_resource(replace_plan: Path) -> None:
     token = compute_attr_lines(_change(plan, "random_string.token"), frozenset())
     assert ("length", "!") in _names(token)
     assert ("special", "!") in _names(token)
+
+
+def test_update_required_context_with_full_after() -> None:
+    lines = compute_attr_lines(_cluster_change(), _cluster_required_from_schema())
+    assert _context_names(lines) == ["cluster_type", "name", "project_id"]
+
+
+def test_update_required_context_with_config_only_after() -> None:
+    change = _cluster_change()
+    after = dict(change.after or {})
+    for key in ("cluster_type", "name", "project_id"):
+        after.pop(key, None)
+    config_only = change.model_copy(update={"after": after})
+
+    lines = compute_attr_lines(config_only, _cluster_required_from_schema())
+
+    assert _context_names(lines) == ["cluster_type", "name", "project_id"]
+    changed_names = {line.name for line in lines if line.prefix == AttrPrefix.CHANGE}
+    assert "replication_specs" in changed_names
+    assert "cluster_type" not in changed_names
+    assert "name" not in changed_names
+    assert "project_id" not in changed_names
+
+
+def test_update_changed_required_attr_shows_delta_not_context() -> None:
+    change = _cluster_change()
+    before = dict(change.before or {})
+    after = dict(change.after or {})
+    after["name"] = "renamed-cluster"
+    renamed = change.model_copy(update={"before": before, "after": after})
+
+    lines = compute_attr_lines(renamed, _cluster_required_from_schema())
+
+    assert "name" not in _context_names(lines)
+    name_line = next(line for line in lines if line.name == "name")
+    assert name_line.prefix == AttrPrefix.CHANGE
+    assert name_line.old_value == "example-cluster-name"
+    assert name_line.new_value == "renamed-cluster"

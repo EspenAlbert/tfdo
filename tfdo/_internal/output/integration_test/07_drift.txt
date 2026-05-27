@@ -4,3 +4,10 @@
 ⚠️ local_file.config (deleted)
 
 🟢 local_file.config
+       filename: "./output/config.json"
+     + content: {"version":"1.0.0"}
+     + content_base64: null
+     + directory_permission: "0777"
+     + file_permission: "0644"
+     + sensitive_content: (sensitive)
+     + source: null

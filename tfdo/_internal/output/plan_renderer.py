@@ -370,11 +370,9 @@ def _filter_attr_lines_by_addr(
 ) -> ResourceAttrLines:
     planned: dict[str, list[AttrLine]] = {}
     drift: dict[str, list[AttrLine]] = {}
-    drift_addrs = {node.address for node in tree.drift}
-    for node in _iter_all_resources(tree):
-        source = attr_lines.drift if node.address in drift_addrs else attr_lines.planned
-        lines = source.get(node.address, [])
-        filtered = filter_attr_lines(
+
+    def store_filtered(node: ResourceNode, lines: list[AttrLine], dest: dict[str, list[AttrLine]]) -> None:
+        dest[node.address] = filter_attr_lines(
             lines,
             change=node.change,
             lookup=lookup,
@@ -382,10 +380,19 @@ def _filter_attr_lines_by_addr(
             resource_type=node.type,
             show_computed_deltas=show_computed_deltas,
         )
-        if node.address in drift_addrs:
-            drift[node.address] = filtered
-        else:
-            planned[node.address] = filtered
+
+    for node in tree.drift:
+        store_filtered(node, attr_lines.drift.get(node.address, []), drift)
+    for node in tree.root_resources:
+        store_filtered(node, attr_lines.planned.get(node.address, []), planned)
+
+    def walk(modules: list[ModuleNode]) -> None:
+        for module in modules:
+            for node in module.child_resources:
+                store_filtered(node, attr_lines.planned.get(node.address, []), planned)
+            walk(module.child_modules)
+
+    walk(tree.modules)
     return ResourceAttrLines(planned=planned, drift=drift)
 
 

@@ -13,6 +13,7 @@ from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_renderer import (
     _build_complex_results,
     _build_module_tree,
+    _filter_attr_lines_by_addr,
     _format_output_section,
     _module_depth_by_address,
 )
@@ -137,6 +138,23 @@ def test_long_scalar_splits_old_new_at_arrow(update_plan: Path, capture_console)
     assert lines[content_i + 1].startswith("     -> ")
 
 
+def test_drift_create_same_address_keeps_planned_attrs(drift_plan: Path) -> None:
+    plan = parse_plan_file(drift_plan)
+    tree = build_plan_tree(plan)
+    providers = {rc.address: rc.provider_name or "" for rc in [*plan.resource_changes, *plan.resource_drift]}
+    raw = build_attr_lines_by_addr(tree, plan=plan)
+    filtered = _filter_attr_lines_by_addr(
+        tree,
+        raw,
+        providers,
+        lookup=lambda _p, _t, _path: None,
+        show_computed_deltas=False,
+    )
+    planned_lines = filtered.planned["local_file.config"]
+    assert planned_lines
+    assert any(line.name == "filename" for line in planned_lines)
+
+
 def test_drift_after_plan_header(drift_plan: Path, capture_console) -> None:
     rendered = render_fixture(drift_plan, capture_console)
     drift_idx = rendered.index("⚠️ Drift:")
@@ -144,6 +162,7 @@ def test_drift_after_plan_header(drift_plan: Path, capture_console) -> None:
     assert header_idx < drift_idx
     assert "⚠️ local_file.config" in rendered
     assert "🟢 local_file.config" in rendered
+    assert 'filename: "./output/config.json"' in rendered
 
 
 def test_destroy_with_required_context(destroy_plan: Path, capture_console) -> None:

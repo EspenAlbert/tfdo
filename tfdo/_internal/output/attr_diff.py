@@ -79,9 +79,16 @@ def _update_lines(
     changed = _top_level_changed_keys(before, after)
     removed = _removed_keys(before, after)
     for name in sorted(required_attrs):
-        if name not in before or name not in after or name in changed or name in removed:
+        if name not in before or _is_after_unknown(change.after_unknown, name):
             continue
-        lines.append(_line(name, None, before[name], after[name], change))
+        before_val = before[name]
+        if name in after:
+            after_val = after[name]
+            if before_val != after_val:
+                continue
+        else:
+            after_val = before_val
+        lines.append(_line(name, None, before_val, after_val, change))
     for name in sorted(changed - removed):
         if _is_after_unknown(change.after_unknown, name):
             continue
