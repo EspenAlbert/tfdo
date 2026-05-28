@@ -1,0 +1,13 @@
+name: has_unknown_values
+ts: 2026-05-28 09:22:52.040510+00:00
+type: keep_private
+full_path: _internal.output.unknown_markers.has_unknown_values
+---
+name: core
+ts: 2026-05-28 09:23:01.532086+00:00
+type: fix
+author: Espen Albert
+changelog_message: 'fix(output): Accept structured after_unknown on output changes'
+group: core
+message: 'fix(output): Accept structured after_unknown on output changes'
+short_sha: 6defd3
