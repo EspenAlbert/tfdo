@@ -1,0 +1,227 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.12.1",
+  "planned_values": {
+    "outputs": {
+      "app_name": {
+        "sensitive": false,
+        "type": "string",
+        "value": "myapp-mastodon"
+      },
+      "deployed_at": {
+        "sensitive": false,
+        "type": "string",
+        "value": "2026-05-18T19:00:00Z"
+      },
+      "environment": {
+        "sensitive": false,
+        "type": "string",
+        "value": "production"
+      },
+      "version": {
+        "sensitive": false,
+        "type": "string",
+        "value": "2.0.0"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "random_pet.app",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "app",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 0,
+          "values": {
+            "id": "myapp-mastodon",
+            "keepers": null,
+            "length": 1,
+            "prefix": "myapp",
+            "separator": "-"
+          },
+          "sensitive_values": {}
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "random_pet.app",
+      "mode": "managed",
+      "type": "random_pet",
+      "name": "app",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "no-op"
+        ],
+        "before": {
+          "id": "myapp-mastodon",
+          "keepers": null,
+          "length": 1,
+          "prefix": "myapp",
+          "separator": "-"
+        },
+        "after": {
+          "id": "myapp-mastodon",
+          "keepers": null,
+          "length": 1,
+          "prefix": "myapp",
+          "separator": "-"
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "output_changes": {
+    "app_name": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "myapp-mastodon",
+      "after": "myapp-mastodon",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "deployed_at": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "2026-05-18T19:00:00Z",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "environment": {
+      "actions": [
+        "update"
+      ],
+      "before": "staging",
+      "after": "production",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "version": {
+      "actions": [
+        "update"
+      ],
+      "before": "1.0.0",
+      "after": "2.0.0",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.12.1",
+    "values": {
+      "outputs": {
+        "app_name": {
+          "sensitive": false,
+          "value": "myapp-mastodon",
+          "type": "string"
+        },
+        "deployed_at": {
+          "sensitive": false,
+          "value": "2026-05-18T19:00:00Z",
+          "type": "string"
+        },
+        "environment": {
+          "sensitive": false,
+          "value": "production",
+          "type": "string"
+        },
+        "version": {
+          "sensitive": false,
+          "value": "2.0.0",
+          "type": "string"
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "random_pet.app",
+            "mode": "managed",
+            "type": "random_pet",
+            "name": "app",
+            "provider_name": "registry.terraform.io/hashicorp/random",
+            "schema_version": 0,
+            "values": {
+              "id": "myapp-mastodon",
+              "keepers": null,
+              "length": 1,
+              "prefix": "myapp",
+              "separator": "-"
+            },
+            "sensitive_values": {}
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "random": {
+        "name": "random",
+        "full_name": "registry.terraform.io/hashicorp/random",
+        "version_constraint": "~> 3.6"
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "app_name": {
+          "expression": {
+            "references": [
+              "random_pet.app.id",
+              "random_pet.app"
+            ]
+          }
+        },
+        "deployed_at": {
+          "expression": {
+            "constant_value": "2026-05-18T19:00:00Z"
+          }
+        },
+        "environment": {
+          "expression": {
+            "constant_value": "production"
+          }
+        },
+        "version": {
+          "expression": {
+            "constant_value": "2.0.0"
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "random_pet.app",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "app",
+          "provider_config_key": "random",
+          "expressions": {
+            "length": {
+              "constant_value": 1
+            },
+            "prefix": {
+              "constant_value": "myapp"
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-05-18T18:46:00Z",
+  "applyable": true,
+  "complete": true,
+  "errored": false
+}

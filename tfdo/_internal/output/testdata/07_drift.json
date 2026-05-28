@@ -1,0 +1,181 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.12.1",
+  "planned_values": {
+    "outputs": {
+      "config_version": {
+        "sensitive": false,
+        "type": "string",
+        "value": "1.0.0"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "local_file.config",
+          "mode": "managed",
+          "type": "local_file",
+          "name": "config",
+          "provider_name": "registry.terraform.io/hashicorp/local",
+          "schema_version": 0,
+          "values": {
+            "content": "{\"version\": \"1.0.0\"}",
+            "content_base64": null,
+            "directory_permission": "0777",
+            "file_permission": "0644",
+            "filename": "./output/config.json",
+            "sensitive_content": null,
+            "source": null
+          },
+          "sensitive_values": {
+            "sensitive_content": true
+          }
+        }
+      ]
+    }
+  },
+  "resource_drift": [
+    {
+      "address": "local_file.config",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "config",
+      "provider_name": "registry.terraform.io/hashicorp/local",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "content": "{\"version\": \"1.0.0\"}",
+          "content_base64": null,
+          "content_base64sha256": "ZisgKJrrGkJb5AgsjABl9ogYwSf9OzXjCxH4vwOyvcs=",
+          "content_base64sha512": "ni+8x6z2VqsfPOiXvmEtlslgVE2+cXOydvQBdz+kKDX1hI85QRHbXGUs7F6AL+ekwHi1DB5ZSb51d0EQ+3BkiA==",
+          "content_md5": "298c8d59fc6fca8f888cd7909595d0cb",
+          "content_sha1": "8f222bdf815a81b710e57945eef86cdb5568d67d",
+          "content_sha256": "662b20289aeb1a425be4082c8c0065f68818c127fd3b35e30b11f8bf03b2bdcb",
+          "content_sha512": "9e2fbcc7acf656ab1f3ce897be612d96c960544dbe7173b276f401773fa42835f5848f394111db5c652cec5e802fe7a4c078b50c1e5949be75774110fb706488",
+          "directory_permission": "0777",
+          "file_permission": "0644",
+          "filename": "./output/config.json",
+          "id": "8f222bdf815a81b710e57945eef86cdb5568d67d",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "sensitive_content": true
+        },
+        "after_sensitive": false
+      }
+    }
+  ],
+  "resource_changes": [
+    {
+      "address": "local_file.config",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "config",
+      "provider_name": "registry.terraform.io/hashicorp/local",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content": "{\"version\": \"1.0.0\"}",
+          "content_base64": null,
+          "directory_permission": "0777",
+          "file_permission": "0644",
+          "filename": "./output/config.json",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after_unknown": {
+          "content_base64sha256": true,
+          "content_base64sha512": true,
+          "content_md5": true,
+          "content_sha1": true,
+          "content_sha256": true,
+          "content_sha512": true,
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "sensitive_content": true
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "config_version": {
+      "actions": [
+        "no-op"
+      ],
+      "before": "1.0.0",
+      "after": "1.0.0",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.12.1",
+    "values": {
+      "outputs": {
+        "config_version": {
+          "sensitive": false,
+          "value": "1.0.0",
+          "type": "string"
+        }
+      },
+      "root_module": {}
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "local": {
+        "name": "local",
+        "full_name": "registry.terraform.io/hashicorp/local",
+        "version_constraint": "~> 2.5"
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "config_version": {
+          "expression": {
+            "constant_value": "1.0.0"
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "local_file.config",
+          "mode": "managed",
+          "type": "local_file",
+          "name": "config",
+          "provider_config_key": "local",
+          "expressions": {
+            "content": {
+              "constant_value": "{\"version\": \"1.0.0\"}"
+            },
+            "file_permission": {
+              "constant_value": "0644"
+            },
+            "filename": {
+              "references": [
+                "path.module"
+              ]
+            }
+          },
+          "schema_version": 0
+        }
+      ]
+    }
+  },
+  "timestamp": "2026-05-18T19:05:39Z",
+  "applyable": true,
+  "complete": true,
+  "errored": false
+}

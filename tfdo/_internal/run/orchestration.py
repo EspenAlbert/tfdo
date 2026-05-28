@@ -15,9 +15,8 @@ from tfdo._internal.config import backend_resolution, config_resolution
 from tfdo._internal.config.config_file import load_config_layers
 from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
-from tfdo._internal.config.discovery_pattern import parse_discovery_pattern
 from tfdo._internal.config.enums import LifecycleCommand, LifecycleEvent
-from tfdo._internal.core import executor
+from tfdo._internal.core import executor, lifecycle_init_retry, terraform_init
 from tfdo._internal.git_utils import parse_git_remote
 from tfdo._internal.hooks import execution as hook_execution
 from tfdo._internal.hooks.execution import HookContext
@@ -25,6 +24,7 @@ from tfdo._internal.hooks.models import HookAbortError
 from tfdo._internal.hooks.registry import HookRegistry
 from tfdo._internal.hooks.runner import LocalHookRunner
 from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, OutputInput, PlanInput
+from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
 from tfdo._internal.run import filtering, tags_injection, var_file_resolution
 from tfdo._internal.run.discovery import (
     DiscoveredRunDir,
@@ -61,6 +61,8 @@ class RunOrchestrationInput(BaseModel):
     var_file: Path | None = None
     extra_flags: list[str] = Field(default_factory=list)
     auto_approve: bool = False
+    detail: DetailLevel = DetailLevel.COMPACT
+    plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
 
 
 class RunDirResult(BaseModel):
@@ -204,7 +206,7 @@ def _dependency_outputs_or_log(
 
 
 def _outputs_after_prereq_init(init_input: InitInput, run_dir_path: Path) -> dict[str, object] | None:
-    if (ir := executor.init(init_input)).exit_code != 0:
+    if (ir := terraform_init.init(init_input)).exit_code != 0:
         logger.warning(f"terraform init before output failed in {run_dir_path}: {ir.stderr}")
         return None
     return _dependency_outputs_or_log(init_input, run_dir_path)
@@ -215,11 +217,11 @@ def _outputs_retry_after_auto_init(
     run_dir_path: Path,
     stderr: str,
 ) -> dict[str, object] | None:
-    init_for_retry = executor.init_input_for_output_retry(stderr, init_input)
+    init_for_retry = lifecycle_init_retry.init_input_for_output_retry(stderr, init_input)
     if init_for_retry is None:
         logger.warning(f"terraform output failed in {run_dir_path}: {stderr}")
         return None
-    if (ir := executor.init(init_for_retry)).exit_code != 0:
+    if (ir := terraform_init.init(init_for_retry)).exit_code != 0:
         logger.warning(f"terraform init before output retry failed in {run_dir_path}: {ir.stderr}")
         return None
     return _dependency_outputs_or_log(init_input, run_dir_path, log_suffix="after init")
@@ -303,7 +305,7 @@ def _dispatch_command(
                 extra_args=[*init_input.extra_args, *inp.extra_flags],
                 env=init_input.env,
             )
-        init_result = executor.init(init_input)
+        init_result = terraform_init.init(init_input)
         return RunDirResult(
             run_dir=rel, exit_code=init_result.exit_code, stdout=init_result.stdout, stderr=init_result.stderr or ""
         )
@@ -316,6 +318,8 @@ def _dispatch_command(
                 init_mode=mode,
                 extra_args=extra_flags,
                 init_backend_args=backend_args,
+                detail=inp.detail,
+                plan_display_cli=inp.plan_display_cli,
             )
         )
     elif inp.command == LifecycleCommand.APPLY:
@@ -326,6 +330,8 @@ def _dispatch_command(
                 init_mode=mode,
                 extra_args=extra_flags,
                 init_backend_args=backend_args,
+                detail=inp.detail,
+                plan_display_cli=inp.plan_display_cli,
             )
         )
     elif inp.command == LifecycleCommand.DESTROY:
@@ -336,6 +342,8 @@ def _dispatch_command(
                 init_mode=mode,
                 extra_args=extra_flags,
                 init_backend_args=backend_args,
+                detail=inp.detail,
+                plan_display_cli=inp.plan_display_cli,
             )
         )
     else:
@@ -410,8 +418,7 @@ def _discover_run_dirs(repo_root: Path) -> list[DiscoveredRunDir]:
     if not root_config.run_dir_discovery:
         raise ValueError("root tfdo.yaml must define run_dir_discovery pattern")
 
-    pattern = parse_discovery_pattern(root_config.run_dir_discovery)
-    return discover_run_dirs(repo_root, pattern)
+    return discover_run_dirs(repo_root, root_config.parsed_pattern())
 
 
 def _resolve_all_configs(

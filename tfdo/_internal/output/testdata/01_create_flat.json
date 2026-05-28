@@ -1,0 +1,327 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.12.1",
+  "planned_values": {
+    "outputs": {
+      "config_path": {
+        "sensitive": false,
+        "type": "string",
+        "value": "./output/app.conf"
+      },
+      "server_name": {
+        "sensitive": false
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "local_file.config",
+          "mode": "managed",
+          "type": "local_file",
+          "name": "config",
+          "provider_name": "registry.terraform.io/hashicorp/local",
+          "schema_version": 0,
+          "values": {
+            "content_base64": null,
+            "directory_permission": "0777",
+            "file_permission": "0777",
+            "filename": "./output/app.conf",
+            "sensitive_content": null,
+            "source": null
+          },
+          "sensitive_values": {
+            "sensitive_content": true
+          }
+        },
+        {
+          "address": "random_pet.server",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "server",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 0,
+          "values": {
+            "keepers": null,
+            "length": 2,
+            "prefix": "web",
+            "separator": "-"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "random_string.suffix",
+          "mode": "managed",
+          "type": "random_string",
+          "name": "suffix",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 2,
+          "values": {
+            "keepers": null,
+            "length": 8,
+            "lower": true,
+            "min_lower": 0,
+            "min_numeric": 0,
+            "min_special": 0,
+            "min_upper": 0,
+            "number": true,
+            "numeric": true,
+            "override_special": null,
+            "special": false,
+            "upper": false
+          },
+          "sensitive_values": {}
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "local_file.config",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "config",
+      "provider_name": "registry.terraform.io/hashicorp/local",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_base64": null,
+          "directory_permission": "0777",
+          "file_permission": "0777",
+          "filename": "./output/app.conf",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after_unknown": {
+          "content": true,
+          "content_base64sha256": true,
+          "content_base64sha512": true,
+          "content_md5": true,
+          "content_sha1": true,
+          "content_sha256": true,
+          "content_sha512": true,
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "sensitive_content": true
+        }
+      }
+    },
+    {
+      "address": "random_pet.server",
+      "mode": "managed",
+      "type": "random_pet",
+      "name": "server",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "keepers": null,
+          "length": 2,
+          "prefix": "web",
+          "separator": "-"
+        },
+        "after_unknown": {
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "random_string.suffix",
+      "mode": "managed",
+      "type": "random_string",
+      "name": "suffix",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "keepers": null,
+          "length": 8,
+          "lower": true,
+          "min_lower": 0,
+          "min_numeric": 0,
+          "min_special": 0,
+          "min_upper": 0,
+          "number": true,
+          "numeric": true,
+          "override_special": null,
+          "special": false,
+          "upper": false
+        },
+        "after_unknown": {
+          "id": true,
+          "result": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "output_changes": {
+    "config_path": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "./output/app.conf",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "server_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.12.1",
+    "values": {
+      "outputs": {
+        "config_path": {
+          "sensitive": false,
+          "value": "./output/app.conf",
+          "type": "string"
+        }
+      },
+      "root_module": {}
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "local": {
+        "name": "local",
+        "full_name": "registry.terraform.io/hashicorp/local",
+        "version_constraint": "~> 2.5"
+      },
+      "random": {
+        "name": "random",
+        "full_name": "registry.terraform.io/hashicorp/random",
+        "version_constraint": "~> 3.6"
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "config_path": {
+          "expression": {
+            "references": [
+              "local_file.config.filename",
+              "local_file.config"
+            ]
+          }
+        },
+        "server_name": {
+          "expression": {
+            "references": [
+              "random_pet.server.id",
+              "random_pet.server"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "local_file.config",
+          "mode": "managed",
+          "type": "local_file",
+          "name": "config",
+          "provider_config_key": "local",
+          "expressions": {
+            "content": {
+              "references": [
+                "random_pet.server.id",
+                "random_pet.server",
+                "random_string.suffix.result",
+                "random_string.suffix"
+              ]
+            },
+            "filename": {
+              "references": [
+                "path.module"
+              ]
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "random_pet.server",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "server",
+          "provider_config_key": "random",
+          "expressions": {
+            "length": {
+              "constant_value": 2
+            },
+            "prefix": {
+              "constant_value": "web"
+            },
+            "separator": {
+              "constant_value": "-"
+            }
+          },
+          "schema_version": 0
+        },
+        {
+          "address": "random_string.suffix",
+          "mode": "managed",
+          "type": "random_string",
+          "name": "suffix",
+          "provider_config_key": "random",
+          "expressions": {
+            "length": {
+              "constant_value": 8
+            },
+            "special": {
+              "constant_value": false
+            },
+            "upper": {
+              "constant_value": false
+            }
+          },
+          "schema_version": 2
+        }
+      ]
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "random_pet.server",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "local_file.config",
+      "attribute": [
+        "filename"
+      ]
+    },
+    {
+      "resource": "random_string.suffix",
+      "attribute": [
+        "result"
+      ]
+    }
+  ],
+  "timestamp": "2026-05-18T18:45:38Z",
+  "applyable": true,
+  "complete": true,
+  "errored": false
+}

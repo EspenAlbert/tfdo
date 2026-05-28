@@ -13,6 +13,7 @@ from tfdo._internal.config.enums import BackendType as _BackendType
 from tfdo._internal.config.enums import HookOnError as _HookOnError
 from tfdo._internal.config.enums import LifecycleEvent as _LifecycleEvent
 from tfdo._internal.config.enums import TagsInject as _TagsInject
+from tfdo._internal.output.plan_display import DetailLevel as _DetailLevel
 
 init_cmd = _init_cmd
 show_cmd = _show_cmd
@@ -28,3 +29,4 @@ BackendType = _BackendType
 HookOnError = _HookOnError
 LifecycleEvent = _LifecycleEvent
 TagsInject = _TagsInject
+DetailLevel = _DetailLevel

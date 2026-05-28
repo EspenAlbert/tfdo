@@ -59,6 +59,32 @@ def load_config_layers(work_dir: Path) -> list[ConfigLayer]:
     return layers
 
 
+def root_tfdo_config(work_dir: Path) -> TfDoConfig | None:
+    work_dir = work_dir.resolve()
+    layers = load_config_layers(work_dir)
+    return layers[-1].config if layers else None
+
+
+def resolve_run_context_label(work_dir: Path) -> str:
+    work_dir = work_dir.resolve()
+    try:
+        repo_root = find_repo_root(work_dir)
+    except ValueError:
+        return _fallback_run_context_label(work_dir)
+    rel = str(work_dir.relative_to(repo_root))
+    config = root_tfdo_config(repo_root)
+    if config is None:
+        return rel
+    return config.run_context_label(repo_root, work_dir)
+
+
+def _fallback_run_context_label(work_dir: Path) -> str:
+    cwd = work_dir.resolve()
+    if cwd.parents:
+        return f"{cwd.parent.name}/{cwd.name}"
+    return cwd.name
+
+
 def resolve_var_file_paths(work_dir: Path, include_default_tfvars: bool = True) -> list[Path]:
     paths: list[Path] = [work_dir / DEFAULT_TFVARS_FILENAME] if include_default_tfvars else []
     for layer in reversed(load_config_layers(work_dir)):

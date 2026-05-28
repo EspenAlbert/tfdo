@@ -9,7 +9,7 @@ from pathlib import Path
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal.config.config_model import ProviderConstraint
-from tfdo._internal.core import executor
+from tfdo._internal.core import terraform_init
 from tfdo._internal.hcl_read import LOCK_FILENAME, REGISTRY_HOST_PREFIX, parse_lock_file_versions
 from tfdo._internal.models import InitInput
 from tfdo._internal.settings import TfDoSettings
@@ -56,7 +56,7 @@ def _resolve_single(provider: ProviderConstraint, settings: TfDoSettings) -> str
         cache.mkdir(parents=True, exist_ok=True)
         ensure_parents_write_text(cache / "versions.tf", _versions_tf_stub(provider))
         try:
-            result = executor.init(InitInput(settings=settings.with_work_dir(cache)))
+            result = terraform_init.init(InitInput(settings=settings.with_work_dir(cache)))
             if result.exit_code != 0:
                 logger.warning(f"terraform init failed for provider {provider.name}: {result.stderr}")
                 return None

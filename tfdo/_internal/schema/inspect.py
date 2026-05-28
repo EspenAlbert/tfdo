@@ -7,13 +7,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import NamedTuple
 
-from ask_shell.shell import ShellError, run_and_wait
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
-from tfdo._internal.core import binary, executor
+from tfdo._internal.core import terraform_init
 from tfdo._internal.models import InitInput
 from tfdo._internal.schema import cache as schema_cache
 from tfdo._internal.schema import terraform_cli_config as tf_cli
+from tfdo._internal.schema.providers_schema import providers_schema_json_or_raise
 from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,9 @@ def _env_for_schema_fetch(
 
 
 def _terraform_init_or_raise(settings: TfDoSettings, env_for_tf: dict[str, str] | None) -> None:
-    init_result = executor.init(InitInput(settings=settings, extra_args=["-input=false", "-no-color"], env=env_for_tf))
+    init_result = terraform_init.init(
+        InitInput(settings=settings, extra_args=["-input=false", "-no-color"], env=env_for_tf)
+    )
     if init_result.exit_code != 0:
         msg = f"terraform init failed (exit {init_result.exit_code})"
         if init_result.stderr:
@@ -102,28 +104,6 @@ def _try_disk_cache_read(
         return None
     logger.info(f"schema cache hit for {local_name} {source} {resolved}")
     return FetchProvidersSchemaResult(cached, resolved)
-
-
-def _providers_schema_json_or_raise(
-    settings: TfDoSettings,
-    workspace_root: Path,
-    env_for_tf: dict[str, str] | None,
-) -> dict:
-    cmd = f"{binary.resolve_binary(settings)} providers schema -json"
-    try:
-        run = run_and_wait(
-            cmd,
-            cwd=workspace_root,
-            env=env_for_tf,
-            ansi_content=False,
-            allow_non_zero_exit=True,
-            skip_binary_check=True,
-        )
-    except ShellError as e:
-        raise RuntimeError(f"terraform providers schema failed: {e.stderr[:800]}") from e
-    if run.exit_code != 0:
-        raise RuntimeError(f"terraform providers schema failed (exit {run.exit_code}): {run.stderr[:800]}")
-    return run.parse_output(dict, output_format="json")
 
 
 def _disk_cache_write_if_enabled(
@@ -191,7 +171,7 @@ def fetch_providers_schema_json(
         ):
             return hit
 
-        payload = _providers_schema_json_or_raise(settings, root, env_for_tf)
+        payload = providers_schema_json_or_raise(settings, root, env_for_tf)
         _disk_cache_write_if_enabled(
             skip_disk_cache=skip_disk_cache,
             resolved=resolved_version,

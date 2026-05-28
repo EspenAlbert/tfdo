@@ -1,0 +1,268 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.12.1",
+  "planned_values": {
+    "root_module": {}
+  },
+  "resource_changes": [
+    {
+      "address": "local_file.db_config",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "db_config",
+      "provider_name": "registry.terraform.io/hashicorp/local",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "content": "name = db-certain-flamingo\npassword = 19h*ncc_0{PUS%hZM>fu?}sO\ncluster = ac841165cef050f7\n",
+          "content_base64": null,
+          "content_base64sha256": "/rBJv7uSH2QsZWoGZBH4bLeMZmwb6PEmYwGe8iIsb2g=",
+          "content_base64sha512": "/mbnSXoI3DlLjHxjnw2uN39AF0bYP1O3FX1QjsXV/FRH2alCwg4EZEhs9Uli+AOq26GZFzytp6pRjYWdHx3xXQ==",
+          "content_md5": "9c2344bd0ffcb884c1ccbc4c2fc18327",
+          "content_sha1": "43e1371989661331fb710018c613689669cf86a3",
+          "content_sha256": "feb049bfbb921f642c656a066411f86cb78c666c1be8f12663019ef2222c6f68",
+          "content_sha512": "fe66e7497a08dc394b8c7c639f0dae377f401746d83f53b7157d508ec5d5fc5447d9a942c20e0464486cf54962f803aadba199173cada7aa518d859d1f1df15d",
+          "directory_permission": "0777",
+          "file_permission": "0777",
+          "filename": "./output/database.conf",
+          "id": "43e1371989661331fb710018c613689669cf86a3",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {
+          "sensitive_content": true
+        },
+        "after_sensitive": false
+      },
+      "action_reason": "delete_because_no_resource_config"
+    },
+    {
+      "address": "random_id.cluster_id",
+      "mode": "managed",
+      "type": "random_id",
+      "name": "cluster_id",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "b64_std": "rIQRZc7wUPc=",
+          "b64_url": "rIQRZc7wUPc",
+          "byte_length": 8,
+          "dec": "12431080000410636535",
+          "hex": "ac841165cef050f7",
+          "id": "rIQRZc7wUPc",
+          "keepers": null,
+          "prefix": null
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false
+      },
+      "action_reason": "delete_because_no_resource_config"
+    },
+    {
+      "address": "random_pet.db_name",
+      "mode": "managed",
+      "type": "random_pet",
+      "name": "db_name",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "id": "db-certain-flamingo",
+          "keepers": null,
+          "length": 2,
+          "prefix": "db",
+          "separator": "-"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false
+      },
+      "action_reason": "delete_because_no_resource_config"
+    },
+    {
+      "address": "random_string.db_password",
+      "mode": "managed",
+      "type": "random_string",
+      "name": "db_password",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "id": "19h*ncc_0{PUS%hZM>fu?}sO",
+          "keepers": null,
+          "length": 24,
+          "lower": true,
+          "min_lower": 0,
+          "min_numeric": 0,
+          "min_special": 0,
+          "min_upper": 0,
+          "number": true,
+          "numeric": true,
+          "override_special": null,
+          "result": "19h*ncc_0{PUS%hZM>fu?}sO",
+          "special": true,
+          "upper": true
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false
+      },
+      "action_reason": "delete_because_no_resource_config"
+    }
+  ],
+  "output_changes": {
+    "db_name": {
+      "actions": [
+        "delete"
+      ],
+      "before": "db-certain-flamingo",
+      "after": null,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.12.1",
+    "values": {
+      "outputs": {
+        "db_name": {
+          "sensitive": false,
+          "value": "db-certain-flamingo",
+          "type": "string"
+        }
+      },
+      "root_module": {
+        "resources": [
+          {
+            "address": "local_file.db_config",
+            "mode": "managed",
+            "type": "local_file",
+            "name": "db_config",
+            "provider_name": "registry.terraform.io/hashicorp/local",
+            "schema_version": 0,
+            "values": {
+              "content": "name = db-certain-flamingo\npassword = 19h*ncc_0{PUS%hZM>fu?}sO\ncluster = ac841165cef050f7\n",
+              "content_base64": null,
+              "content_base64sha256": "/rBJv7uSH2QsZWoGZBH4bLeMZmwb6PEmYwGe8iIsb2g=",
+              "content_base64sha512": "/mbnSXoI3DlLjHxjnw2uN39AF0bYP1O3FX1QjsXV/FRH2alCwg4EZEhs9Uli+AOq26GZFzytp6pRjYWdHx3xXQ==",
+              "content_md5": "9c2344bd0ffcb884c1ccbc4c2fc18327",
+              "content_sha1": "43e1371989661331fb710018c613689669cf86a3",
+              "content_sha256": "feb049bfbb921f642c656a066411f86cb78c666c1be8f12663019ef2222c6f68",
+              "content_sha512": "fe66e7497a08dc394b8c7c639f0dae377f401746d83f53b7157d508ec5d5fc5447d9a942c20e0464486cf54962f803aadba199173cada7aa518d859d1f1df15d",
+              "directory_permission": "0777",
+              "file_permission": "0777",
+              "filename": "./output/database.conf",
+              "id": "43e1371989661331fb710018c613689669cf86a3",
+              "sensitive_content": null,
+              "source": null
+            },
+            "sensitive_values": {
+              "sensitive_content": true
+            },
+            "depends_on": [
+              "random_id.cluster_id",
+              "random_pet.db_name",
+              "random_string.db_password"
+            ]
+          },
+          {
+            "address": "random_id.cluster_id",
+            "mode": "managed",
+            "type": "random_id",
+            "name": "cluster_id",
+            "provider_name": "registry.terraform.io/hashicorp/random",
+            "schema_version": 0,
+            "values": {
+              "b64_std": "rIQRZc7wUPc=",
+              "b64_url": "rIQRZc7wUPc",
+              "byte_length": 8,
+              "dec": "12431080000410636535",
+              "hex": "ac841165cef050f7",
+              "id": "rIQRZc7wUPc",
+              "keepers": null,
+              "prefix": null
+            },
+            "sensitive_values": {}
+          },
+          {
+            "address": "random_pet.db_name",
+            "mode": "managed",
+            "type": "random_pet",
+            "name": "db_name",
+            "provider_name": "registry.terraform.io/hashicorp/random",
+            "schema_version": 0,
+            "values": {
+              "id": "db-certain-flamingo",
+              "keepers": null,
+              "length": 2,
+              "prefix": "db",
+              "separator": "-"
+            },
+            "sensitive_values": {}
+          },
+          {
+            "address": "random_string.db_password",
+            "mode": "managed",
+            "type": "random_string",
+            "name": "db_password",
+            "provider_name": "registry.terraform.io/hashicorp/random",
+            "schema_version": 2,
+            "values": {
+              "id": "19h*ncc_0{PUS%hZM>fu?}sO",
+              "keepers": null,
+              "length": 24,
+              "lower": true,
+              "min_lower": 0,
+              "min_numeric": 0,
+              "min_special": 0,
+              "min_upper": 0,
+              "number": true,
+              "numeric": true,
+              "override_special": null,
+              "result": "19h*ncc_0{PUS%hZM>fu?}sO",
+              "special": true,
+              "upper": true
+            },
+            "sensitive_values": {}
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "local": {
+        "name": "local",
+        "full_name": "registry.terraform.io/hashicorp/local",
+        "version_constraint": "~> 2.5"
+      },
+      "random": {
+        "name": "random",
+        "full_name": "registry.terraform.io/hashicorp/random",
+        "version_constraint": "~> 3.6"
+      }
+    },
+    "root_module": {}
+  },
+  "timestamp": "2026-05-18T18:45:58Z",
+  "applyable": true,
+  "complete": true,
+  "errored": false
+}

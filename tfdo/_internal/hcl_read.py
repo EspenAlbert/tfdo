@@ -12,6 +12,7 @@ from typing import Any, TextIO
 from hcl2.api import load as _hcl2_load
 from hcl2.api import loads as _hcl2_loads
 from hcl2.utils import SerializationOptions
+from zero_3rdparty.file_utils import find_repo_root
 
 _V7_COMPAT = SerializationOptions(
     strip_string_quotes=True,
@@ -21,6 +22,25 @@ _V7_COMPAT = SerializationOptions(
 
 REGISTRY_HOST_PREFIX = "registry.terraform.io/"
 LOCK_FILENAME = ".terraform.lock.hcl"
+
+
+def find_lock_file(start: Path) -> Path | None:
+    """Return the nearest ``.terraform.lock.hcl`` at or above ``start``."""
+    current = start.resolve()
+    try:
+        repo_root = find_repo_root(current)
+    except ValueError:
+        repo_root = None
+    while True:
+        candidate = current / LOCK_FILENAME
+        if candidate.is_file():
+            return candidate
+        if repo_root is not None and current == repo_root:
+            return None
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
 
 
 def hcl2_load(fp: TextIO) -> dict[str, Any]:

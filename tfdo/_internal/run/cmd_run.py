@@ -7,6 +7,7 @@ from tfdo._internal import cmd_options
 from tfdo._internal.config.config_file import load_config
 from tfdo._internal.config.config_model import TfDoConfig
 from tfdo._internal.models import InitMode
+from tfdo._internal.output.plan_display import DetailLevel
 from tfdo._internal.run import orchestration, run_options
 from tfdo._internal.run.orchestration import FailureMode, LifecycleCommand, RunOrchestrationInput
 from tfdo._internal.settings import TfDoSettings
@@ -105,6 +106,12 @@ def run_plan_cmd(
     init_mode: InitMode = cmd_options.init_mode_option(),
     out: Path | None = typer.Option(None, "-o", "--out", help="Write plan output to file (per run directory)"),
     json_output: bool = typer.Option(False, "--json", help="Output in JSON format"),
+    show_computed_drift: bool | None = cmd_options.show_computed_drift_option(),
+    show_computed_deltas: bool | None = cmd_options.show_computed_deltas_option(),
+    show_create_defaults: bool | None = cmd_options.show_create_defaults_option(),
+    show_full_config_annex: bool | None = cmd_options.show_full_config_annex_option(),
+    show_json_annex: bool | None = cmd_options.show_json_annex_option(),
+    detail: DetailLevel = cmd_options.detail_option(),
 ) -> None:
     """Run plan across multiple run directories."""
     extra_flags: list[str] = []
@@ -113,7 +120,20 @@ def run_plan_cmd(
     if json_output:
         extra_flags.append("-json")
     run_ctx = _get_run_context(ctx)
-    inp = run_ctx.build_input(LifecycleCommand.PLAN, var_file=var_file, init_mode=init_mode, extra_flags=extra_flags)
+    inp = run_ctx.build_input(
+        LifecycleCommand.PLAN,
+        var_file=var_file,
+        init_mode=init_mode,
+        extra_flags=extra_flags,
+        detail=detail,
+        plan_display_cli=cmd_options.plan_display_cli_overrides(
+            show_computed_drift=show_computed_drift,
+            show_computed_deltas=show_computed_deltas,
+            show_create_defaults=show_create_defaults,
+            show_full_config_annex=show_full_config_annex,
+            show_json_annex=show_json_annex,
+        ),
+    )
     result = orchestration.run_orchestration(inp)
     raise typer.Exit(result.exit_code)
 
@@ -125,10 +145,29 @@ def run_apply_cmd(
     auto_approve: bool = cmd_options.auto_approve_option(),
     var_file: Path | None = cmd_options.var_file_option(),
     init_mode: InitMode = cmd_options.init_mode_option(),
+    show_computed_drift: bool | None = cmd_options.show_computed_drift_option(),
+    show_computed_deltas: bool | None = cmd_options.show_computed_deltas_option(),
+    show_create_defaults: bool | None = cmd_options.show_create_defaults_option(),
+    show_full_config_annex: bool | None = cmd_options.show_full_config_annex_option(),
+    show_json_annex: bool | None = cmd_options.show_json_annex_option(),
+    detail: DetailLevel = cmd_options.detail_option(),
 ) -> None:
     """Run apply across multiple run directories."""
     run_ctx = _get_run_context(ctx)
-    inp = run_ctx.build_input(LifecycleCommand.APPLY, auto_approve=auto_approve, var_file=var_file, init_mode=init_mode)
+    inp = run_ctx.build_input(
+        LifecycleCommand.APPLY,
+        auto_approve=auto_approve,
+        var_file=var_file,
+        init_mode=init_mode,
+        detail=detail,
+        plan_display_cli=cmd_options.plan_display_cli_overrides(
+            show_computed_drift=show_computed_drift,
+            show_computed_deltas=show_computed_deltas,
+            show_create_defaults=show_create_defaults,
+            show_full_config_annex=show_full_config_annex,
+            show_json_annex=show_json_annex,
+        ),
+    )
     result = orchestration.run_orchestration(inp)
     raise typer.Exit(result.exit_code)
 
@@ -140,11 +179,28 @@ def run_destroy_cmd(
     auto_approve: bool = cmd_options.auto_approve_option(),
     var_file: Path | None = cmd_options.var_file_option(),
     init_mode: InitMode = cmd_options.init_mode_option(),
+    show_computed_drift: bool | None = cmd_options.show_computed_drift_option(),
+    show_computed_deltas: bool | None = cmd_options.show_computed_deltas_option(),
+    show_create_defaults: bool | None = cmd_options.show_create_defaults_option(),
+    show_full_config_annex: bool | None = cmd_options.show_full_config_annex_option(),
+    show_json_annex: bool | None = cmd_options.show_json_annex_option(),
+    detail: DetailLevel = cmd_options.detail_option(),
 ) -> None:
     """Run destroy across multiple run directories."""
     run_ctx = _get_run_context(ctx)
     inp = run_ctx.build_input(
-        LifecycleCommand.DESTROY, auto_approve=auto_approve, var_file=var_file, init_mode=init_mode
+        LifecycleCommand.DESTROY,
+        auto_approve=auto_approve,
+        var_file=var_file,
+        init_mode=init_mode,
+        detail=detail,
+        plan_display_cli=cmd_options.plan_display_cli_overrides(
+            show_computed_drift=show_computed_drift,
+            show_computed_deltas=show_computed_deltas,
+            show_create_defaults=show_create_defaults,
+            show_full_config_annex=show_full_config_annex,
+            show_json_annex=show_json_annex,
+        ),
     )
     result = orchestration.run_orchestration(inp)
     raise typer.Exit(result.exit_code)

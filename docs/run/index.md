@@ -19,11 +19,11 @@
 <a id="run_apply_cmd_def"></a>
 
 ### cli_command: `run_apply_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L121)
+- [source](../../tfdo/_internal/run/cmd_run.py#L141)
 > **Since:** 0.6.0
 
 ```python
-def run_apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def run_apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>) -> None:
     ...
 ```
 
@@ -36,6 +36,12 @@ Run apply across multiple run directories.
 | `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
 | `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
+| `--show-computed-drift` | `bool | None` | `None` | - | - |
+| `--show-computed-deltas` | `bool | None` | `None` | - | - |
+| `--show-create-defaults` | `bool | None` | `None` | - | - |
+| `--show-full-config-annex` | `bool | None` | `None` | - | - |
+| `--show-json-annex` | `bool | None` | `None` | - | - |
+| `--detail` | `DetailLevel` | `<DetailLevel.COMPACT: 'compact'>` | - | Plan display depth: compact (default) or full [compact, full] |
 
 ### Changes
 
@@ -47,7 +53,7 @@ Run apply across multiple run directories.
 <a id="run_callback_def"></a>
 
 ### cli_command: `run_callback`
-- [source](../../tfdo/_internal/run/cmd_run.py#L48)
+- [source](../../tfdo/_internal/run/cmd_run.py#L49)
 > **Since:** 0.6.0
 
 ```python
@@ -78,11 +84,11 @@ def run_callback(*, env: str | None = None, app_name: str | None = None, team: s
 <a id="run_destroy_cmd_def"></a>
 
 ### cli_command: `run_destroy_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L136)
+- [source](../../tfdo/_internal/run/cmd_run.py#L175)
 > **Since:** 0.6.0
 
 ```python
-def run_destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>) -> None:
+def run_destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>) -> None:
     ...
 ```
 
@@ -95,6 +101,12 @@ Run destroy across multiple run directories.
 | `--auto-approve` | `bool` | `False` | - | Skip interactive approval prompts |
 | `--var-file`, `-f` | `Path | None` | `None` | - | Path to a terraform .tfvars file |
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
+| `--show-computed-drift` | `bool | None` | `None` | - | - |
+| `--show-computed-deltas` | `bool | None` | `None` | - | - |
+| `--show-create-defaults` | `bool | None` | `None` | - | - |
+| `--show-full-config-annex` | `bool | None` | `None` | - | - |
+| `--show-json-annex` | `bool | None` | `None` | - | - |
+| `--detail` | `DetailLevel` | `<DetailLevel.COMPACT: 'compact'>` | - | Plan display depth: compact (default) or full [compact, full] |
 
 ### Changes
 
@@ -106,7 +118,7 @@ Run destroy across multiple run directories.
 <a id="run_init_cmd_def"></a>
 
 ### cli_command: `run_init_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L82)
+- [source](../../tfdo/_internal/run/cmd_run.py#L83)
 > **Since:** 0.6.0
 
 ```python
@@ -133,11 +145,11 @@ Run init across multiple run directories.
 <a id="run_plan_cmd_def"></a>
 
 ### cli_command: `run_plan_cmd`
-- [source](../../tfdo/_internal/run/cmd_run.py#L100)
+- [source](../../tfdo/_internal/run/cmd_run.py#L101)
 > **Since:** 0.6.0
 
 ```python
-def run_plan_cmd(*, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, out: Path | None = None, json_output: bool = False) -> None:
+def run_plan_cmd(*, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, out: Path | None = None, json_output: bool = False, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>) -> None:
     ...
 ```
 
@@ -151,6 +163,12 @@ Run plan across multiple run directories.
 | `--init-mode`, `-I` | `InitMode` | `<InitMode.AUTO: 'auto'>` | `TFDO_INIT_MODE` | Init behavior: auto (run init on error related to init), always (run init first), never (skip init) [auto, always, never] |
 | `-o`, `--out` | `Path | None` | `None` | - | Write plan output to file (per run directory) |
 | `--json` | `bool` | `False` | - | Output in JSON format |
+| `--show-computed-drift` | `bool | None` | `None` | - | - |
+| `--show-computed-deltas` | `bool | None` | `None` | - | - |
+| `--show-create-defaults` | `bool | None` | `None` | - | - |
+| `--show-full-config-annex` | `bool | None` | `None` | - | - |
+| `--show-json-annex` | `bool | None` | `None` | - | - |
+| `--detail` | `DetailLevel` | `<DetailLevel.COMPACT: 'compact'>` | - | Plan display depth: compact (default) or full [compact, full] |
 
 ### Changes
 

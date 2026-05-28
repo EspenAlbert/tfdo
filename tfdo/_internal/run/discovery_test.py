@@ -97,6 +97,16 @@ def test_discover_run_dirs_optional_segment(tmp_path: Path):
     assert by_path["platform/envs/dev"] == {"team": "platform", "env": "dev"}
 
 
+def test_discovered_run_dir_context_label():
+    pattern = parse_discovery_pattern("envs/{env}/{app}")
+    run_dir = DiscoveredRunDir(
+        path=Path("/repo/envs/dev/api"),
+        relative_path="envs/dev/api",
+        selectors={"env": "dev", "app": "api"},
+    )
+    assert run_dir.context_label(pattern) == "dev/api"
+
+
 def test_build_run_dir_contexts():
     discovered = [
         DiscoveredRunDir(

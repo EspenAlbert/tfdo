@@ -1,0 +1,25 @@
+📋 Plan: 🟢 3 to add
+
+🟢 local_file.config
+       filename: "./output/app.conf"
+     + directory_permission: "0777"
+     + file_permission: "0777"
+🟢 random_pet.server
+       length: 2
+       prefix: "web"
+     + separator: "-"
+🟢 random_string.suffix
+       length: 8
+     + lower: true
+     + min_lower: 0
+     + min_numeric: 0
+     + min_special: 0
+     + min_upper: 0
+     + number: true
+     + numeric: true
+     + special: false
+     + upper: false
+
+📤 Outputs (🟢 2 new)
+  + config_path: "./output/app.conf"
+  + server_name: (known after apply)

@@ -1,0 +1,33 @@
+📋 Plan: 🟢 5 to add
+
+🟢 random_pet.project
+       length: 1
+       prefix: "proj"
+     + separator: "-"
+networking
+├── 🟢 module.networking.local_file.network_config
+│   ├── filename: "modules/networking/../../output/network.conf"
+│   ├── + directory_permission: "0777"
+│   └── + file_permission: "0777"
+├── 🟢 module.networking.random_id.vpc_id
+│   └── + byte_length: 4
+└── dns
+    ├── 🟢 module.networking.module.dns.local_file.dns_record
+    │   ├── filename: "modules/networking/dns/../../../output/dns.conf"
+    │   ├── + directory_permission: "0777"
+    │   └── + file_permission: "0777"
+    └── 🟢 module.networking.module.dns.random_string.zone_suffix
+        ├── length: 6
+        ├── + lower: true
+        ├── + min_lower: 0
+        ├── + min_numeric: 0
+        ├── + min_special: 0
+        ├── + min_upper: 0
+        ├── + number: true
+        ├── + numeric: true
+        ├── + special: false
+        └── + upper: false
+
+📤 Outputs (🟢 2 new)
+  + dns_record: (known after apply)
+  + project_name: (known after apply)

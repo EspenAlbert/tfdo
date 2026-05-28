@@ -1,0 +1,1077 @@
+name: UNRESOLVED
+ts: 2026-05-27 17:57:52.411597+00:00
+type: keep_private
+full_path: _internal.cache.module_cache.UNRESOLVED
+---
+name: TFLINT_BINARY
+ts: 2026-05-27 17:57:52.411634+00:00
+type: keep_private
+full_path: _internal.check.check_logic.TFLINT_BINARY
+---
+name: show_computed_drift_option
+ts: 2026-05-27 17:57:52.411640+00:00
+type: keep_private
+full_path: _internal.cmd_options.show_computed_drift_option
+---
+name: show_computed_deltas_option
+ts: 2026-05-27 17:57:52.411644+00:00
+type: keep_private
+full_path: _internal.cmd_options.show_computed_deltas_option
+---
+name: show_create_defaults_option
+ts: 2026-05-27 17:57:52.411649+00:00
+type: keep_private
+full_path: _internal.cmd_options.show_create_defaults_option
+---
+name: show_full_config_annex_option
+ts: 2026-05-27 17:57:52.411653+00:00
+type: keep_private
+full_path: _internal.cmd_options.show_full_config_annex_option
+---
+name: show_json_annex_option
+ts: 2026-05-27 17:57:52.411656+00:00
+type: keep_private
+full_path: _internal.cmd_options.show_json_annex_option
+---
+name: plan_display_cli_overrides
+ts: 2026-05-27 17:57:52.411660+00:00
+type: keep_private
+full_path: _internal.cmd_options.plan_display_cli_overrides
+---
+name: CONFIG_FILENAME
+ts: 2026-05-27 17:57:52.411664+00:00
+type: keep_private
+full_path: _internal.config.config_file.CONFIG_FILENAME
+---
+name: DEFAULT_TFVARS_FILENAME
+ts: 2026-05-27 17:57:52.411667+00:00
+type: keep_private
+full_path: _internal.config.config_file.DEFAULT_TFVARS_FILENAME
+---
+name: root_tfdo_config
+ts: 2026-05-27 17:57:52.411671+00:00
+type: keep_private
+full_path: _internal.config.config_file.root_tfdo_config
+---
+name: resolve_run_context_label
+ts: 2026-05-27 17:57:52.411674+00:00
+type: keep_private
+full_path: _internal.config.config_file.resolve_run_context_label
+---
+name: DEFAULT_DISCOVERY_PATTERN
+ts: 2026-05-27 17:57:52.411678+00:00
+type: keep_private
+full_path: _internal.config.config_model.DEFAULT_DISCOVERY_PATTERN
+---
+name: ENV_SELECTOR_NAME
+ts: 2026-05-27 17:57:52.411681+00:00
+type: keep_private
+full_path: _internal.config.config_model.ENV_SELECTOR_NAME
+---
+name: TFDO_DEFAULT_INSTALL
+ts: 2026-05-27 17:57:52.411685+00:00
+type: keep_private
+full_path: _internal.config.config_model.TFDO_DEFAULT_INSTALL
+---
+name: DEFAULT_TAGS_INJECT
+ts: 2026-05-27 17:57:52.411688+00:00
+type: keep_private
+full_path: _internal.config.config_resolution.DEFAULT_TAGS_INJECT
+---
+name: ENV_VARS_LOAD_KEY
+ts: 2026-05-27 17:57:52.411692+00:00
+type: keep_private
+full_path: _internal.config.env_var_loader.ENV_VARS_LOAD_KEY
+---
+name: ENV_VARS_DIRS_KEY
+ts: 2026-05-27 17:57:52.411695+00:00
+type: keep_private
+full_path: _internal.config.env_var_loader.ENV_VARS_DIRS_KEY
+---
+name: COMMON_ENV_NAMES
+ts: 2026-05-27 17:57:52.411699+00:00
+type: keep_private
+full_path: _internal.config.scan.COMMON_ENV_NAMES
+---
+name: APPLY_PROMPT
+ts: 2026-05-27 17:57:52.411702+00:00
+type: keep_private
+full_path: _internal.core.apply_logic.APPLY_PROMPT
+---
+name: run_apply
+ts: 2026-05-27 17:57:52.411705+00:00
+type: keep_private
+full_path: _internal.core.apply_logic.run_apply
+---
+name: DESTROY_PROMPT
+ts: 2026-05-27 17:57:52.411709+00:00
+type: keep_private
+full_path: _internal.core.destroy_logic.DESTROY_PROMPT
+---
+name: run_destroy
+ts: 2026-05-27 17:57:52.411712+00:00
+type: keep_private
+full_path: _internal.core.destroy_logic.run_destroy
+---
+name: INIT_NEEDED_PATTERNS
+ts: 2026-05-27 17:57:52.411716+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_init_retry.INIT_NEEDED_PATTERNS
+---
+name: BACKEND_CHANGED_PATTERNS
+ts: 2026-05-27 17:57:52.411720+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_init_retry.BACKEND_CHANGED_PATTERNS
+---
+name: is_backend_changed
+ts: 2026-05-27 17:57:52.411723+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_init_retry.is_backend_changed
+---
+name: needs_init
+ts: 2026-05-27 17:57:52.411727+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_init_retry.needs_init
+---
+name: run_with_init_retry
+ts: 2026-05-27 17:57:52.411730+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_init_retry.run_with_init_retry
+---
+name: init_input_for_output_retry
+ts: 2026-05-27 17:57:52.411734+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_init_retry.init_input_for_output_retry
+---
+name: build_lifecycle_command
+ts: 2026-05-27 17:57:52.411738+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_shell.build_lifecycle_command
+---
+name: run_lifecycle_command
+ts: 2026-05-27 17:57:52.411746+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_shell.run_lifecycle_command
+---
+name: run_lifecycle
+ts: 2026-05-27 17:57:52.411750+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_shell.run_lifecycle
+---
+name: plan_and_render
+ts: 2026-05-27 17:57:52.411754+00:00
+type: keep_private
+full_path: _internal.core.plan_logic.plan_and_render
+---
+name: run_plan
+ts: 2026-05-27 17:57:52.411757+00:00
+type: keep_private
+full_path: _internal.core.plan_logic.run_plan
+---
+name: run_streaming_plan
+ts: 2026-05-27 17:57:52.411761+00:00
+type: keep_private
+full_path: _internal.core.plan_subprocess.run_streaming_plan
+---
+name: show_plan_json
+ts: 2026-05-27 17:57:52.411765+00:00
+type: keep_private
+full_path: _internal.core.plan_subprocess.show_plan_json
+---
+name: TRANSIENT_PATTERNS
+ts: 2026-05-27 17:57:52.411768+00:00
+type: keep_private
+full_path: _internal.core.terraform_init.TRANSIENT_PATTERNS
+---
+name: CHECKSUM_PATTERNS
+ts: 2026-05-27 17:57:52.411772+00:00
+type: keep_private
+full_path: _internal.core.terraform_init.CHECKSUM_PATTERNS
+---
+name: terraform_init_should_retry
+ts: 2026-05-27 17:57:52.411776+00:00
+type: keep_private
+full_path: _internal.core.terraform_init.terraform_init_should_retry
+---
+name: init
+ts: 2026-05-27 17:57:52.411780+00:00
+type: keep_private
+full_path: _internal.core.terraform_init.init
+---
+name: TERRAFORM_DIR
+ts: 2026-05-27 17:57:52.411783+00:00
+type: keep_private
+full_path: _internal.core.tf_files.TERRAFORM_DIR
+---
+name: REGISTRY_HOST_PREFIX
+ts: 2026-05-27 17:57:52.411787+00:00
+type: keep_private
+full_path: _internal.hcl_read.REGISTRY_HOST_PREFIX
+---
+name: LOCK_FILENAME
+ts: 2026-05-27 17:57:52.411791+00:00
+type: keep_private
+full_path: _internal.hcl_read.LOCK_FILENAME
+---
+name: find_lock_file
+ts: 2026-05-27 17:57:52.411794+00:00
+type: keep_private
+full_path: _internal.hcl_read.find_lock_file
+---
+name: ENV_CMD_DIR
+ts: 2026-05-27 17:57:52.411798+00:00
+type: keep_private
+full_path: _internal.hooks.execution.ENV_CMD_DIR
+---
+name: ENV_RUN_STATE_DIR
+ts: 2026-05-27 17:57:52.411802+00:00
+type: keep_private
+full_path: _internal.hooks.execution.ENV_RUN_STATE_DIR
+---
+name: ENV_INVOKE_STATE_DIR
+ts: 2026-05-27 17:57:52.411805+00:00
+type: keep_private
+full_path: _internal.hooks.execution.ENV_INVOKE_STATE_DIR
+---
+name: ENV_RUN_DIR
+ts: 2026-05-27 17:57:52.411809+00:00
+type: keep_private
+full_path: _internal.hooks.execution.ENV_RUN_DIR
+---
+name: ENV_COMMAND
+ts: 2026-05-27 17:57:52.411812+00:00
+type: keep_private
+full_path: _internal.hooks.execution.ENV_COMMAND
+---
+name: ENV_HOOK_POINT
+ts: 2026-05-27 17:57:52.411816+00:00
+type: keep_private
+full_path: _internal.hooks.execution.ENV_HOOK_POINT
+---
+name: ENV_ATTEMPT
+ts: 2026-05-27 17:57:52.411820+00:00
+type: keep_private
+full_path: _internal.hooks.execution.ENV_ATTEMPT
+---
+name: DEFAULT_PRIORITY
+ts: 2026-05-27 17:57:52.411824+00:00
+type: keep_private
+full_path: _internal.hooks.models.DEFAULT_PRIORITY
+---
+name: DEFAULT_SPEC_IGNORE_PATHS
+ts: 2026-05-27 17:57:52.411828+00:00
+type: keep_private
+full_path: _internal.inspect.api_coverage_logic.DEFAULT_SPEC_IGNORE_PATHS
+---
+name: DEFAULT_KEY_TEMPLATE
+ts: 2026-05-27 17:57:52.411832+00:00
+type: keep_private
+full_path: _internal.new.backend_bootstrap.DEFAULT_KEY_TEMPLATE
+---
+name: compute_attr_lines
+ts: 2026-05-27 17:57:52.411835+00:00
+type: keep_private
+full_path: _internal.output.attr_diff.compute_attr_lines
+---
+name: AttrPrefix
+ts: 2026-05-27 17:57:52.411839+00:00
+type: keep_private
+full_path: _internal.output.attr_diff.AttrPrefix
+---
+name: ValueKind
+ts: 2026-05-27 17:57:52.411843+00:00
+type: keep_private
+full_path: _internal.output.attr_diff.ValueKind
+---
+name: AttrLine
+ts: 2026-05-27 17:57:52.411846+00:00
+type: keep_private
+full_path: _internal.output.attr_diff.AttrLine
+---
+name: SEE_ABOVE_FOR_FULL_CONFIG
+ts: 2026-05-27 17:57:52.411850+00:00
+type: keep_private
+full_path: _internal.output.complex_render.SEE_ABOVE_FOR_FULL_CONFIG
+---
+name: SEE_ABOVE_LEGACY
+ts: 2026-05-27 17:57:52.411853+00:00
+type: keep_private
+full_path: _internal.output.complex_render.SEE_ABOVE_LEGACY
+---
+name: render_complex_value
+ts: 2026-05-27 17:57:52.411857+00:00
+type: keep_private
+full_path: _internal.output.complex_render.render_complex_value
+---
+name: ComplexRenderConfig
+ts: 2026-05-27 17:57:52.411860+00:00
+type: keep_private
+full_path: _internal.output.complex_render.ComplexRenderConfig
+---
+name: DetailBlock
+ts: 2026-05-27 17:57:52.411864+00:00
+type: keep_private
+full_path: _internal.output.complex_render.DetailBlock
+---
+name: ComplexRenderResult
+ts: 2026-05-27 17:57:52.411867+00:00
+type: keep_private
+full_path: _internal.output.complex_render.ComplexRenderResult
+---
+name: is_empty_create_value
+ts: 2026-05-27 17:57:52.411870+00:00
+type: keep_private
+full_path: _internal.output.create_filter.is_empty_create_value
+---
+name: render_diagnostic
+ts: 2026-05-27 17:57:52.411874+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_renderer.render_diagnostic
+---
+name: path_get_value
+ts: 2026-05-27 17:57:52.411877+00:00
+type: keep_private
+full_path: _internal.output.display_path.path_get_value
+---
+name: inline_json
+ts: 2026-05-27 17:57:52.411881+00:00
+type: keep_private
+full_path: _internal.output.display_path.inline_json
+---
+name: inline_json_fits
+ts: 2026-05-27 17:57:52.411884+00:00
+type: keep_private
+full_path: _internal.output.display_path.inline_json_fits
+---
+name: per_item_trigger
+ts: 2026-05-27 17:57:52.411888+00:00
+type: keep_private
+full_path: _internal.output.display_path.per_item_trigger
+---
+name: is_flat_collection_item
+ts: 2026-05-27 17:57:52.411891+00:00
+type: keep_private
+full_path: _internal.output.display_path.is_flat_collection_item
+---
+name: format_display_key
+ts: 2026-05-27 17:57:52.411894+00:00
+type: keep_private
+full_path: _internal.output.display_path.format_display_key
+---
+name: values_for_display_key
+ts: 2026-05-27 17:57:52.411898+00:00
+type: keep_private
+full_path: _internal.output.display_path.values_for_display_key
+---
+name: replace_display_key
+ts: 2026-05-27 17:57:52.411901+00:00
+type: keep_private
+full_path: _internal.output.display_path.replace_display_key
+---
+name: resolve_replace_display_keys
+ts: 2026-05-27 17:57:52.411905+00:00
+type: keep_private
+full_path: _internal.output.display_path.resolve_replace_display_keys
+---
+name: parse_display_key
+ts: 2026-05-27 17:57:52.411908+00:00
+type: keep_private
+full_path: _internal.output.display_path.parse_display_key
+---
+name: find_resource_change
+ts: 2026-05-27 17:57:52.411912+00:00
+type: keep_private
+full_path: _internal.output.hcl_annex.find_resource_change
+---
+name: annex_attr_slice
+ts: 2026-05-27 17:57:52.411919+00:00
+type: keep_private
+full_path: _internal.output.hcl_annex.annex_attr_slice
+---
+name: render_hcl_annex_as_tf
+ts: 2026-05-27 17:57:52.411923+00:00
+type: keep_private
+full_path: _internal.output.hcl_annex.render_hcl_annex_as_tf
+---
+name: render_hcl_annex
+ts: 2026-05-27 17:57:52.411926+00:00
+type: keep_private
+full_path: _internal.output.hcl_annex.render_hcl_annex
+---
+name: render_json_annex
+ts: 2026-05-27 17:57:52.411929+00:00
+type: keep_private
+full_path: _internal.output.hcl_annex.render_json_annex
+---
+name: strip_annex_value
+ts: 2026-05-27 17:57:52.411933+00:00
+type: keep_private
+full_path: _internal.output.hcl_annex.strip_annex_value
+---
+name: strip_marked_paths
+ts: 2026-05-27 17:57:52.411936+00:00
+type: keep_private
+full_path: _internal.output.hcl_annex.strip_marked_paths
+---
+name: AnnexSlice
+ts: 2026-05-27 17:57:52.411940+00:00
+type: keep_private
+full_path: _internal.output.hcl_annex.AnnexSlice
+---
+name: ResourceAction
+ts: 2026-05-27 17:57:52.411943+00:00
+type: keep_private
+full_path: _internal.output.models.ResourceAction
+---
+name: Change
+ts: 2026-05-27 17:57:52.411947+00:00
+type: keep_private
+full_path: _internal.output.models.Change
+---
+name: ResourceChange
+ts: 2026-05-27 17:57:52.411950+00:00
+type: keep_private
+full_path: _internal.output.models.ResourceChange
+---
+name: OutputChange
+ts: 2026-05-27 17:57:52.411955+00:00
+type: keep_private
+full_path: _internal.output.models.OutputChange
+---
+name: PlanOutput
+ts: 2026-05-27 17:57:52.411959+00:00
+type: keep_private
+full_path: _internal.output.models.PlanOutput
+---
+name: PLAN_PARSE_FAILURE_FILENAME
+ts: 2026-05-27 17:57:52.411963+00:00
+type: keep_private
+full_path: _internal.output.parser.PLAN_PARSE_FAILURE_FILENAME
+---
+name: parse_plan_file
+ts: 2026-05-27 17:57:52.411967+00:00
+type: keep_private
+full_path: _internal.output.parser.parse_plan_file
+---
+name: PlanParseFailureRecord
+ts: 2026-05-27 17:57:52.411970+00:00
+type: keep_private
+full_path: _internal.output.parser.PlanParseFailureRecord
+---
+name: tfdo_dir
+ts: 2026-05-27 17:57:52.411974+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.tfdo_dir
+---
+name: plan_bin_path
+ts: 2026-05-27 17:57:52.411981+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.plan_bin_path
+---
+name: plan_json_path
+ts: 2026-05-27 17:57:52.411984+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.plan_json_path
+---
+name: resolve_plan_out
+ts: 2026-05-27 17:57:52.411988+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.resolve_plan_out
+---
+name: atomic_write_text
+ts: 2026-05-27 17:57:52.411992+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.atomic_write_text
+---
+name: export_plan_bin
+ts: 2026-05-27 17:57:52.411996+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.export_plan_bin
+---
+name: merge_plan_display
+ts: 2026-05-27 17:57:52.411999+00:00
+type: keep_private
+full_path: _internal.output.plan_display.merge_plan_display
+---
+name: PlanDisplayOptions
+ts: 2026-05-27 17:57:52.412003+00:00
+type: keep_private
+full_path: _internal.output.plan_display.PlanDisplayOptions
+---
+name: PlanDisplayCliOverrides
+ts: 2026-05-27 17:57:52.412006+00:00
+type: keep_private
+full_path: _internal.output.plan_display.PlanDisplayCliOverrides
+---
+name: after_unknown_at
+ts: 2026-05-27 17:57:52.412010+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.after_unknown_at
+---
+name: after_unknown_at_map
+ts: 2026-05-27 17:57:52.412014+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.after_unknown_at_map
+---
+name: is_computed_only_plan_delta
+ts: 2026-05-27 17:57:52.412017+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.is_computed_only_plan_delta
+---
+name: is_computed_only_drift_line
+ts: 2026-05-27 17:57:52.412021+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.is_computed_only_drift_line
+---
+name: is_computed_only_drift_resource
+ts: 2026-05-27 17:57:52.412025+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.is_computed_only_drift_resource
+---
+name: format_computed_delta_line
+ts: 2026-05-27 17:57:52.412029+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.format_computed_delta_line
+---
+name: filter_attr_lines
+ts: 2026-05-27 17:57:52.412033+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.filter_attr_lines
+---
+name: iter_plan_resource_nodes
+ts: 2026-05-27 17:57:52.412037+00:00
+type: keep_private
+full_path: _internal.output.plan_render_input.iter_plan_resource_nodes
+---
+name: build_attr_lines_by_addr
+ts: 2026-05-27 17:57:52.412044+00:00
+type: keep_private
+full_path: _internal.output.plan_render_input.build_attr_lines_by_addr
+---
+name: iter_nodes_with_attr_lines
+ts: 2026-05-27 17:57:52.412048+00:00
+type: keep_private
+full_path: _internal.output.plan_render_input.iter_nodes_with_attr_lines
+---
+name: ResourceAttrLines
+ts: 2026-05-27 17:57:52.412051+00:00
+type: keep_private
+full_path: _internal.output.plan_render_input.ResourceAttrLines
+---
+name: ATTR_CONTEXT_INDENT
+ts: 2026-05-27 17:57:52.412055+00:00
+type: keep_private
+full_path: _internal.output.plan_renderer.ATTR_CONTEXT_INDENT
+---
+name: ATTR_CHANGED_INDENT
+ts: 2026-05-27 17:57:52.412059+00:00
+type: keep_private
+full_path: _internal.output.plan_renderer.ATTR_CHANGED_INDENT
+---
+name: MODULE_TREE_ATTR_INDENT
+ts: 2026-05-27 17:57:52.412063+00:00
+type: keep_private
+full_path: _internal.output.plan_renderer.MODULE_TREE_ATTR_INDENT
+---
+name: ATTR_VALUE_INDENT
+ts: 2026-05-27 17:57:52.412066+00:00
+type: keep_private
+full_path: _internal.output.plan_renderer.ATTR_VALUE_INDENT
+---
+name: OUTPUT_INDENT
+ts: 2026-05-27 17:57:52.412070+00:00
+type: keep_private
+full_path: _internal.output.plan_renderer.OUTPUT_INDENT
+---
+name: LINE_REPEAT_THRESHOLD
+ts: 2026-05-27 17:57:52.412073+00:00
+type: keep_private
+full_path: _internal.output.plan_renderer.LINE_REPEAT_THRESHOLD
+---
+name: DESTROY_WARNING_THRESHOLD
+ts: 2026-05-27 17:57:52.412077+00:00
+type: keep_private
+full_path: _internal.output.plan_renderer.DESTROY_WARNING_THRESHOLD
+---
+name: render_plan
+ts: 2026-05-27 17:57:52.412081+00:00
+type: keep_private
+full_path: _internal.output.plan_renderer.render_plan
+---
+name: PlanActionCounts
+ts: 2026-05-27 17:57:52.412084+00:00
+type: keep_private
+full_path: _internal.output.plan_renderer.PlanActionCounts
+---
+name: INLINE_MIN_WIDTH
+ts: 2026-05-27 17:57:52.412088+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.INLINE_MIN_WIDTH
+---
+name: PER_ITEM_MIN_ITEMS
+ts: 2026-05-27 17:57:52.412091+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.PER_ITEM_MIN_ITEMS
+---
+name: MAX_STRUCTURAL_LINES
+ts: 2026-05-27 17:57:52.412095+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.MAX_STRUCTURAL_LINES
+---
+name: MIN_LINES_FOR_HCL_INLINE
+ts: 2026-05-27 17:57:52.412099+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.MIN_LINES_FOR_HCL_INLINE
+---
+name: OUTPUT_WRAP_WIDTH
+ts: 2026-05-27 17:57:52.412102+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.OUTPUT_WRAP_WIDTH
+---
+name: OUTPUT_MULTILINE_CHARS
+ts: 2026-05-27 17:57:52.412106+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.OUTPUT_MULTILINE_CHARS
+---
+name: OUTPUT_PRETTY_JSON_CHARS
+ts: 2026-05-27 17:57:52.412110+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.OUTPUT_PRETTY_JSON_CHARS
+---
+name: TREE_GUIDE_CHARS_PER_LEVEL
+ts: 2026-05-27 17:57:52.412113+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.TREE_GUIDE_CHARS_PER_LEVEL
+---
+name: TREE_BASE_PREFIX_CHARS
+ts: 2026-05-27 17:57:52.412119+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.TREE_BASE_PREFIX_CHARS
+---
+name: inline_budget
+ts: 2026-05-27 17:57:52.412123+00:00
+type: keep_private
+full_path: _internal.output.render_thresholds.inline_budget
+---
+name: resource_schema_required_attrs
+ts: 2026-05-27 17:57:52.412127+00:00
+type: keep_private
+full_path: _internal.output.schema_lookup.resource_schema_required_attrs
+---
+name: schema_field_at_path
+ts: 2026-05-27 17:57:52.412130+00:00
+type: keep_private
+full_path: _internal.output.schema_lookup.schema_field_at_path
+---
+name: attribute_computed_at_path
+ts: 2026-05-27 17:57:52.412134+00:00
+type: keep_private
+full_path: _internal.output.schema_lookup.attribute_computed_at_path
+---
+name: attribute_collection_kind
+ts: 2026-05-27 17:57:52.412138+00:00
+type: keep_private
+full_path: _internal.output.schema_lookup.attribute_collection_kind
+---
+name: build_schema_lookups
+ts: 2026-05-27 17:57:52.412141+00:00
+type: keep_private
+full_path: _internal.output.schema_lookup.build_schema_lookups
+---
+name: build_schema_lookups_from_index
+ts: 2026-05-27 17:57:52.412145+00:00
+type: keep_private
+full_path: _internal.output.schema_lookup.build_schema_lookups_from_index
+---
+name: SchemaLookups
+ts: 2026-05-27 17:57:52.412149+00:00
+type: keep_private
+full_path: _internal.output.schema_lookup.SchemaLookups
+---
+name: SchemaFieldInfo
+ts: 2026-05-27 17:57:52.412152+00:00
+type: keep_private
+full_path: _internal.output.schema_lookup.SchemaFieldInfo
+---
+name: plan_stream_callback
+ts: 2026-05-27 17:57:52.412156+00:00
+type: keep_private
+full_path: _internal.output.stream_handler.plan_stream_callback
+---
+name: PlanStreamHandler
+ts: 2026-05-27 17:57:52.412159+00:00
+type: keep_private
+full_path: _internal.output.stream_handler.PlanStreamHandler
+---
+name: StreamEnvelope
+ts: 2026-05-27 17:57:52.412163+00:00
+type: keep_private
+full_path: _internal.output.stream_models.StreamEnvelope
+---
+name: StreamResource
+ts: 2026-05-27 17:57:52.412167+00:00
+type: keep_private
+full_path: _internal.output.stream_models.StreamResource
+---
+name: StreamHook
+ts: 2026-05-27 17:57:52.412170+00:00
+type: keep_private
+full_path: _internal.output.stream_models.StreamHook
+---
+name: RefreshEvent
+ts: 2026-05-27 17:57:52.412173+00:00
+type: keep_private
+full_path: _internal.output.stream_models.RefreshEvent
+---
+name: DiagnosticPosition
+ts: 2026-05-27 17:57:52.412177+00:00
+type: keep_private
+full_path: _internal.output.stream_models.DiagnosticPosition
+---
+name: DiagnosticRange
+ts: 2026-05-27 17:57:52.412180+00:00
+type: keep_private
+full_path: _internal.output.stream_models.DiagnosticRange
+---
+name: DiagnosticSnippet
+ts: 2026-05-27 17:57:52.412184+00:00
+type: keep_private
+full_path: _internal.output.stream_models.DiagnosticSnippet
+---
+name: DiagnosticBody
+ts: 2026-05-27 17:57:52.412187+00:00
+type: keep_private
+full_path: _internal.output.stream_models.DiagnosticBody
+---
+name: DiagnosticEvent
+ts: 2026-05-27 17:57:52.412195+00:00
+type: keep_private
+full_path: _internal.output.stream_models.DiagnosticEvent
+---
+name: ChangeCounts
+ts: 2026-05-27 17:57:52.412199+00:00
+type: keep_private
+full_path: _internal.output.stream_models.ChangeCounts
+---
+name: ChangeSummaryEvent
+ts: 2026-05-27 17:57:52.412203+00:00
+type: keep_private
+full_path: _internal.output.stream_models.ChangeSummaryEvent
+---
+name: compute_structural_diff
+ts: 2026-05-27 17:57:52.412206+00:00
+type: keep_private
+full_path: _internal.output.structural_diff.compute_structural_diff
+---
+name: format_diff_line
+ts: 2026-05-27 17:57:52.412210+00:00
+type: keep_private
+full_path: _internal.output.structural_diff.format_diff_line
+---
+name: apply_line_budget
+ts: 2026-05-27 17:57:52.412214+00:00
+type: keep_private
+full_path: _internal.output.structural_diff.apply_line_budget
+---
+name: DiffPrefix
+ts: 2026-05-27 17:57:52.412217+00:00
+type: keep_private
+full_path: _internal.output.structural_diff.DiffPrefix
+---
+name: DiffLine
+ts: 2026-05-27 17:57:52.412221+00:00
+type: keep_private
+full_path: _internal.output.structural_diff.DiffLine
+---
+name: BudgetResult
+ts: 2026-05-27 17:57:52.412224+00:00
+type: keep_private
+full_path: _internal.output.structural_diff.BudgetResult
+---
+name: module_name_segments
+ts: 2026-05-27 17:57:52.412227+00:00
+type: keep_private
+full_path: _internal.output.tree_builder.module_name_segments
+---
+name: build_plan_tree
+ts: 2026-05-27 17:57:52.412231+00:00
+type: keep_private
+full_path: _internal.output.tree_builder.build_plan_tree
+---
+name: ResourceNode
+ts: 2026-05-27 17:57:52.412235+00:00
+type: keep_private
+full_path: _internal.output.tree_builder.ResourceNode
+---
+name: ModuleNode
+ts: 2026-05-27 17:57:52.412238+00:00
+type: keep_private
+full_path: _internal.output.tree_builder.ModuleNode
+---
+name: PlanTree
+ts: 2026-05-27 17:57:52.412242+00:00
+type: keep_private
+full_path: _internal.output.tree_builder.PlanTree
+---
+name: MIN_CONCURRENT_SUBMITS
+ts: 2026-05-27 17:57:52.412245+00:00
+type: keep_private
+full_path: _internal.run.orchestration.MIN_CONCURRENT_SUBMITS
+---
+name: DEFAULT_PARALLEL
+ts: 2026-05-27 17:57:52.412253+00:00
+type: keep_private
+full_path: _internal.run.orchestration.DEFAULT_PARALLEL
+---
+name: DEP_TFVARS_SUFFIX
+ts: 2026-05-27 17:57:52.412256+00:00
+type: keep_private
+full_path: _internal.run.orchestration.DEP_TFVARS_SUFFIX
+---
+name: TAGS_TFVARS_FILENAME
+ts: 2026-05-27 17:57:52.412260+00:00
+type: keep_private
+full_path: _internal.run.tags_injection.TAGS_TFVARS_FILENAME
+---
+name: find_schema_cache_files
+ts: 2026-05-27 17:57:52.412264+00:00
+type: keep_private
+full_path: _internal.schema.cache.find_schema_cache_files
+---
+name: schema_cache_hit
+ts: 2026-05-27 17:57:52.412268+00:00
+type: keep_private
+full_path: _internal.schema.cache.schema_cache_hit
+---
+name: DEV_SIDE_TOKEN
+ts: 2026-05-27 17:57:52.412271+00:00
+type: keep_private
+full_path: _internal.schema.diff.DEV_SIDE_TOKEN
+---
+name: DEV_BOOTSTRAP_VERSION
+ts: 2026-05-27 17:57:52.412275+00:00
+type: keep_private
+full_path: _internal.schema.diff.DEV_BOOTSTRAP_VERSION
+---
+name: KNOWN_PROVIDER_SOURCES
+ts: 2026-05-27 17:57:52.412278+00:00
+type: keep_private
+full_path: _internal.schema.inspect_logic.KNOWN_PROVIDER_SOURCES
+---
+name: providers_in_plan
+ts: 2026-05-27 17:57:52.412282+00:00
+type: keep_private
+full_path: _internal.schema.plan_warm.providers_in_plan
+---
+name: cache_misses_for_providers
+ts: 2026-05-27 17:57:52.412291+00:00
+type: keep_private
+full_path: _internal.schema.plan_warm.cache_misses_for_providers
+---
+name: write_provider_schema_caches
+ts: 2026-05-27 17:57:52.412295+00:00
+type: keep_private
+full_path: _internal.schema.plan_warm.write_provider_schema_caches
+---
+name: warm_plan_schema_cache
+ts: 2026-05-27 17:57:52.412299+00:00
+type: keep_private
+full_path: _internal.schema.plan_warm.warm_plan_schema_cache
+---
+name: ProviderCacheMiss
+ts: 2026-05-27 17:57:52.412303+00:00
+type: keep_private
+full_path: _internal.schema.plan_warm.ProviderCacheMiss
+---
+name: providers_schema_json_or_raise
+ts: 2026-05-27 17:57:52.412306+00:00
+type: keep_private
+full_path: _internal.schema.providers_schema.providers_schema_json_or_raise
+---
+name: TF_CLI_CONFIG_FILE_ENV
+ts: 2026-05-27 17:57:52.412310+00:00
+type: keep_private
+full_path: _internal.schema.terraform_cli_config.TF_CLI_CONFIG_FILE_ENV
+---
+name: ENV_PREFIX
+ts: 2026-05-27 17:57:52.412314+00:00
+type: keep_private
+full_path: _internal.settings.ENV_PREFIX
+---
+name: USER_CONFIG_FILENAME
+ts: 2026-05-27 17:57:52.412317+00:00
+type: keep_private
+full_path: _internal.settings.USER_CONFIG_FILENAME
+---
+name: SCHEMA_CACHE_SUBDIR
+ts: 2026-05-27 17:57:52.412321+00:00
+type: keep_private
+full_path: _internal.settings.SCHEMA_CACHE_SUBDIR
+---
+name: BACKENDS_SUBDIR
+ts: 2026-05-27 17:57:52.412324+00:00
+type: keep_private
+full_path: _internal.settings.BACKENDS_SUBDIR
+---
+name: ENV_VARS_SUBDIR
+ts: 2026-05-27 17:57:52.412328+00:00
+type: keep_private
+full_path: _internal.settings.ENV_VARS_SUBDIR
+---
+name: TOOL_NAME
+ts: 2026-05-27 17:57:52.412332+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.TOOL_NAME
+---
+name: YAML_COMMENT_CONFIG
+ts: 2026-05-27 17:57:52.412335+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.YAML_COMMENT_CONFIG
+---
+name: GH_WORKFLOWS_DIR
+ts: 2026-05-27 17:57:52.412339+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.GH_WORKFLOWS_DIR
+---
+name: GH_ACTIONS_DIR
+ts: 2026-05-27 17:57:52.412342+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.GH_ACTIONS_DIR
+---
+name: ACTION_CHECKOUT
+ts: 2026-05-27 17:57:52.412346+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.ACTION_CHECKOUT
+---
+name: ACTION_AWS_CREDS
+ts: 2026-05-27 17:57:52.412350+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.ACTION_AWS_CREDS
+---
+name: ACTION_SETUP_JUST
+ts: 2026-05-27 17:57:52.412353+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.ACTION_SETUP_JUST
+---
+name: ACTION_SETUP_UV
+ts: 2026-05-27 17:57:52.412357+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.ACTION_SETUP_UV
+---
+name: ACTION_MISE
+ts: 2026-05-27 17:57:52.412360+00:00
+type: keep_private
+full_path: _internal.sync.sync_github.ACTION_MISE
+---
+name: TOOL_NAME
+ts: 2026-05-27 17:57:52.412364+00:00
+type: keep_private
+full_path: _internal.sync.sync_justfile.TOOL_NAME
+---
+name: SECTION_ID
+ts: 2026-05-27 17:57:52.412368+00:00
+type: keep_private
+full_path: _internal.sync.sync_justfile.SECTION_ID
+---
+name: JUSTFILE_COMMENT_CONFIG
+ts: 2026-05-27 17:57:52.412371+00:00
+type: keep_private
+full_path: _internal.sync.sync_justfile.JUSTFILE_COMMENT_CONFIG
+---
+name: JUSTFILE_NAME
+ts: 2026-05-27 17:57:52.412376+00:00
+type: keep_private
+full_path: _internal.sync.sync_justfile.JUSTFILE_NAME
+---
+name: POSITIONAL_ARGUMENTS_LINE
+ts: 2026-05-27 17:57:52.412379+00:00
+type: keep_private
+full_path: _internal.sync.sync_justfile.POSITIONAL_ARGUMENTS_LINE
+---
+name: TfDoUserConfig
+ts: 2026-05-27 17:58:22.407778+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''plan_display'' (default: None)'
+field_name: plan_display
+group: __ROOT__
+---
+name: ''
+ts: 2026-05-27 18:02:15.913216+00:00
+type: fix
+author: Espen Albert
+group: ''
+ignored: true
+message: 'fix: Fix module attr indent and green style bleed'
+short_sha: d85917
+---
+name: ''
+ts: 2026-05-27 18:02:17.851651+00:00
+type: fix
+author: Espen Albert
+group: ''
+ignored: true
+message: 'fix: Drop extra text indent for module tree attributes'
+short_sha: b10fc5
+---
+name: ''
+ts: 2026-05-27 18:02:28.040341+00:00
+type: fix
+author: Espen Albert
+group: ''
+ignored: true
+message: 'fix(ci): Register private API symbols and fix pyright import
+
+
+  Adds pkg-ext keep_private decisions for new internal symbols, records
+
+  ignored fix commits for bot pre-commit, and imports ShellRunEventT from
+
+  ask_shell._internal.events for pyright.
+
+
+  Co-authored-by: Cursor <cursoragent@cursor.com>'
+short_sha: 031418
+---
+name: print_plan_footer
+ts: 2026-05-27 18:29:12.674010+00:00
+type: keep_private
+full_path: _internal.output.plan_footer.print_plan_footer
+---
+name: detail_preset
+ts: 2026-05-27 18:29:16.406392+00:00
+type: keep_private
+full_path: _internal.output.plan_display.detail_preset
+---
+name: detail_option
+ts: 2026-05-27 18:29:21.970474+00:00
+type: keep_private
+full_path: _internal.cmd_options.detail_option
+---
+name: config
+ts: 2026-05-27 18:29:40.925454+00:00
+type: group_module
+module_path: _internal.output.plan_display
+---
+name: DetailLevel
+ts: 2026-05-27 18:29:40.929855+00:00
+type: make_public
+details: created in _internal/output/plan_display.py
+full_path: _internal.output.plan_display.DetailLevel
+group: config
+---
+name: truncate_inline_rendered
+ts: 2026-05-27 18:40:14.258430+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.truncate_inline_rendered
+---
+name: format_computed_before_value
+ts: 2026-05-27 18:40:14.258493+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.format_computed_before_value
+---
+name: format_computed_structural_line
+ts: 2026-05-27 18:40:14.258504+00:00
+type: keep_private
+full_path: _internal.output.plan_filters.format_computed_structural_line

@@ -1,0 +1,14 @@
+📋 Plan: 🟣 3 to replace
+
+🟣 local_file.credentials (must replace)
+       filename: "./output/creds.txt"
+🟣 random_pet.service (must replace)
+     ! length: 2 -> 3
+     ! prefix: "svc" -> "app"
+     ! separator: "-" -> "_"
+🟣 random_string.token (must replace)
+     ! length: 16 -> 32
+     ! special: true -> false
+
+📤 Outputs (🟡 1 changed)
+  ~ token_length: 16 -> 32

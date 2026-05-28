@@ -1,0 +1,523 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.12.1",
+  "planned_values": {
+    "outputs": {
+      "dns_record": {
+        "sensitive": false
+      },
+      "project_name": {
+        "sensitive": false
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "random_pet.project",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "project",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 0,
+          "values": {
+            "keepers": null,
+            "length": 1,
+            "prefix": "proj",
+            "separator": "-"
+          },
+          "sensitive_values": {}
+        }
+      ],
+      "child_modules": [
+        {
+          "resources": [
+            {
+              "address": "module.networking.local_file.network_config",
+              "mode": "managed",
+              "type": "local_file",
+              "name": "network_config",
+              "provider_name": "registry.terraform.io/hashicorp/local",
+              "schema_version": 0,
+              "values": {
+                "content_base64": null,
+                "directory_permission": "0777",
+                "file_permission": "0777",
+                "filename": "modules/networking/../../output/network.conf",
+                "sensitive_content": null,
+                "source": null
+              },
+              "sensitive_values": {
+                "sensitive_content": true
+              }
+            },
+            {
+              "address": "module.networking.random_id.vpc_id",
+              "mode": "managed",
+              "type": "random_id",
+              "name": "vpc_id",
+              "provider_name": "registry.terraform.io/hashicorp/random",
+              "schema_version": 0,
+              "values": {
+                "byte_length": 4,
+                "keepers": null
+              },
+              "sensitive_values": {}
+            }
+          ],
+          "address": "module.networking",
+          "child_modules": [
+            {
+              "resources": [
+                {
+                  "address": "module.networking.module.dns.local_file.dns_record",
+                  "mode": "managed",
+                  "type": "local_file",
+                  "name": "dns_record",
+                  "provider_name": "registry.terraform.io/hashicorp/local",
+                  "schema_version": 0,
+                  "values": {
+                    "content_base64": null,
+                    "directory_permission": "0777",
+                    "file_permission": "0777",
+                    "filename": "modules/networking/dns/../../../output/dns.conf",
+                    "sensitive_content": null,
+                    "source": null
+                  },
+                  "sensitive_values": {
+                    "sensitive_content": true
+                  }
+                },
+                {
+                  "address": "module.networking.module.dns.random_string.zone_suffix",
+                  "mode": "managed",
+                  "type": "random_string",
+                  "name": "zone_suffix",
+                  "provider_name": "registry.terraform.io/hashicorp/random",
+                  "schema_version": 2,
+                  "values": {
+                    "keepers": null,
+                    "length": 6,
+                    "lower": true,
+                    "min_lower": 0,
+                    "min_numeric": 0,
+                    "min_special": 0,
+                    "min_upper": 0,
+                    "number": true,
+                    "numeric": true,
+                    "override_special": null,
+                    "special": false,
+                    "upper": false
+                  },
+                  "sensitive_values": {}
+                }
+              ],
+              "address": "module.networking.module.dns"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "random_pet.project",
+      "mode": "managed",
+      "type": "random_pet",
+      "name": "project",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "keepers": null,
+          "length": 1,
+          "prefix": "proj",
+          "separator": "-"
+        },
+        "after_unknown": {
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "module.networking.local_file.network_config",
+      "module_address": "module.networking",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "network_config",
+      "provider_name": "registry.terraform.io/hashicorp/local",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_base64": null,
+          "directory_permission": "0777",
+          "file_permission": "0777",
+          "filename": "modules/networking/../../output/network.conf",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after_unknown": {
+          "content": true,
+          "content_base64sha256": true,
+          "content_base64sha512": true,
+          "content_md5": true,
+          "content_sha1": true,
+          "content_sha256": true,
+          "content_sha512": true,
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "sensitive_content": true
+        }
+      }
+    },
+    {
+      "address": "module.networking.random_id.vpc_id",
+      "module_address": "module.networking",
+      "mode": "managed",
+      "type": "random_id",
+      "name": "vpc_id",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "byte_length": 4,
+          "keepers": null
+        },
+        "after_unknown": {
+          "b64_std": true,
+          "b64_url": true,
+          "dec": true,
+          "hex": true,
+          "id": true,
+          "prefix": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "module.networking.module.dns.local_file.dns_record",
+      "module_address": "module.networking.module.dns",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "dns_record",
+      "provider_name": "registry.terraform.io/hashicorp/local",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_base64": null,
+          "directory_permission": "0777",
+          "file_permission": "0777",
+          "filename": "modules/networking/dns/../../../output/dns.conf",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after_unknown": {
+          "content": true,
+          "content_base64sha256": true,
+          "content_base64sha512": true,
+          "content_md5": true,
+          "content_sha1": true,
+          "content_sha256": true,
+          "content_sha512": true,
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "sensitive_content": true
+        }
+      }
+    },
+    {
+      "address": "module.networking.module.dns.random_string.zone_suffix",
+      "module_address": "module.networking.module.dns",
+      "mode": "managed",
+      "type": "random_string",
+      "name": "zone_suffix",
+      "provider_name": "registry.terraform.io/hashicorp/random",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "keepers": null,
+          "length": 6,
+          "lower": true,
+          "min_lower": 0,
+          "min_numeric": 0,
+          "min_special": 0,
+          "min_upper": 0,
+          "number": true,
+          "numeric": true,
+          "override_special": null,
+          "special": false,
+          "upper": false
+        },
+        "after_unknown": {
+          "id": true,
+          "result": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "output_changes": {
+    "dns_record": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "project_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "local": {
+        "name": "local",
+        "full_name": "registry.terraform.io/hashicorp/local",
+        "version_constraint": "~> 2.5"
+      },
+      "random": {
+        "name": "random",
+        "full_name": "registry.terraform.io/hashicorp/random",
+        "version_constraint": "~> 3.6"
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "dns_record": {
+          "expression": {
+            "references": [
+              "module.networking.dns_record",
+              "module.networking"
+            ]
+          }
+        },
+        "project_name": {
+          "expression": {
+            "references": [
+              "random_pet.project.id",
+              "random_pet.project"
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "address": "random_pet.project",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "project",
+          "provider_config_key": "random",
+          "expressions": {
+            "length": {
+              "constant_value": 1
+            },
+            "prefix": {
+              "constant_value": "proj"
+            }
+          },
+          "schema_version": 0
+        }
+      ],
+      "module_calls": {
+        "networking": {
+          "source": "./modules/networking",
+          "expressions": {
+            "project_name": {
+              "references": [
+                "random_pet.project.id",
+                "random_pet.project"
+              ]
+            }
+          },
+          "module": {
+            "outputs": {
+              "dns_record": {
+                "expression": {
+                  "references": [
+                    "module.dns.record",
+                    "module.dns"
+                  ]
+                }
+              }
+            },
+            "resources": [
+              {
+                "address": "local_file.network_config",
+                "mode": "managed",
+                "type": "local_file",
+                "name": "network_config",
+                "provider_config_key": "local",
+                "expressions": {
+                  "content": {
+                    "references": [
+                      "random_id.vpc_id.hex",
+                      "random_id.vpc_id"
+                    ]
+                  },
+                  "filename": {
+                    "references": [
+                      "path.module"
+                    ]
+                  }
+                },
+                "schema_version": 0
+              },
+              {
+                "address": "random_id.vpc_id",
+                "mode": "managed",
+                "type": "random_id",
+                "name": "vpc_id",
+                "provider_config_key": "random",
+                "expressions": {
+                  "byte_length": {
+                    "constant_value": 4
+                  },
+                  "prefix": {
+                    "references": [
+                      "var.project_name"
+                    ]
+                  }
+                },
+                "schema_version": 0
+              }
+            ],
+            "module_calls": {
+              "dns": {
+                "source": "./dns",
+                "expressions": {
+                  "project_name": {
+                    "references": [
+                      "var.project_name"
+                    ]
+                  },
+                  "vpc_id": {
+                    "references": [
+                      "random_id.vpc_id.hex",
+                      "random_id.vpc_id"
+                    ]
+                  }
+                },
+                "module": {
+                  "outputs": {
+                    "record": {
+                      "expression": {
+                        "references": [
+                          "var.project_name"
+                        ]
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "address": "local_file.dns_record",
+                      "mode": "managed",
+                      "type": "local_file",
+                      "name": "dns_record",
+                      "provider_config_key": "local",
+                      "expressions": {
+                        "content": {
+                          "references": [
+                            "var.project_name",
+                            "var.vpc_id",
+                            "random_string.zone_suffix.result",
+                            "random_string.zone_suffix"
+                          ]
+                        },
+                        "filename": {
+                          "references": [
+                            "path.module"
+                          ]
+                        }
+                      },
+                      "schema_version": 0
+                    },
+                    {
+                      "address": "random_string.zone_suffix",
+                      "mode": "managed",
+                      "type": "random_string",
+                      "name": "zone_suffix",
+                      "provider_config_key": "random",
+                      "expressions": {
+                        "length": {
+                          "constant_value": 6
+                        },
+                        "special": {
+                          "constant_value": false
+                        },
+                        "upper": {
+                          "constant_value": false
+                        }
+                      },
+                      "schema_version": 2
+                    }
+                  ],
+                  "variables": {
+                    "project_name": {},
+                    "vpc_id": {}
+                  }
+                }
+              }
+            },
+            "variables": {
+              "project_name": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "random_pet.project",
+      "attribute": [
+        "id"
+      ]
+    },
+    {
+      "resource": "module.networking.module.dns.random_string.zone_suffix",
+      "attribute": [
+        "result"
+      ]
+    },
+    {
+      "resource": "module.networking.random_id.vpc_id",
+      "attribute": [
+        "hex"
+      ]
+    }
+  ],
+  "timestamp": "2026-05-18T18:45:43Z",
+  "applyable": true,
+  "complete": true,
+  "errored": false
+}

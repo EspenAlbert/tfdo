@@ -2,7 +2,7 @@
 
 <!-- === DO_NOT_EDIT: pkg-ext tfdosettings_def === -->
 ## class: TfDoSettings
-- [source](../../tfdo/_internal/settings.py#L30)
+- [source](../../tfdo/_internal/settings.py#L32)
 > **Since:** 0.1.0
 
 ```python

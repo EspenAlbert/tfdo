@@ -7,6 +7,7 @@ from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
 from tfdo._internal.config.enums import TagsInject
 from tfdo._internal.core import executor as executor_core
+from tfdo._internal.core import terraform_init as terraform_init_core
 from tfdo._internal.models import InitInput, InitMode, InitResult, OutputInput, OutputResult
 from tfdo._internal.run import orchestration as orchestration_module
 from tfdo._internal.run.run_context import RunDirContext
@@ -86,7 +87,7 @@ def test_collect_dependency_outputs_auto_retries(tmp_path: Path, fail_stderr: st
 
     with (
         patch.object(orchestration_module.executor, executor_core.output_json.__name__, side_effect=fake_output),
-        patch.object(orchestration_module.executor, executor_core.init.__name__, side_effect=fake_init),
+        patch.object(orchestration_module.terraform_init, terraform_init_core.init.__name__, side_effect=fake_init),
     ):
         out = orchestration_module._collect_dependency_outputs(settings, run_dir, ctx, config, InitMode.AUTO, None)
 

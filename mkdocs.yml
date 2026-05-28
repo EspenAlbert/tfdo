@@ -17,6 +17,7 @@ nav:
     - Overview: _root/index.md
     - CheckConfig: _root/checkconfig.md
     - TfDoSettings: _root/tfdosettings.md
+    - TfDoUserConfig: _root/tfdouserconfig.md
   - boot: boot/index.md
   - config:
     - Overview: config/index.md

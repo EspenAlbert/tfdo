@@ -9,13 +9,13 @@ from tfdo import hooks
 from tfdo import inspect
 from tfdo import new
 from tfdo import run
+from tfdo._internal.typer_app import get_settings
+from tfdo._internal.typer_app import main_callback
 from tfdo import schema
 from tfdo._internal.settings import CheckConfig
 from tfdo._internal.settings import InteractiveMode
 from tfdo._internal.settings import TfDoSettings
 from tfdo._internal.settings import TfDoUserConfig
-from tfdo._internal.typer_app import get_settings
-from tfdo._internal.typer_app import main_callback
 from tfdo import sync
 
 VERSION = "0.7.0"
@@ -29,12 +29,12 @@ __all__ = [
     "inspect",
     "new",
     "run",
+    "get_settings",
+    "main_callback",
     "schema",
     "CheckConfig",
     "InteractiveMode",
     "TfDoSettings",
     "TfDoUserConfig",
-    "get_settings",
-    "main_callback",
     "sync",
 ]

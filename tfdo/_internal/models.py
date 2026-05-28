@@ -9,6 +9,8 @@ from typing import ClassVar, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from tfdo._internal.check.models import CheckResult as RunDirProviderResult
+from tfdo._internal.config.config_file import resolve_run_context_label
+from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
 from tfdo._internal.settings import TfDoSettings
 
 _TF_PLUGIN_CACHE_DIR_KEY = "TF_PLUGIN_CACHE_DIR"
@@ -51,6 +53,16 @@ class LifecycleInput(TfDoBaseInput):
 class PlanInput(LifecycleInput):
     out: Path | None = None
     json_output: bool = False
+    destroy_plan: bool = False
+    run_context_label: str = ""
+    detail: DetailLevel = DetailLevel.COMPACT
+    plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
+
+    @model_validator(mode="after")
+    def _resolve_run_context_label(self) -> Self:
+        if not self.run_context_label:
+            self.run_context_label = resolve_run_context_label(self.settings.work_dir)
+        return self
 
 
 def _check_interactive_approval(subcommand: str, auto_approve: bool, settings: TfDoSettings) -> None:
@@ -64,6 +76,8 @@ def _check_interactive_approval(subcommand: str, auto_approve: bool, settings: T
 
 class ApplyInput(LifecycleInput):
     auto_approve: bool = False
+    detail: DetailLevel = DetailLevel.COMPACT
+    plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
 
     @model_validator(mode="after")
     def _require_approval_source(self) -> Self:
@@ -73,6 +87,8 @@ class ApplyInput(LifecycleInput):
 
 class DestroyInput(LifecycleInput):
     auto_approve: bool = False
+    detail: DetailLevel = DetailLevel.COMPACT
+    plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
 
     @model_validator(mode="after")
     def _require_approval_source(self) -> Self:
