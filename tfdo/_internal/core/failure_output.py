@@ -25,7 +25,7 @@ def format_failure_stderr(stderr: str | None) -> str | None:
     text = "\n".join(tail)
     if len(text) <= _FAILURE_STDERR_MAX:
         return text
-    return f"{text[-_FAILURE_STDERR_MAX:]}... (truncated, {len(text)} chars total)"
+    return f"... (truncated, {len(text)} chars total)\n{text[-_FAILURE_STDERR_MAX:]}"
 
 
 def report_lifecycle_failure(

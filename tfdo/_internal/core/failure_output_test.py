@@ -18,4 +18,5 @@ def test_format_failure_stderr_tails_and_truncates() -> None:
     huge_tail = "x" * 5000
     truncated = failure_output.format_failure_stderr(huge_tail)
     assert truncated is not None
-    assert "truncated" in truncated
+    assert truncated.startswith("... (truncated,")
+    assert "5000 chars total" in truncated
