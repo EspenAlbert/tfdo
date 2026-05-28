@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2 2026-05-28T18-42Z
+
+### Other Changes
+- Chore: support output errors during plan/apply/destroy
+
+
 ## 0.8.1 2026-05-28T09-35Z
 
 ### Core

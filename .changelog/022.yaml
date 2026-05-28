@@ -46,3 +46,8 @@ full_path: _internal.core.failure_output.report_lifecycle_failure
 ts: 2026-05-28 13:28:02.952567+00:00
 type: chore
 description: support output errors during plan/apply/destroy
+---
+name: 0.8.2
+ts: 2026-05-28 18:42:42.333202+00:00
+type: release
+old_version: 0.8.1
