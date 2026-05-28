@@ -286,7 +286,7 @@ class ProviderConstraint(BaseModel):
 
 ### class: `DetailLevel`
 - [source](../../tfdo/_internal/output/plan_display.py#L12)
-> **Since:** unreleased
+> **Since:** 0.8.0
 
 ```python
 class DetailLevel(StrEnum):
@@ -297,5 +297,5 @@ class DetailLevel(StrEnum):
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.8.0 | Made public |
 <!-- === OK_EDIT: pkg-ext detaillevel_def === -->

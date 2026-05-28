@@ -24,6 +24,6 @@ class TfDoUserConfig(BaseModel):
 
 | Version | Change |
 |---------|--------|
-| unreleased | added optional field 'plan_display' (default: None) |
+| 0.8.0 | added optional field 'plan_display' (default: None) |
 | 0.3.0 | Made public |
 <!-- === OK_EDIT: pkg-ext tfdouserconfig_changes === -->

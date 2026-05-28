@@ -18,7 +18,7 @@ from tfdo._internal.settings import TfDoSettings
 from tfdo._internal.settings import TfDoUserConfig
 from tfdo import sync
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 __all__ = [
     "boot",
     "config",

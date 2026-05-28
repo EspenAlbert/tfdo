@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 2026-05-28T06-45Z
+
+### __Root__
+- `__ROOT__.TfDoUserConfig`: added optional field 'plan_display' (default: None)
+
+### Config
+- New class `DetailLevel`
+
+
 ## 0.7.0 2026-05-15T16-46Z
 
 ### __Root__

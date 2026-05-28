@@ -1,5 +1,5 @@
 pkg_import_name: tfdo
-version: 0.7.0
+version: 0.8.0
 groups:
 - name: __ROOT__
   symbols:
@@ -21,7 +21,7 @@ groups:
   - name: CheckConfig
     module_path: _internal.settings
     docstring: ''
-    line_number: 133
+    line_number: 135
     type: class
     mro_bases:
     - BaseModel
@@ -46,7 +46,7 @@ groups:
   - name: InteractiveMode
     module_path: _internal.settings
     docstring: ''
-    line_number: 24
+    line_number: 26
     type: class
     mro_bases:
     - StrEnum
@@ -69,7 +69,7 @@ groups:
   - name: TfDoSettings
     module_path: _internal.settings
     docstring: ''
-    line_number: 30
+    line_number: 32
     type: class
     mro_bases:
     - StaticSettings
@@ -230,7 +230,7 @@ groups:
   - name: TfDoUserConfig
     module_path: _internal.settings
     docstring: ''
-    line_number: 138
+    line_number: 140
     type: class
     mro_bases:
     - BaseModel
@@ -240,6 +240,15 @@ groups:
       type_annotation: CheckConfig | None
       type_imports:
       - tfdo._internal.settings.CheckConfig
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: plan_display
+      type_annotation: PlanDisplayOptions | None
+      type_imports:
+      - tfdo._internal.output.plan_display.PlanDisplayOptions
       default:
         value_repr: None
         is_factory: false
@@ -962,6 +971,29 @@ groups:
         kind: var_keyword
         type_imports: []
       return_type_imports: []
+  - name: DetailLevel
+    module_path: _internal.output.plan_display
+    docstring: ''
+    line_number: 12
+    type: class
+    mro_bases:
+    - StrEnum
+    - str
+    - ReprEnum
+    - Enum
+    num_direct_bases: 1
+    init_signature:
+      parameters:
+      - name: self
+        kind: positional_or_keyword
+        type_imports: []
+      - name: args
+        kind: var_positional
+        type_imports: []
+      - name: kwds
+        kind: var_keyword
+        type_imports: []
+      return_type_imports: []
 - name: copy
   symbols:
   - name: env_cmd
@@ -1150,7 +1182,7 @@ groups:
   - name: apply_cmd
     module_path: _internal.core.cmd_apply
     docstring: Run terraform apply.
-    line_number: 11
+    line_number: 12
     type: cli_command
     signature:
       parameters:
@@ -1179,6 +1211,49 @@ groups:
         type_annotation: InitMode
         type_imports:
         - tfdo._internal.models.InitMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_drift
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_deltas
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_create_defaults
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_full_config_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_json_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: detail
+        kind: positional_or_keyword
+        type_annotation: DetailLevel
+        type_imports:
+        - tfdo._internal.output.plan_display.DetailLevel
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -1219,10 +1294,62 @@ groups:
       - auto
       - always
       - never
+    - param_name: show_computed_drift
+      type_annotation: bool | None
+      flags:
+      - --show-computed-drift
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_computed_deltas
+      type_annotation: bool | None
+      flags:
+      - --show-computed-deltas
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_create_defaults
+      type_annotation: bool | None
+      flags:
+      - --show-create-defaults
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_full_config_annex
+      type_annotation: bool | None
+      flags:
+      - --show-full-config-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_json_annex
+      type_annotation: bool | None
+      flags:
+      - --show-json-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: detail
+      type_annotation: DetailLevel
+      flags:
+      - --detail
+      help: 'Plan display depth: compact (default) or full'
+      default_repr: '<DetailLevel.COMPACT: ''compact''>'
+      required: false
+      is_argument: false
+      hidden: false
+      choices:
+      - compact
+      - full
   - name: destroy_cmd
     module_path: _internal.core.cmd_destroy
     docstring: Run terraform destroy.
-    line_number: 11
+    line_number: 12
     type: cli_command
     signature:
       parameters:
@@ -1251,6 +1378,49 @@ groups:
         type_annotation: InitMode
         type_imports:
         - tfdo._internal.models.InitMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_drift
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_deltas
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_create_defaults
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_full_config_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_json_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: detail
+        kind: positional_or_keyword
+        type_annotation: DetailLevel
+        type_imports:
+        - tfdo._internal.output.plan_display.DetailLevel
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -1291,6 +1461,58 @@ groups:
       - auto
       - always
       - never
+    - param_name: show_computed_drift
+      type_annotation: bool | None
+      flags:
+      - --show-computed-drift
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_computed_deltas
+      type_annotation: bool | None
+      flags:
+      - --show-computed-deltas
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_create_defaults
+      type_annotation: bool | None
+      flags:
+      - --show-create-defaults
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_full_config_annex
+      type_annotation: bool | None
+      flags:
+      - --show-full-config-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_json_annex
+      type_annotation: bool | None
+      flags:
+      - --show-json-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: detail
+      type_annotation: DetailLevel
+      flags:
+      - --detail
+      help: 'Plan display depth: compact (default) or full'
+      default_repr: '<DetailLevel.COMPACT: ''compact''>'
+      required: false
+      is_argument: false
+      hidden: false
+      choices:
+      - compact
+      - full
   - name: init_cmd
     module_path: _internal.core.cmd_init
     docstring: Run terraform init with retry on transient errors.
@@ -1340,7 +1562,7 @@ groups:
   - name: plan_cmd
     module_path: _internal.core.cmd_plan
     docstring: Run terraform plan.
-    line_number: 11
+    line_number: 12
     type: cli_command
     signature:
       parameters:
@@ -1377,6 +1599,49 @@ groups:
         type_annotation: InitMode
         type_imports:
         - tfdo._internal.models.InitMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_drift
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_deltas
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_create_defaults
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_full_config_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_json_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: detail
+        kind: positional_or_keyword
+        type_annotation: DetailLevel
+        type_imports:
+        - tfdo._internal.output.plan_display.DetailLevel
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -1427,10 +1692,62 @@ groups:
       - auto
       - always
       - never
+    - param_name: show_computed_drift
+      type_annotation: bool | None
+      flags:
+      - --show-computed-drift
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_computed_deltas
+      type_annotation: bool | None
+      flags:
+      - --show-computed-deltas
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_create_defaults
+      type_annotation: bool | None
+      flags:
+      - --show-create-defaults
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_full_config_annex
+      type_annotation: bool | None
+      flags:
+      - --show-full-config-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_json_annex
+      type_annotation: bool | None
+      flags:
+      - --show-json-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: detail
+      type_annotation: DetailLevel
+      flags:
+      - --detail
+      help: 'Plan display depth: compact (default) or full'
+      default_repr: '<DetailLevel.COMPACT: ''compact''>'
+      required: false
+      is_argument: false
+      hidden: false
+      choices:
+      - compact
+      - full
   - name: InitMode
     module_path: _internal.models
     docstring: ''
-    line_number: 17
+    line_number: 19
     type: class
     mro_bases:
     - StrEnum
@@ -2220,7 +2537,7 @@ groups:
   - name: run_apply_cmd
     module_path: _internal.run.cmd_run
     docstring: Run apply across multiple run directories.
-    line_number: 121
+    line_number: 141
     type: cli_command
     signature:
       parameters:
@@ -2249,6 +2566,49 @@ groups:
         type_annotation: InitMode
         type_imports:
         - tfdo._internal.models.InitMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_drift
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_deltas
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_create_defaults
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_full_config_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_json_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: detail
+        kind: positional_or_keyword
+        type_annotation: DetailLevel
+        type_imports:
+        - tfdo._internal.output.plan_display.DetailLevel
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -2289,10 +2649,62 @@ groups:
       - auto
       - always
       - never
+    - param_name: show_computed_drift
+      type_annotation: bool | None
+      flags:
+      - --show-computed-drift
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_computed_deltas
+      type_annotation: bool | None
+      flags:
+      - --show-computed-deltas
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_create_defaults
+      type_annotation: bool | None
+      flags:
+      - --show-create-defaults
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_full_config_annex
+      type_annotation: bool | None
+      flags:
+      - --show-full-config-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_json_annex
+      type_annotation: bool | None
+      flags:
+      - --show-json-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: detail
+      type_annotation: DetailLevel
+      flags:
+      - --detail
+      help: 'Plan display depth: compact (default) or full'
+      default_repr: '<DetailLevel.COMPACT: ''compact''>'
+      required: false
+      is_argument: false
+      hidden: false
+      choices:
+      - compact
+      - full
   - name: run_callback
     module_path: _internal.run.cmd_run
     docstring: ''
-    line_number: 48
+    line_number: 49
     type: cli_command
     signature:
       parameters:
@@ -2439,7 +2851,7 @@ groups:
   - name: run_destroy_cmd
     module_path: _internal.run.cmd_run
     docstring: Run destroy across multiple run directories.
-    line_number: 136
+    line_number: 175
     type: cli_command
     signature:
       parameters:
@@ -2468,6 +2880,49 @@ groups:
         type_annotation: InitMode
         type_imports:
         - tfdo._internal.models.InitMode
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_drift
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_deltas
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_create_defaults
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_full_config_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_json_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: detail
+        kind: positional_or_keyword
+        type_annotation: DetailLevel
+        type_imports:
+        - tfdo._internal.output.plan_display.DetailLevel
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -2508,10 +2963,62 @@ groups:
       - auto
       - always
       - never
+    - param_name: show_computed_drift
+      type_annotation: bool | None
+      flags:
+      - --show-computed-drift
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_computed_deltas
+      type_annotation: bool | None
+      flags:
+      - --show-computed-deltas
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_create_defaults
+      type_annotation: bool | None
+      flags:
+      - --show-create-defaults
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_full_config_annex
+      type_annotation: bool | None
+      flags:
+      - --show-full-config-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_json_annex
+      type_annotation: bool | None
+      flags:
+      - --show-json-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: detail
+      type_annotation: DetailLevel
+      flags:
+      - --detail
+      help: 'Plan display depth: compact (default) or full'
+      default_repr: '<DetailLevel.COMPACT: ''compact''>'
+      required: false
+      is_argument: false
+      hidden: false
+      choices:
+      - compact
+      - full
   - name: run_init_cmd
     module_path: _internal.run.cmd_run
     docstring: Run init across multiple run directories.
-    line_number: 82
+    line_number: 83
     type: cli_command
     signature:
       parameters:
@@ -2558,7 +3065,7 @@ groups:
   - name: run_plan_cmd
     module_path: _internal.run.cmd_run
     docstring: Run plan across multiple run directories.
-    line_number: 100
+    line_number: 101
     type: cli_command
     signature:
       parameters:
@@ -2595,6 +3102,49 @@ groups:
         kind: positional_or_keyword
         type_annotation: bool
         type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_drift
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_computed_deltas
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_create_defaults
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_full_config_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: show_json_annex
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
+      - name: detail
+        kind: positional_or_keyword
+        type_annotation: DetailLevel
+        type_imports:
+        - tfdo._internal.output.plan_display.DetailLevel
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
@@ -2645,6 +3195,58 @@ groups:
       required: false
       is_argument: false
       hidden: false
+    - param_name: show_computed_drift
+      type_annotation: bool | None
+      flags:
+      - --show-computed-drift
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_computed_deltas
+      type_annotation: bool | None
+      flags:
+      - --show-computed-deltas
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_create_defaults
+      type_annotation: bool | None
+      flags:
+      - --show-create-defaults
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_full_config_annex
+      type_annotation: bool | None
+      flags:
+      - --show-full-config-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: show_json_annex
+      type_annotation: bool | None
+      flags:
+      - --show-json-annex
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
+    - param_name: detail
+      type_annotation: DetailLevel
+      flags:
+      - --detail
+      help: 'Plan display depth: compact (default) or full'
+      default_repr: '<DetailLevel.COMPACT: ''compact''>'
+      required: false
+      is_argument: false
+      hidden: false
+      choices:
+      - compact
+      - full
 - name: schema
   symbols:
   - name: schema_diff_cmd
@@ -3115,4 +3717,4 @@ groups:
       return_annotation: None
       return_type_imports: []
     cli_params: []
-dumped_at: 2026-05-15 16:46:04.247227+00:00
+dumped_at: 2026-05-28 06:45:27.480526+00:00

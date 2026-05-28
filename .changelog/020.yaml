@@ -1075,3 +1075,8 @@ name: format_computed_structural_line
 ts: 2026-05-27 18:40:14.258504+00:00
 type: keep_private
 full_path: _internal.output.plan_filters.format_computed_structural_line
+---
+name: 0.8.0
+ts: 2026-05-28 06:45:27.678129+00:00
+type: release
+old_version: 0.7.0
