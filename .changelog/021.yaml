@@ -11,3 +11,8 @@ changelog_message: 'fix(output): Accept structured after_unknown on output chang
 group: core
 message: 'fix(output): Accept structured after_unknown on output changes'
 short_sha: 6defd3
+---
+name: 0.8.1
+ts: 2026-05-28 09:35:28.583585+00:00
+type: release
+old_version: 0.8.0

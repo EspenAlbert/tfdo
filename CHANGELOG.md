@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 2026-05-28T09-35Z
+
+### Core
+- fix(output): Accept structured after_unknown on output changes [6defd3](https://github.com/EspenAlbert/tfdo/commit/6defd3)
+
+
 ## 0.8.0 2026-05-28T06-45Z
 
 ### __Root__

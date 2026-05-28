@@ -1,5 +1,5 @@
 pkg_import_name: tfdo
-version: 0.8.0
+version: 0.8.1
 groups:
 - name: __ROOT__
   symbols:
@@ -3717,4 +3717,4 @@ groups:
       return_annotation: None
       return_type_imports: []
     cli_params: []
-dumped_at: 2026-05-28 06:45:27.480526+00:00
+dumped_at: 2026-05-28 09:35:28.447404+00:00
