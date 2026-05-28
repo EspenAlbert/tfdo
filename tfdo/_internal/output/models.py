@@ -59,6 +59,10 @@ _PLAN_ACTION_RANK: dict[ResourceAction, int] = {
     ResourceAction.NO_OP: 5,
 }
 
+# Terraform change markers (after_unknown, before_sensitive, after_sensitive): bool leaf,
+# or a dict/list parallel to the value shape with true at unknown/sensitive leaves.
+type ChangeMarker = bool | dict[str, ChangeMarker] | list[ChangeMarker]
+
 
 class Change(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -66,9 +70,9 @@ class Change(BaseModel):
     actions: list[str]
     before: dict[str, object] | None = None
     after: dict[str, object] | None = None
-    after_unknown: dict[str, object] | bool = False
-    before_sensitive: dict[str, object] | bool = False
-    after_sensitive: dict[str, object] | bool = False
+    after_unknown: ChangeMarker = False
+    before_sensitive: ChangeMarker = False
+    after_sensitive: ChangeMarker = False
     replace_paths: list[list[str | int]] | None = None
     importing: dict[str, object] | None = None
 
@@ -96,9 +100,9 @@ class OutputChange(BaseModel):
     actions: list[str]
     before: object | None = None
     after: object | None = None
-    after_unknown: bool = False
-    before_sensitive: bool = False
-    after_sensitive: bool = False
+    after_unknown: ChangeMarker = False
+    before_sensitive: ChangeMarker = False
+    after_sensitive: ChangeMarker = False
 
 
 class PlanOutput(BaseModel):

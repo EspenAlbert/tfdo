@@ -7,7 +7,7 @@ import pytest
 
 from tfdo._internal.output.attr_diff import AttrPrefix, compute_attr_lines
 from tfdo._internal.output.display_path import replace_display_key
-from tfdo._internal.output.models import Change, PlanOutput
+from tfdo._internal.output.models import Change, ChangeMarker, PlanOutput
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.schema_lookup import resource_schema_required_attrs
 from tfdo._internal.output.testdata_paths import TESTDATA_DIR
@@ -107,16 +107,15 @@ def test_destroy_required_context(destroy_plan: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("before_sensitive", "after_sensitive", "key"),
+    ("before_sensitive", "after_sensitive"),
     [
-        ({"secret": True}, {}, "secret"),
-        ({}, {"secret": True}, "secret"),
+        ({"secret": True}, {}),
+        ({}, {"secret": True}),
     ],
 )
 def test_sensitive_masks_values(
-    before_sensitive: dict[str, object],
-    after_sensitive: dict[str, object],
-    key: str,
+    before_sensitive: ChangeMarker,
+    after_sensitive: ChangeMarker,
 ) -> None:
     change = Change(
         actions=["update"],

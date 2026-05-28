@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from tfdo._internal.output.models import ResourceAction
+from tfdo._internal.output.models import OutputChange, PlanOutput, ResourceAction
 from tfdo._internal.output.parser import PLAN_PARSE_FAILURE_FILENAME, parse_plan_file
 from tfdo._internal.settings import TfDoSettings
 
@@ -29,6 +29,25 @@ def test_parse_destroy(destroy_plan: Path) -> None:
     assert len(plan.resource_changes) == 4
     assert all(rc.change.action() == ResourceAction.DELETE for rc in plan.resource_changes)
     assert any(rc.action_reason for rc in plan.resource_changes)
+
+
+def test_parse_output_change_structured_after_unknown() -> None:
+    plan = PlanOutput.model_validate(
+        {
+            "format_version": "1.2",
+            "errored": False,
+            "output_changes": {
+                "subnet_ids": {
+                    "actions": ["create"],
+                    "after_unknown": [True],
+                    "before_sensitive": False,
+                    "after_sensitive": False,
+                }
+            },
+        }
+    )
+    assert isinstance(plan.output_changes["subnet_ids"], OutputChange)
+    assert plan.output_changes["subnet_ids"].after_unknown == [True]
 
 
 def test_parse_output_changes(outputs_only_plan: Path) -> None:

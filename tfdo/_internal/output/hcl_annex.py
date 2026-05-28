@@ -5,12 +5,12 @@ from typing import Any, NamedTuple
 
 import hcl2
 
-from tfdo._internal.output.models import Change, PlanOutput, ResourceChange
+from tfdo._internal.output.models import Change, ChangeMarker, PlanOutput, ResourceChange
 from tfdo._internal.output.schema_lookup import SchemaFieldInfo, schema_field_at_path
 from tfdo._internal.schema.models import ResourceSchema
 
 _BLOCK_MARKER = "__is_block__"
-type MarkMap = dict[str, object] | list[object] | bool
+type MarkMap = ChangeMarker
 
 
 def find_resource_change(plan: PlanOutput, *, address: str) -> ResourceChange:
@@ -177,10 +177,12 @@ def _strip_list(value: list[object], mark_maps: list[MarkMap]) -> list[object]:
     return result_list
 
 
-def _slice_mark_map(mark_map: MarkMap, attr_name: str) -> MarkMap:
+def _slice_mark_map(mark_map: ChangeMarker, attr_name: str) -> MarkMap:
     if isinstance(mark_map, bool):
         return mark_map
     if isinstance(mark_map, list):
+        return False
+    if not isinstance(mark_map, dict):
         return False
     child = mark_map.get(attr_name, False)
     return child if isinstance(child, dict | list | bool) else False
