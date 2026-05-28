@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from tfdo._internal.output.create_filter import is_empty_create_value
 from tfdo._internal.output.display_path import resolve_replace_display_keys, values_for_display_key
-from tfdo._internal.output.models import Change, ResourceAction
+from tfdo._internal.output.models import Change, ChangeMarker, ResourceAction
 
 
 class AttrPrefix(StrEnum):
@@ -174,13 +174,13 @@ def _line(
     return AttrLine(name=name, prefix=prefix, old_value=old, new_value=new, is_sensitive=sensitive, value_kind=kind)
 
 
-def _is_after_unknown(after_unknown: dict[str, object] | bool, key: str) -> bool:
+def _is_after_unknown(after_unknown: ChangeMarker, key: str) -> bool:
     return isinstance(after_unknown, dict) and after_unknown.get(key) is True
 
 
 def _is_sensitive(
-    before_sensitive: dict[str, object] | bool,
-    after_sensitive: dict[str, object] | bool,
+    before_sensitive: ChangeMarker,
+    after_sensitive: ChangeMarker,
     key: str,
 ) -> bool:
     if before_sensitive is True or after_sensitive is True:

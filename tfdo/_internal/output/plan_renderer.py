@@ -37,6 +37,7 @@ from tfdo._internal.output.render_thresholds import (
 )
 from tfdo._internal.output.schema_lookup import CollectionKindLookup, ResourceSchemaLookup
 from tfdo._internal.output.tree_builder import ModuleNode, PlanTree, ResourceNode
+from tfdo._internal.output.unknown_markers import has_unknown_values
 
 ATTR_CONTEXT_INDENT = 7
 ATTR_CHANGED_INDENT = 5
@@ -1074,7 +1075,7 @@ def _output_entries(
                 marker = "-"
             case _:
                 continue
-        if change.after_unknown and not show_unknown_outputs:
+        if has_unknown_values(change.after_unknown) and not show_unknown_outputs:
             continue
         entries.append((name, change, marker))
     return entries
@@ -1083,7 +1084,7 @@ def _output_entries(
 def _output_value_text(change: OutputChange) -> str:
     if change.before_sensitive or change.after_sensitive:
         return _SENSITIVE
-    if change.after_unknown:
+    if has_unknown_values(change.after_unknown):
         return KNOWN_AFTER_APPLY
     key = "+".join(change.actions)
     match key:
