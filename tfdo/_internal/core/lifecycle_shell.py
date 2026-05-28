@@ -4,8 +4,9 @@ from pathlib import Path
 
 from ask_shell.shell import ShellError, run_and_wait
 
-from tfdo._internal.core import binary, lifecycle_init_retry
+from tfdo._internal.core import binary, lifecycle_env, lifecycle_init_retry
 from tfdo._internal.models import LifecycleInput, LifecycleResult
+from tfdo._internal.output import plan_artifacts
 from tfdo._internal.settings import TfDoSettings
 
 
@@ -25,6 +26,7 @@ def run_lifecycle_command[T: LifecycleResult](
         run = run_and_wait(
             cmd,
             cwd=settings.work_dir,
+            env=lifecycle_env.lifecycle_env(settings.work_dir),
             allow_non_zero_exit=True,
             ansi_content=True,
             skip_binary_check=True,
@@ -39,6 +41,7 @@ def run_lifecycle[T: LifecycleResult](
     input_model: LifecycleInput, subcommand: str, extra_flags: list[str], result_cls: type[T]
 ) -> T:
     settings = input_model.settings
+    plan_artifacts.begin_lifecycle_debug_log(settings.work_dir)
     all_flags = [*extra_flags, *input_model.extra_args]
     cmd = build_lifecycle_command(binary.resolve_binary(settings), subcommand, input_model.var_file, all_flags)
 

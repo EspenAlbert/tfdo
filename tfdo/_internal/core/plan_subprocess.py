@@ -7,7 +7,7 @@ from pathlib import Path
 from ask_shell._internal.models import EmptyOutputError
 from ask_shell.shell import ShellError, run_and_wait
 
-from tfdo._internal.core import binary
+from tfdo._internal.core import binary, lifecycle_env
 from tfdo._internal.core.lifecycle_init_retry import run_with_init_retry
 from tfdo._internal.core.lifecycle_shell import build_lifecycle_command
 from tfdo._internal.models import PlanInput, PlanResult
@@ -27,6 +27,7 @@ def _run_streaming_command(
         run = run_and_wait(
             cmd,
             cwd=settings.work_dir,
+            env=lifecycle_env.lifecycle_env(settings.work_dir),
             allow_non_zero_exit=True,
             ansi_content=True,
             skip_binary_check=True,
@@ -36,10 +37,18 @@ def _run_streaming_command(
             message_callbacks=[callback],
         )
         handler.flush()
-        return PlanResult(exit_code=run.exit_code or 0, stderr=run.stderr or None)
+        return PlanResult(
+            exit_code=run.exit_code or 0,
+            stderr=run.stderr or None,
+            diagnostics_emitted=handler.diagnostics_emitted,
+        )
     except ShellError as e:
         handler.flush()
-        return PlanResult(exit_code=e.exit_code or 1, stderr=e.stderr or None)
+        return PlanResult(
+            exit_code=e.exit_code or 1,
+            stderr=e.stderr or None,
+            diagnostics_emitted=handler.diagnostics_emitted,
+        )
 
 
 def run_streaming_plan(input_model: PlanInput) -> PlanResult:

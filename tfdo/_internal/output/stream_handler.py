@@ -61,6 +61,10 @@ class PlanStreamHandler:
         self._carry = ""
         self._remove_status_panel()
 
+    @property
+    def diagnostics_emitted(self) -> bool:
+        return self._diagnostic_emitted
+
     def _handle_line(self, line: str) -> None:
         try:
             data = json.loads(line)

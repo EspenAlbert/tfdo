@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from typing import TypeVar
 
-from tfdo._internal.core import terraform_init
+from tfdo._internal.core import lifecycle_env, terraform_init
 from tfdo._internal.models import InitInput, InitMode, LifecycleInput, LifecycleResult
 
 logger = logging.getLogger(__name__)
@@ -43,16 +43,18 @@ def run_with_init_retry(
     settings = input_model.settings
     mode = input_model.init_mode
     force_init = mode == InitMode.ALWAYS
+    init_env = lifecycle_env.lifecycle_env(settings.work_dir)
 
     if force_init:
         init_result = terraform_init.init(
             InitInput(
                 settings=settings,
                 backend_args=input_model.init_backend_args,
+                env=init_env,
             )
         )
         if init_result.exit_code != 0:
-            return result_cls(exit_code=init_result.exit_code)
+            return result_cls(exit_code=init_result.exit_code, stderr=init_result.stderr)
 
     result = run_once()
     stderr = result.stderr or ""
@@ -69,10 +71,11 @@ def run_with_init_retry(
                 InitInput(
                     settings=settings,
                     backend_args=input_model.init_backend_args,
+                    env=init_env,
                 )
             )
             if init_result.exit_code != 0:
-                return result_cls(exit_code=init_result.exit_code)
+                return result_cls(exit_code=init_result.exit_code, stderr=init_result.stderr)
             result = run_once()
     return result
 

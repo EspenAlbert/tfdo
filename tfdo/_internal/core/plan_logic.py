@@ -6,13 +6,14 @@ import logging
 from ask_shell import console as ask_console
 from pydantic import ValidationError
 
-from tfdo._internal.core import plan_subprocess
+from tfdo._internal.core import failure_output, plan_subprocess
 from tfdo._internal.hcl_read import find_lock_file
 from tfdo._internal.models import PlanInput, PlanResult
 from tfdo._internal.output.complex_render import ComplexRenderConfig
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_artifacts import (
     atomic_write_text,
+    begin_lifecycle_debug_log,
     export_plan_bin,
     plan_bin_path,
     plan_json_path,
@@ -20,7 +21,7 @@ from tfdo._internal.output.plan_artifacts import (
     tfdo_dir,
 )
 from tfdo._internal.output.plan_display import detail_preset, merge_plan_display
-from tfdo._internal.output.plan_footer import print_plan_footer
+from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.output.plan_render_input import build_attr_lines_by_addr
 from tfdo._internal.output.plan_renderer import render_plan
 from tfdo._internal.output.schema_lookup import build_schema_lookups
@@ -30,22 +31,52 @@ from tfdo._internal.settings import load_user_config
 
 logger = logging.getLogger(__name__)
 
+_PARSE_FAILURE_MESSAGE = "tfdo failed to parse plan JSON (see Plan JSON path in footer)"
+
+
+def _plan_command_label(input_model: PlanInput) -> str:
+    return "destroy plan" if input_model.destroy_plan else "plan"
+
+
+def _exit_plan(
+    input_model: PlanInput,
+    result: PlanResult,
+    *,
+    report: bool = True,
+    message: str | None = None,
+) -> PlanResult:
+    if report:
+        failure_output.report_lifecycle_failure(
+            command=_plan_command_label(input_model),
+            exit_code=result.exit_code,
+            stderr=result.stderr,
+            message=message,
+            diagnostics_already_shown=result.diagnostics_emitted,
+        )
+    print_lifecycle_footer(input_model.settings, detail=input_model.detail)
+    return result
+
 
 def plan_and_render(input_model: PlanInput) -> PlanResult:
     settings = input_model.settings
     tfdo_dir(settings.work_dir).mkdir(parents=True, exist_ok=True)
+    begin_lifecycle_debug_log(settings.work_dir)
     bin_path = plan_bin_path(settings.work_dir)
     json_path = plan_json_path(settings.work_dir)
 
     plan_result = plan_subprocess.run_streaming_plan(input_model)
     plan_exit_code = plan_result.exit_code
 
+    if failure_output.is_plan_hard_failure(plan_exit_code):
+        return _exit_plan(input_model, plan_result)
+
     if not bin_path.is_file():
-        return PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)
+        return _exit_plan(input_model, plan_result, report=plan_exit_code != 0)
 
     plan_output, show_exit = plan_subprocess.show_plan_json(settings, bin_path)
     if show_exit != 0:
-        return PlanResult(exit_code=show_exit, stderr=plan_result.stderr)
+        show_result = PlanResult(exit_code=show_exit, stderr=plan_result.stderr)
+        return _exit_plan(input_model, show_result)
 
     assert plan_output is not None
     atomic_write_text(json_path, json.dumps(plan_output.model_dump(mode="json"), indent=2))
@@ -54,7 +85,8 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         plan = parse_plan_file(json_path, settings=settings)
     except (ValidationError, json.JSONDecodeError):
         logger.error(f"failed to parse plan JSON at {json_path}")
-        return PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)
+        parse_result = PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)
+        return _exit_plan(input_model, parse_result, message=_PARSE_FAILURE_MESSAGE)
 
     lock_path = find_lock_file(settings.work_dir)
     if lock_path is not None:
@@ -95,8 +127,7 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         complex_config=ComplexRenderConfig(max_structural_lines=plan_display.max_inline_lines),
         plan_display=plan_display,
     )
-    print_plan_footer(settings, detail=input_model.detail)
-    return PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr)
+    return _exit_plan(input_model, PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr), report=False)
 
 
 def run_plan(input_model: PlanInput) -> PlanResult:
