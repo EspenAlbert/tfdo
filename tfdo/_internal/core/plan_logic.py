@@ -7,6 +7,7 @@ from ask_shell import console as ask_console
 from pydantic import ValidationError
 
 from tfdo._internal.core import failure_output, plan_subprocess
+from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.hcl_read import find_lock_file
 from tfdo._internal.models import PlanInput, PlanResult
 from tfdo._internal.output.complex_render import ComplexRenderConfig
@@ -21,7 +22,6 @@ from tfdo._internal.output.plan_artifacts import (
     tfdo_dir,
 )
 from tfdo._internal.output.plan_display import detail_preset, merge_plan_display
-from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.output.plan_render_input import build_attr_lines_by_addr
 from tfdo._internal.output.plan_renderer import render_plan
 from tfdo._internal.output.schema_lookup import build_schema_lookups

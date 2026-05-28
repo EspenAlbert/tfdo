@@ -6,9 +6,9 @@ from pathlib import Path
 from ask_shell import ask
 
 from tfdo._internal.core import binary, failure_output, lifecycle_init_retry, lifecycle_shell, plan_logic
+from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.models import DestroyInput, DestroyResult, PlanInput
 from tfdo._internal.output import plan_artifacts
-from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 
 logger = logging.getLogger(__name__)
 
