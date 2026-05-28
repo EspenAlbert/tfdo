@@ -5,7 +5,8 @@ from pathlib import Path
 
 from ask_shell import ask
 
-from tfdo._internal.core import binary, lifecycle_init_retry, lifecycle_shell, plan_logic
+from tfdo._internal.core import binary, failure_output, lifecycle_init_retry, lifecycle_shell, plan_logic
+from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.models import ApplyInput, ApplyResult, PlanInput
 from tfdo._internal.output import plan_artifacts
 
@@ -48,7 +49,14 @@ def run_apply(input_model: ApplyInput) -> ApplyResult:
         extra_flags: list[str] = []
         if input_model.auto_approve:
             extra_flags.append("-auto-approve")
-        return lifecycle_shell.run_lifecycle(input_model, "apply", extra_flags, ApplyResult)
+        result = lifecycle_shell.run_lifecycle(input_model, "apply", extra_flags, ApplyResult)
+        if result.exit_code != 0:
+            failure_output.report_lifecycle_failure(
+                command="apply",
+                exit_code=result.exit_code,
+                stderr=result.stderr,
+            )
+        return result
 
     plan_result = plan_logic.plan_and_render(_plan_input_from_apply(input_model))
     if plan_result.exit_code != 0:
@@ -59,7 +67,15 @@ def run_apply(input_model: ApplyInput) -> ApplyResult:
         return ApplyResult(exit_code=plan_result.exit_code, stderr=plan_result.stderr)
 
     if input_model.auto_approve or _confirm_apply():
-        return _apply_saved_plan(input_model, bin_path)
+        apply_result = _apply_saved_plan(input_model, bin_path)
+        if apply_result.exit_code != 0:
+            failure_output.report_lifecycle_failure(
+                command="apply",
+                exit_code=apply_result.exit_code,
+                stderr=apply_result.stderr,
+            )
+            print_lifecycle_footer(input_model.settings, detail=input_model.detail)
+        return apply_result
 
     logger.info("apply cancelled")
     return ApplyResult(exit_code=0)

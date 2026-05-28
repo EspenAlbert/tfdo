@@ -5,7 +5,8 @@ from pathlib import Path
 
 from ask_shell import ask
 
-from tfdo._internal.core import binary, lifecycle_init_retry, lifecycle_shell, plan_logic
+from tfdo._internal.core import binary, failure_output, lifecycle_init_retry, lifecycle_shell, plan_logic
+from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.models import DestroyInput, DestroyResult, PlanInput
 from tfdo._internal.output import plan_artifacts
 
@@ -49,7 +50,14 @@ def run_destroy(input_model: DestroyInput) -> DestroyResult:
         extra_flags: list[str] = []
         if input_model.auto_approve:
             extra_flags.append("-auto-approve")
-        return lifecycle_shell.run_lifecycle(input_model, "destroy", extra_flags, DestroyResult)
+        result = lifecycle_shell.run_lifecycle(input_model, "destroy", extra_flags, DestroyResult)
+        if result.exit_code != 0:
+            failure_output.report_lifecycle_failure(
+                command="destroy",
+                exit_code=result.exit_code,
+                stderr=result.stderr,
+            )
+        return result
 
     plan_result = plan_logic.plan_and_render(_plan_input_from_destroy(input_model))
     if plan_result.exit_code != 0:
@@ -60,7 +68,15 @@ def run_destroy(input_model: DestroyInput) -> DestroyResult:
         return DestroyResult(exit_code=plan_result.exit_code, stderr=plan_result.stderr)
 
     if input_model.auto_approve or _confirm_destroy():
-        return _apply_saved_plan(input_model, bin_path)
+        destroy_result = _apply_saved_plan(input_model, bin_path)
+        if destroy_result.exit_code != 0:
+            failure_output.report_lifecycle_failure(
+                command="destroy",
+                exit_code=destroy_result.exit_code,
+                stderr=destroy_result.stderr,
+            )
+            print_lifecycle_footer(input_model.settings, detail=input_model.detail)
+        return destroy_result
 
     logger.info("destroy cancelled")
     return DestroyResult(exit_code=0)

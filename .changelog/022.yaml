@@ -1,0 +1,48 @@
+name: debug_log_path
+ts: 2026-05-28 13:27:06.413224+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.debug_log_path
+---
+name: begin_lifecycle_debug_log
+ts: 2026-05-28 13:27:06.413297+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.begin_lifecycle_debug_log
+---
+name: lifecycle_footer_lines
+ts: 2026-05-28 13:27:09.118083+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_footer.lifecycle_footer_lines
+---
+name: print_lifecycle_footer
+ts: 2026-05-28 13:27:09.118208+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_footer.print_lifecycle_footer
+---
+name: resolved_debug_log_path
+ts: 2026-05-28 13:27:11.610397+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_env.resolved_debug_log_path
+---
+name: lifecycle_env
+ts: 2026-05-28 13:27:11.610468+00:00
+type: keep_private
+full_path: _internal.core.lifecycle_env.lifecycle_env
+---
+name: is_plan_hard_failure
+ts: 2026-05-28 13:27:15.822276+00:00
+type: keep_private
+full_path: _internal.core.failure_output.is_plan_hard_failure
+---
+name: format_failure_stderr
+ts: 2026-05-28 13:27:15.822390+00:00
+type: keep_private
+full_path: _internal.core.failure_output.format_failure_stderr
+---
+name: report_lifecycle_failure
+ts: 2026-05-28 13:27:15.822407+00:00
+type: keep_private
+full_path: _internal.core.failure_output.report_lifecycle_failure
+---
+ts: 2026-05-28 13:28:02.952567+00:00
+type: chore
+description: support output errors during plan/apply/destroy

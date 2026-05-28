@@ -69,3 +69,24 @@ def test_plan_failure_skips_apply(plan_mock: MagicMock, apply_mock: MagicMock, t
 
     apply_mock.assert_not_called()
     assert result.exit_code == 1
+
+
+@patch(f"{apply_logic.__name__}.failure_output.report_lifecycle_failure")
+@patch(f"{apply_logic.__name__}.{apply_logic._apply_saved_plan.__name__}")
+@patch(f"{plan_artifacts.__name__}.{plan_artifacts.plan_bin_path.__name__}")
+@patch(f"{plan_logic.__name__}.{plan_logic.plan_and_render.__name__}")
+def test_apply_failure_reports_stderr(
+    plan_mock: MagicMock,
+    bin_path_mock: MagicMock,
+    apply_mock: MagicMock,
+    report_mock: MagicMock,
+    tmp_path: Path,
+) -> None:
+    plan_mock.return_value = PlanResult(exit_code=0)
+    bin_path_mock.return_value = MagicMock(is_file=lambda: True)
+    apply_mock.return_value = ApplyResult(exit_code=1, stderr="apply failed")
+
+    result = apply_logic.run_apply(_apply_input(tmp_path, auto_approve=True))
+
+    report_mock.assert_called_once()
+    assert result.exit_code == 1

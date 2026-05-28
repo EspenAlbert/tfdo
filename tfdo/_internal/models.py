@@ -134,7 +134,7 @@ class LifecycleResult(BaseModel):
 
 
 class PlanResult(LifecycleResult):
-    pass
+    diagnostics_emitted: bool = False
 
 
 class ApplyResult(LifecycleResult):
