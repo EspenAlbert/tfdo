@@ -130,6 +130,7 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         resource_schema=lookups.resource_schema,
         complex_config=ComplexRenderConfig(max_structural_lines=plan_display.max_inline_lines),
         plan_display=plan_display,
+        has_applyable_changes=plan_has_applyable_changes(plan),
     )
     return _exit_plan(
         input_model,

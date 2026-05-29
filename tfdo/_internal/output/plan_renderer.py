@@ -103,6 +103,7 @@ def render_plan(
     complex_config: ComplexRenderConfig | None = None,
     show_unknown_outputs: bool = True,
     plan_display: PlanDisplayOptions | None = None,
+    has_applyable_changes: bool | None = None,
 ) -> None:
     display = plan_display or PlanDisplayOptions()
     config = complex_config or ComplexRenderConfig()
@@ -134,7 +135,7 @@ def render_plan(
     if display.show_full_config_annex:
         _print_detail_blocks(state, _collect_detail_blocks(complex_results))
 
-    header = _plan_header_line(tree, _action_counts(tree))
+    header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=has_applyable_changes)
     state.emit(header.line)
     if header.subtitle:
         state.emit(header.subtitle, style="dim")
@@ -297,7 +298,15 @@ def _output_changes_have_applyable_actions(output_changes: dict[str, OutputChang
     return any(oc.actions != ["no-op"] for oc in output_changes.values())
 
 
-def _plan_header_line(tree: PlanTree, counts: PlanActionCounts) -> _PlanHeader:
+def _plan_header_line(
+    tree: PlanTree, counts: PlanActionCounts, *, has_applyable_changes: bool | None = None
+) -> _PlanHeader:
+    if has_applyable_changes is False:
+        return _PlanHeader(
+            line="✅ Plan: no changes",
+            subtitle="Infrastructure matches configuration." if not tree.drift else None,
+            render_body=bool(tree.drift),
+        )
     if not _has_resources(tree) and not tree.output_changes:
         return _PlanHeader(
             line="✅ Plan: no changes",

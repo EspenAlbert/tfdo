@@ -273,3 +273,27 @@ type: make_public
 details: created in _internal/output/apply_display.py
 full_path: _internal.output.apply_display.ApplyDisplayOptions
 group: config
+---
+name: collect_references
+ts: 2026-05-29 10:41:46.522708+00:00
+type: keep_private
+full_path: _internal.output.apply_blockers.collect_references
+---
+name: plan_has_applyable_changes
+ts: 2026-05-29 10:41:48.913337+00:00
+type: keep_private
+full_path: _internal.output.apply_state.plan_has_applyable_changes
+---
+name: ShowPlanJsonResult
+ts: 2026-05-29 10:41:54.043387+00:00
+type: keep_private
+full_path: _internal.core.plan_subprocess.ShowPlanJsonResult
+---
+name: core
+ts: 2026-05-29 10:42:04.720439+00:00
+type: fix
+author: Espen Albert
+changelog_message: 'fix: Skip apply prompt when plan has no applyable changes'
+group: core
+message: 'fix: Skip apply prompt when plan has no applyable changes'
+short_sha: aad214

@@ -9,6 +9,7 @@ from ask_shell._internal.rich_live import get_live, reset_live
 from rich.console import Console
 
 from tfdo._internal.output import plan_render_input
+from tfdo._internal.output.apply_state import plan_has_applyable_changes
 from tfdo._internal.output.complex_render import ComplexRenderConfig
 from tfdo._internal.output.models import PlanOutput
 from tfdo._internal.output.parser import parse_plan_file
@@ -197,5 +198,6 @@ def render_fixture(
         complex_config=ComplexRenderConfig(max_structural_lines=display.max_inline_lines),
         show_unknown_outputs=show_unknown_outputs,
         plan_display=display,
+        has_applyable_changes=plan_has_applyable_changes(plan),
     )
     return capture_console.end_capture()

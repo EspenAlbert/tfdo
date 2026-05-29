@@ -6,6 +6,7 @@ import pytest
 from rich.console import Console
 from rich.segment import Segment
 
+from tfdo._internal.output.apply_state import plan_has_applyable_changes
 from tfdo._internal.output.complex_render import ComplexRenderConfig
 from tfdo._internal.output.conftest import build_attr_lines_by_addr, render_fixture
 from tfdo._internal.output.models import Change, OutputChange, PlanOutput, ResourceChange
@@ -231,9 +232,27 @@ def test_drift_only_no_planned_changes_header() -> None:
         ],
     )
     tree = build_plan_tree(plan)
-    header = _plan_header_line(tree, _action_counts(tree))
+    header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=plan_has_applyable_changes(plan))
     assert header.line == "✅ Plan: no changes"
     assert header.render_body
+
+
+def test_not_applyable_header_uses_checkmark() -> None:
+    plan = PlanOutput(
+        format_version="1.2",
+        errored=False,
+        applyable=False,
+        output_changes={
+            "deployed_at": OutputChange(
+                actions=["create"],
+                before=None,
+                after="2026-05-18T19:00:00Z",
+            )
+        },
+    )
+    tree = build_plan_tree(plan)
+    header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=plan_has_applyable_changes(plan))
+    assert header.line == "✅ Plan: no changes"
 
 
 def test_destroy_warning_partial(capture_console) -> None:
