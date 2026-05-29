@@ -1,5 +1,5 @@
 pkg_import_name: tfdo
-version: 0.8.2
+version: 0.9.0
 groups:
 - name: __ROOT__
   symbols:
@@ -21,7 +21,7 @@ groups:
   - name: CheckConfig
     module_path: _internal.settings
     docstring: ''
-    line_number: 135
+    line_number: 137
     type: class
     mro_bases:
     - BaseModel
@@ -46,7 +46,7 @@ groups:
   - name: InteractiveMode
     module_path: _internal.settings
     docstring: ''
-    line_number: 26
+    line_number: 27
     type: class
     mro_bases:
     - StrEnum
@@ -69,7 +69,7 @@ groups:
   - name: TfDoSettings
     module_path: _internal.settings
     docstring: ''
-    line_number: 32
+    line_number: 33
     type: class
     mro_bases:
     - StaticSettings
@@ -230,7 +230,7 @@ groups:
   - name: TfDoUserConfig
     module_path: _internal.settings
     docstring: ''
-    line_number: 140
+    line_number: 142
     type: class
     mro_bases:
     - BaseModel
@@ -249,6 +249,15 @@ groups:
       type_annotation: PlanDisplayOptions | None
       type_imports:
       - tfdo._internal.output.plan_display.PlanDisplayOptions
+      default:
+        value_repr: None
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: apply_display
+      type_annotation: ApplyDisplayOptions | None
+      type_imports:
+      - tfdo._internal.output.apply_display.ApplyDisplayOptions
       default:
         value_repr: None
         is_factory: false
@@ -971,6 +980,47 @@ groups:
         kind: var_keyword
         type_imports: []
       return_type_imports: []
+  - name: ApplyDisplayOptions
+    module_path: _internal.output.apply_display
+    docstring: ''
+    line_number: 12
+    type: class
+    mro_bases:
+    - BaseModel
+    num_direct_bases: 1
+    fields:
+    - name: slow_threshold
+      type_annotation: str
+      type_imports: []
+      default:
+        value_repr: '''2m'''
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: very_slow_threshold
+      type_annotation: str
+      type_imports: []
+      default:
+        value_repr: '''10m'''
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: heartbeat_interval
+      type_annotation: str
+      type_imports: []
+      default:
+        value_repr: '''30s'''
+        is_factory: false
+      is_class_var: false
+      is_computed: false
+    - name: hide_provision_output
+      type_annotation: bool
+      type_imports: []
+      default:
+        value_repr: 'False'
+        is_factory: false
+      is_class_var: false
+      is_computed: false
   - name: DetailLevel
     module_path: _internal.output.plan_display
     docstring: ''
@@ -1257,6 +1307,13 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
+      - name: hide_provision_output
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
       return_annotation: None
       return_type_imports: []
     cli_params:
@@ -1346,6 +1403,15 @@ groups:
       choices:
       - compact
       - full
+    - param_name: hide_provision_output
+      type_annotation: bool | None
+      flags:
+      - --hide-provision-output
+      help: Suppress provisioner output during apply
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
   - name: destroy_cmd
     module_path: _internal.core.cmd_destroy
     docstring: Run terraform destroy.
@@ -1424,6 +1490,13 @@ groups:
         default:
           value_repr: <typer.models.OptionInfo object>
           is_factory: false
+      - name: hide_provision_output
+        kind: positional_or_keyword
+        type_annotation: bool | None
+        type_imports: []
+        default:
+          value_repr: <typer.models.OptionInfo object>
+          is_factory: false
       return_annotation: None
       return_type_imports: []
     cli_params:
@@ -1513,6 +1586,15 @@ groups:
       choices:
       - compact
       - full
+    - param_name: hide_provision_output
+      type_annotation: bool | None
+      flags:
+      - --hide-provision-output
+      help: Suppress provisioner output during apply
+      default_repr: None
+      required: false
+      is_argument: false
+      hidden: false
   - name: init_cmd
     module_path: _internal.core.cmd_init
     docstring: Run terraform init with retry on transient errors.
@@ -1747,7 +1829,7 @@ groups:
   - name: InitMode
     module_path: _internal.models
     docstring: ''
-    line_number: 19
+    line_number: 20
     type: class
     mro_bases:
     - StrEnum
@@ -3717,4 +3799,4 @@ groups:
       return_annotation: None
       return_type_imports: []
     cli_params: []
-dumped_at: 2026-05-28 18:42:42.194434+00:00
+dumped_at: 2026-05-29 10:53:13.384248+00:00

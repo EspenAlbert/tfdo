@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0 2026-05-29T10-53Z
+
+### __Root__
+- `__ROOT__.TfDoUserConfig`: added optional field 'apply_display' (default: None)
+
+### Config
+- New class `ApplyDisplayOptions`
+
+### Core
+- fix: Skip apply prompt when plan has no applyable changes [aad214](https://github.com/EspenAlbert/tfdo/commit/aad214)
+
+
 ## 0.8.2 2026-05-28T18-42Z
 
 ### Other Changes

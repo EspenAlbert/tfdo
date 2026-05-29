@@ -305,7 +305,7 @@ class DetailLevel(StrEnum):
 
 ### class: `ApplyDisplayOptions`
 - [source](../../tfdo/_internal/output/apply_display.py#L12)
-> **Since:** unreleased
+> **Since:** 0.9.0
 
 ```python
 class ApplyDisplayOptions(BaseModel):
@@ -317,14 +317,14 @@ class ApplyDisplayOptions(BaseModel):
 
 | Field | Type | Default | Since |
 |---|---|---|---|
-| slow_threshold | `str` | `'2m'` | unreleased |
-| very_slow_threshold | `str` | `'10m'` | unreleased |
-| heartbeat_interval | `str` | `'30s'` | unreleased |
-| hide_provision_output | `bool` | `False` | unreleased |
+| slow_threshold | `str` | `'2m'` | 0.9.0 |
+| very_slow_threshold | `str` | `'10m'` | 0.9.0 |
+| heartbeat_interval | `str` | `'30s'` | 0.9.0 |
+| hide_provision_output | `bool` | `False` | 0.9.0 |
 
 ### Changes
 
 | Version | Change |
 |---------|--------|
-| unreleased | Made public |
+| 0.9.0 | Made public |
 <!-- === OK_EDIT: pkg-ext applydisplayoptions_def === -->

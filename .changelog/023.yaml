@@ -306,3 +306,8 @@ group: ''
 ignored: true
 message: 'fix(tfdo): Use checkmark plan header when applyable is false'
 short_sha: '671366'
+---
+name: 0.9.0
+ts: 2026-05-29 10:53:13.491495+00:00
+type: release
+old_version: 0.8.2
