@@ -45,7 +45,6 @@ from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 runner = CliRunner()
 _patch_init_run = "tfdo._internal.core.terraform_init.run_and_wait"
-_patch_lifecycle_run = "tfdo._internal.core.lifecycle_shell.run_and_wait"
 _patch_apply_run = "tfdo._internal.core.apply_subprocess.run_and_wait"
 _patch_plan_run = "tfdo._internal.core.plan_subprocess.run_and_wait"
 _patch_output_run = "tfdo._internal.core.executor.run_and_wait"
