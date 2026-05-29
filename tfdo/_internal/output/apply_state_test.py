@@ -113,3 +113,22 @@ def test_parallel_apply_errors_partial() -> None:
     ]
     assert state.phase != ApplyPhase.DONE
     assert state.terminal_summary is None
+
+
+def test_replace_delete_create_emits_two_completions() -> None:
+    lines = [
+        '{"type":"planned_change","change":{"resource":{"addr":"module.a.aws_instance.web"},"action":"replace"}}',
+        '{"type":"apply_start","hook":{"resource":{"addr":"module.a.aws_instance.web"},"action":"delete"}}',
+        '{"type":"apply_complete","hook":{"resource":{"addr":"module.a.aws_instance.web"},"action":"delete","elapsed_seconds":2}}',
+        '{"type":"apply_start","hook":{"resource":{"addr":"module.a.aws_instance.web"},"action":"create"}}',
+        '{"type":"apply_complete","hook":{"resource":{"addr":"module.a.aws_instance.web"},"action":"create","elapsed_seconds":4}}',
+    ]
+    state = ApplyProgressState(plan_from_planned_changes(lines))
+    for line in lines:
+        state.ingest_line(line)
+    state.flush()
+    drained: list[tuple[str | None, bool]] = []
+    while batch := state.drain_completion_emissions():
+        drained.extend((item.hook_action, item.errored) for item in batch)
+    assert drained == [("delete", False), ("create", False)]
+    assert state.completed_count == 1

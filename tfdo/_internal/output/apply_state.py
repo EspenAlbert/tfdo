@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from enum import StrEnum
 from typing import NamedTuple
 
@@ -22,6 +23,7 @@ from tfdo._internal.settings import TfDoSettings
 logger = logging.getLogger(__name__)
 
 MANAGED_HOOK_ACTIONS = frozenset({"create", "update", "delete", "replace"})
+REPLACE_PLAN_ACTIONS = frozenset({ResourceAction.REPLACE_DESTROY_FIRST, ResourceAction.REPLACE_CREATE_FIRST})
 PRE_APPLY_REFRESH_START = "apply: refreshing state…"
 PRE_APPLY_REFRESH_COMPLETE = "apply: refresh complete"
 _PLANNED_READ = "read"
@@ -57,6 +59,13 @@ class DiagnosticEmission(NamedTuple):
     resource_addr: str | None
 
 
+class CompletionEmission(NamedTuple):
+    addr: str
+    errored: bool
+    elapsed_seconds: float | None
+    hook_action: str | None
+
+
 class ApplyProgressState:
     def __init__(
         self,
@@ -86,6 +95,8 @@ class ApplyProgressState:
         self._saw_planned_change = False
         self._pending_error_addr: str | None = None
         self._diagnostic_emissions: list[DiagnosticEmission] = []
+        self._completion_emissions: list[CompletionEmission] = []
+        self._interim_replace_addrs: set[str] = set()
 
     @property
     def total_count(self) -> int:
@@ -93,11 +104,23 @@ class ApplyProgressState:
 
     @property
     def completed_count(self) -> int:
-        return sum(
-            1
-            for resource in self.resources.values()
-            if resource.status in (ApplyResourceStatus.COMPLETED, ApplyResourceStatus.ERRORED)
-        )
+        return sum(1 for addr in self.resources if self.counts_toward_completed(addr))
+
+    def drain_completion_emissions(self) -> list[CompletionEmission]:
+        emissions = self._completion_emissions
+        self._completion_emissions = []
+        return emissions
+
+    def ingest_line(self, line: str) -> None:
+        stripped = line.strip()
+        if stripped:
+            self._handle_line(stripped)
+
+    def counts_toward_completed(self, addr: str) -> bool:
+        resource = self.resources[addr]
+        if resource.status not in (ApplyResourceStatus.COMPLETED, ApplyResourceStatus.ERRORED):
+            return False
+        return addr not in self._interim_replace_addrs
 
     def drain_pre_apply_logs(self) -> list[str]:
         logs = self.pre_apply_logs
@@ -259,9 +282,14 @@ class ApplyProgressState:
         if addr is None:
             return
         resource = self.resources[addr]
-        if resource.status != ApplyResourceStatus.PENDING:
+        if resource.status == ApplyResourceStatus.PENDING:
+            resource.status = ApplyResourceStatus.IN_PROGRESS
+        elif addr in self._interim_replace_addrs:
+            self._interim_replace_addrs.discard(addr)
+            resource.status = ApplyResourceStatus.IN_PROGRESS
+        else:
             return
-        resource.status = ApplyResourceStatus.IN_PROGRESS
+        resource.started_at = time.monotonic()
         if event.hook:
             resource.hook_action = event.hook.action
 
@@ -277,9 +305,16 @@ class ApplyProgressState:
         if addr is None:
             return
         resource = self.resources[addr]
-        resource.status = ApplyResourceStatus.COMPLETED
+        hook_action = event.hook.action if event.hook else None
         if event.hook and event.hook.elapsed_seconds is not None:
             resource.elapsed_seconds = event.hook.elapsed_seconds
+        if resource.plan_action in REPLACE_PLAN_ACTIONS and hook_action == "delete":
+            resource.status = ApplyResourceStatus.COMPLETED
+            self._interim_replace_addrs.add(addr)
+        else:
+            resource.status = ApplyResourceStatus.COMPLETED
+            self._interim_replace_addrs.discard(addr)
+        self._enqueue_completion(addr, errored=False, resource=resource, hook_action=hook_action)
         self._pending_error_addr = None
 
     def _on_apply_errored(self, event: ApplyHookEvent) -> None:
@@ -287,10 +322,30 @@ class ApplyProgressState:
         if addr is None:
             return
         resource = self.resources[addr]
-        resource.status = ApplyResourceStatus.ERRORED
+        hook_action = event.hook.action if event.hook else None
         if event.hook and event.hook.elapsed_seconds is not None:
             resource.elapsed_seconds = event.hook.elapsed_seconds
+        resource.status = ApplyResourceStatus.ERRORED
+        self._interim_replace_addrs.discard(addr)
+        self._enqueue_completion(addr, errored=True, resource=resource, hook_action=hook_action)
         self._pending_error_addr = addr
+
+    def _enqueue_completion(
+        self,
+        addr: str,
+        *,
+        errored: bool,
+        resource: ApplyResourceState,
+        hook_action: str | None,
+    ) -> None:
+        self._completion_emissions.append(
+            CompletionEmission(
+                addr=addr,
+                errored=errored,
+                elapsed_seconds=resource.elapsed_seconds,
+                hook_action=hook_action,
+            )
+        )
 
     def _on_diagnostic(self, event: DiagnosticEvent) -> None:
         diag = event.diagnostic

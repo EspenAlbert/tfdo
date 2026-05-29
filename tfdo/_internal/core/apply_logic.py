@@ -5,7 +5,13 @@ from pathlib import Path
 
 from ask_shell import ask
 
-from tfdo._internal.core import binary, failure_output, lifecycle_init_retry, lifecycle_shell, plan_logic
+from tfdo._internal.core import (
+    apply_subprocess,
+    failure_output,
+    lifecycle_init_retry,
+    lifecycle_shell,
+    plan_logic,
+)
 from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.models import ApplyInput, ApplyResult, PlanInput
 from tfdo._internal.output import plan_artifacts
@@ -32,14 +38,8 @@ def _confirm_apply() -> bool:
 
 
 def _apply_saved_plan(input_model: ApplyInput, plan_bin: Path) -> ApplyResult:
-    settings = input_model.settings
-    extra_flags = ["-auto-approve", str(plan_bin), *input_model.extra_args]
-    cmd = lifecycle_shell.build_lifecycle_command(
-        binary.resolve_binary(settings), "apply", input_model.var_file, extra_flags
-    )
-
     def run_once() -> ApplyResult:
-        return lifecycle_shell.run_lifecycle_command(settings, cmd, ApplyResult, user_input=False)
+        return apply_subprocess.run_streaming_apply(input_model, plan_bin, result_cls=ApplyResult)
 
     return lifecycle_init_retry.run_with_init_retry(input_model, "apply", ApplyResult, run_once)
 

@@ -4,6 +4,7 @@ from pathlib import Path
 import typer
 
 from tfdo._internal.models import InitMode
+from tfdo._internal.output.apply_display import ApplyDisplayCliOverrides
 from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
 
 
@@ -83,6 +84,14 @@ def show_full_config_annex_option() -> bool | None:
 
 def show_json_annex_option() -> bool | None:
     return typer.Option(None, "--show-json-annex")
+
+
+def hide_provision_output_option() -> bool | None:
+    return typer.Option(None, "--hide-provision-output", help="Suppress provisioner output during apply")
+
+
+def apply_display_cli_overrides(*, hide_provision_output: bool | None = None) -> ApplyDisplayCliOverrides:
+    return ApplyDisplayCliOverrides(hide_provision_output=hide_provision_output)
 
 
 def plan_display_cli_overrides(

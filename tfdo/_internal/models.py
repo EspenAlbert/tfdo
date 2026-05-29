@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from tfdo._internal.check.models import CheckResult as RunDirProviderResult
 from tfdo._internal.config.config_file import resolve_run_context_label
+from tfdo._internal.output.apply_display import ApplyDisplayCliOverrides
 from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
 from tfdo._internal.settings import TfDoSettings
 
@@ -78,6 +79,7 @@ class ApplyInput(LifecycleInput):
     auto_approve: bool = False
     detail: DetailLevel = DetailLevel.COMPACT
     plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
+    apply_display_cli: ApplyDisplayCliOverrides = Field(default_factory=ApplyDisplayCliOverrides)
 
     @model_validator(mode="after")
     def _require_approval_source(self) -> Self:
@@ -89,6 +91,7 @@ class DestroyInput(LifecycleInput):
     auto_approve: bool = False
     detail: DetailLevel = DetailLevel.COMPACT
     plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
+    apply_display_cli: ApplyDisplayCliOverrides = Field(default_factory=ApplyDisplayCliOverrides)
 
     @model_validator(mode="after")
     def _require_approval_source(self) -> Self:
@@ -138,11 +141,11 @@ class PlanResult(LifecycleResult):
 
 
 class ApplyResult(LifecycleResult):
-    pass
+    diagnostics_emitted: bool = False
 
 
 class DestroyResult(LifecycleResult):
-    pass
+    diagnostics_emitted: bool = False
 
 
 class TflintPos(BaseModel):

@@ -40,12 +40,13 @@ from tfdo._internal.models import (
     PlanInput,
     PlanResult,
 )
-from tfdo._internal.output.plan_artifacts import plan_bin_path
+from tfdo._internal.output.plan_artifacts import plan_bin_path, plan_json_path
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 runner = CliRunner()
 _patch_init_run = "tfdo._internal.core.terraform_init.run_and_wait"
 _patch_lifecycle_run = "tfdo._internal.core.lifecycle_shell.run_and_wait"
+_patch_apply_run = "tfdo._internal.core.apply_subprocess.run_and_wait"
 _patch_plan_run = "tfdo._internal.core.plan_subprocess.run_and_wait"
 _patch_output_run = "tfdo._internal.core.executor.run_and_wait"
 _patch_which = f"{binary.resolve_binary.__module__}.{which.__name__}"
@@ -246,19 +247,26 @@ def test_plan_always_init_aborts_on_failure(tmp_path: Path):
 # --- apply tests ---
 
 
-def test_apply_auto_approve(tmp_path: Path):
-    settings = _make_settings(tmp_path)
-    run = _mock_run(exit_code=0)
+def _write_apply_artifacts(tmp_path: Path) -> None:
     bin_path = plan_bin_path(tmp_path)
     bin_path.parent.mkdir(parents=True, exist_ok=True)
     bin_path.write_bytes(b"")
+    plan_json_path(tmp_path).write_text('{"format_version":"1.2","errored":false,"resource_changes":[]}')
+
+
+def test_apply_auto_approve(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    run = _mock_run(exit_code=0)
+    _write_apply_artifacts(tmp_path)
+    bin_path = plan_bin_path(tmp_path)
     with (
         patch(_patch_plan_and_render, return_value=PlanResult(exit_code=0)),
-        patch(_patch_lifecycle_run, return_value=run) as mock_raw,
+        patch(_patch_apply_run, return_value=run) as mock_raw,
     ):
         result = apply(ApplyInput(settings=settings, auto_approve=True, var_file=Path("prod.tfvars")))
     assert result.exit_code == 0
     cmd = mock_raw.call_args[0][0]
+    assert "-json" in cmd
     assert "-auto-approve" in cmd
     assert str(bin_path) in cmd
     assert "-var-file=prod.tfvars" in cmd
@@ -270,18 +278,18 @@ def test_apply_auto_approve(tmp_path: Path):
 def test_destroy_auto_approve(tmp_path: Path):
     settings = _make_settings(tmp_path)
     run = _mock_run(exit_code=0)
+    _write_apply_artifacts(tmp_path)
     bin_path = plan_bin_path(tmp_path)
-    bin_path.parent.mkdir(parents=True, exist_ok=True)
-    bin_path.write_bytes(b"")
     with (
         patch(_patch_plan_and_render, return_value=PlanResult(exit_code=0)),
-        patch(_patch_lifecycle_run, return_value=run) as mock_raw,
+        patch(_patch_apply_run, return_value=run) as mock_raw,
     ):
         result = destroy(DestroyInput(settings=settings, auto_approve=True, var_file=Path("prod.tfvars")))
     assert result.exit_code == 0
     cmd = mock_raw.call_args[0][0]
     assert "terraform apply" in cmd
     assert "terraform destroy" not in cmd
+    assert "-json" in cmd
     assert "-auto-approve" in cmd
     assert str(bin_path) in cmd
     assert "-var-file=prod.tfvars" in cmd
@@ -291,13 +299,11 @@ def test_lifecycle_always_init_then_command(tmp_path: Path):
     settings = _make_settings(tmp_path)
     init_run = _mock_run(exit_code=0, attempt=1)
     apply_run = _mock_run(exit_code=0)
-    bin_path = plan_bin_path(tmp_path)
-    bin_path.parent.mkdir(parents=True, exist_ok=True)
-    bin_path.write_bytes(b"")
+    _write_apply_artifacts(tmp_path)
     with (
         patch(_patch_plan_and_render, return_value=PlanResult(exit_code=0)),
         patch(_patch_init_run, return_value=init_run),
-        patch(_patch_lifecycle_run, return_value=apply_run) as mock_apply,
+        patch(_patch_apply_run, return_value=apply_run) as mock_apply,
     ):
         result = apply(ApplyInput(settings=settings, init_mode=InitMode.ALWAYS, auto_approve=True))
     assert result.exit_code == 0

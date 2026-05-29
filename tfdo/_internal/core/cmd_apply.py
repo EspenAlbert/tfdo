@@ -22,6 +22,7 @@ def apply_cmd(
     show_full_config_annex: bool | None = cmd_options.show_full_config_annex_option(),
     show_json_annex: bool | None = cmd_options.show_json_annex_option(),
     detail: DetailLevel = cmd_options.detail_option(),
+    hide_provision_output: bool | None = cmd_options.hide_provision_output_option(),
 ) -> None:
     """Run terraform apply."""
     settings = get_settings(ctx)
@@ -37,6 +38,9 @@ def apply_cmd(
             show_create_defaults=show_create_defaults,
             show_full_config_annex=show_full_config_annex,
             show_json_annex=show_json_annex,
+        ),
+        apply_display_cli=cmd_options.apply_display_cli_overrides(
+            hide_provision_output=hide_provision_output,
         ),
     )
     result = apply_logic.run_apply(input_model)
