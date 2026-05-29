@@ -23,6 +23,7 @@ groups:
   - _internal.config.cmd_config
   - _internal.config.config_model
   - _internal.config.enums
+  - _internal.output.apply_display
   - _internal.output.plan_display
   owned_refs:
   - _internal.config.cmd_config.init_cmd
@@ -39,6 +40,7 @@ groups:
   - _internal.config.enums.HookOnError
   - _internal.config.enums.LifecycleEvent
   - _internal.config.enums.TagsInject
+  - _internal.output.apply_display.ApplyDisplayOptions
   - _internal.output.plan_display.DetailLevel
 - name: copy
   owned_modules:

@@ -1,0 +1,275 @@
+name: parse_stream_line
+ts: 2026-05-29 08:24:18.882377+00:00
+type: keep_private
+full_path: _internal.output.stream_models.parse_stream_line
+---
+name: strip_resource_instance_index
+ts: 2026-05-29 08:24:22.585172+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_link.strip_resource_instance_index
+---
+name: parse_snippet_context
+ts: 2026-05-29 08:24:22.585273+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_link.parse_snippet_context
+---
+name: addr_matches_type_name_suffix
+ts: 2026-05-29 08:24:22.585286+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_link.addr_matches_type_name_suffix
+---
+name: resolve_resource_addr
+ts: 2026-05-29 08:24:22.585295+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_link.resolve_resource_addr
+---
+name: resolve_diagnostic_addr
+ts: 2026-05-29 08:24:22.585304+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_link.resolve_diagnostic_addr
+---
+name: display_verbs_for_hook_action
+ts: 2026-05-29 08:24:25.760093+00:00
+type: keep_private
+full_path: _internal.output.apply_verbs.display_verbs_for_hook_action
+---
+name: display_verbs_for_resource_action
+ts: 2026-05-29 08:24:25.760197+00:00
+type: keep_private
+full_path: _internal.output.apply_verbs.display_verbs_for_resource_action
+---
+name: apply_stream_callback
+ts: 2026-05-29 08:24:28.318415+00:00
+type: keep_private
+full_path: _internal.output.apply_stream_handler.apply_stream_callback
+---
+name: max_addr_width
+ts: 2026-05-29 08:24:32.653909+00:00
+type: keep_private
+full_path: _internal.output.apply_renderer.max_addr_width
+---
+name: render_completion_line
+ts: 2026-05-29 08:24:32.654113+00:00
+type: keep_private
+full_path: _internal.output.apply_renderer.render_completion_line
+---
+name: render_live_section
+ts: 2026-05-29 08:24:32.654122+00:00
+type: keep_private
+full_path: _internal.output.apply_renderer.render_live_section
+---
+name: render_ci_completion_line
+ts: 2026-05-29 08:24:32.654128+00:00
+type: keep_private
+full_path: _internal.output.apply_renderer.render_ci_completion_line
+---
+name: render_ci_heartbeat_line
+ts: 2026-05-29 08:24:32.654136+00:00
+type: keep_private
+full_path: _internal.output.apply_renderer.render_ci_heartbeat_line
+---
+name: render_ci_final_summary
+ts: 2026-05-29 08:24:32.654145+00:00
+type: keep_private
+full_path: _internal.output.apply_renderer.render_ci_final_summary
+---
+name: render_final_summary
+ts: 2026-05-29 08:24:32.654154+00:00
+type: keep_private
+full_path: _internal.output.apply_renderer.render_final_summary
+---
+name: parse_duration_seconds
+ts: 2026-05-29 08:24:42.344050+00:00
+type: keep_private
+full_path: _internal.output.apply_display.parse_duration_seconds
+---
+name: format_elapsed
+ts: 2026-05-29 08:24:42.344157+00:00
+type: keep_private
+full_path: _internal.output.apply_display.format_elapsed
+---
+name: format_elapsed_compact
+ts: 2026-05-29 08:24:42.344170+00:00
+type: keep_private
+full_path: _internal.output.apply_display.format_elapsed_compact
+---
+name: slow_tier
+ts: 2026-05-29 08:24:42.344177+00:00
+type: keep_private
+full_path: _internal.output.apply_display.slow_tier
+---
+name: merge_apply_display
+ts: 2026-05-29 08:24:42.344184+00:00
+type: keep_private
+full_path: _internal.output.apply_display.merge_apply_display
+---
+name: resolve_apply_display
+ts: 2026-05-29 08:24:42.344190+00:00
+type: keep_private
+full_path: _internal.output.apply_display.resolve_apply_display
+---
+name: build_apply_blockers
+ts: 2026-05-29 08:24:46.852875+00:00
+type: keep_private
+full_path: _internal.output.apply_blockers.build_apply_blockers
+---
+name: seed_apply_addrs
+ts: 2026-05-29 08:24:49.737111+00:00
+type: keep_private
+full_path: _internal.output.apply_state.seed_apply_addrs
+---
+name: plan_from_planned_changes
+ts: 2026-05-29 08:24:49.737285+00:00
+type: keep_private
+full_path: _internal.output.apply_state.plan_from_planned_changes
+---
+name: build_apply_stream_state
+ts: 2026-05-29 08:24:52.555391+00:00
+type: keep_private
+full_path: _internal.core.apply_subprocess.build_apply_stream_state
+---
+name: run_streaming_apply
+ts: 2026-05-29 08:24:52.555479+00:00
+type: keep_private
+full_path: _internal.core.apply_subprocess.run_streaming_apply
+---
+name: hide_provision_output_option
+ts: 2026-05-29 08:24:55.169256+00:00
+type: keep_private
+full_path: _internal.cmd_options.hide_provision_output_option
+---
+name: apply_display_cli_overrides
+ts: 2026-05-29 08:24:55.169339+00:00
+type: keep_private
+full_path: _internal.cmd_options.apply_display_cli_overrides
+---
+name: ApplyHookEvent
+ts: 2026-05-29 08:25:05.510899+00:00
+type: keep_private
+full_path: _internal.output.stream_models.ApplyHookEvent
+---
+name: PlannedChangeResource
+ts: 2026-05-29 08:25:05.511167+00:00
+type: keep_private
+full_path: _internal.output.stream_models.PlannedChangeResource
+---
+name: PlannedChangeBody
+ts: 2026-05-29 08:25:05.511182+00:00
+type: keep_private
+full_path: _internal.output.stream_models.PlannedChangeBody
+---
+name: PlannedChangeEvent
+ts: 2026-05-29 08:25:05.511234+00:00
+type: keep_private
+full_path: _internal.output.stream_models.PlannedChangeEvent
+---
+name: StreamParseFailureRecord
+ts: 2026-05-29 08:25:05.511249+00:00
+type: keep_private
+full_path: _internal.output.stream_models.StreamParseFailureRecord
+---
+name: DiagnosticEmitter
+ts: 2026-05-29 08:25:08.373330+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_emitter.DiagnosticEmitter
+---
+name: ApplyDisplayVerbs
+ts: 2026-05-29 08:25:11.001362+00:00
+type: keep_private
+full_path: _internal.output.apply_verbs.ApplyDisplayVerbs
+---
+name: ApplyStreamHandler
+ts: 2026-05-29 08:25:14.580939+00:00
+type: keep_private
+full_path: _internal.output.apply_stream_handler.ApplyStreamHandler
+---
+name: ApplyDisplayCliOverrides
+ts: 2026-05-29 08:25:24.315530+00:00
+type: keep_private
+full_path: _internal.output.apply_display.ApplyDisplayCliOverrides
+---
+name: ResolvedApplyDisplay
+ts: 2026-05-29 08:25:24.315545+00:00
+type: keep_private
+full_path: _internal.output.apply_display.ResolvedApplyDisplay
+---
+name: ConfigExpression
+ts: 2026-05-29 08:25:27.648071+00:00
+type: keep_private
+full_path: _internal.output.apply_blockers.ConfigExpression
+---
+name: ConfigResource
+ts: 2026-05-29 08:25:27.648179+00:00
+type: keep_private
+full_path: _internal.output.apply_blockers.ConfigResource
+---
+name: ConfigModule
+ts: 2026-05-29 08:25:27.648260+00:00
+type: keep_private
+full_path: _internal.output.apply_blockers.ConfigModule
+---
+name: ConfigModuleCall
+ts: 2026-05-29 08:25:27.648269+00:00
+type: keep_private
+full_path: _internal.output.apply_blockers.ConfigModuleCall
+---
+name: PlanConfiguration
+ts: 2026-05-29 08:25:27.648276+00:00
+type: keep_private
+full_path: _internal.output.apply_blockers.PlanConfiguration
+---
+name: PlanWithConfiguration
+ts: 2026-05-29 08:25:27.648283+00:00
+type: keep_private
+full_path: _internal.output.apply_blockers.PlanWithConfiguration
+---
+name: ApplyResourceStatus
+ts: 2026-05-29 08:25:30.897934+00:00
+type: keep_private
+full_path: _internal.output.apply_state.ApplyResourceStatus
+---
+name: ApplyPhase
+ts: 2026-05-29 08:25:30.898030+00:00
+type: keep_private
+full_path: _internal.output.apply_state.ApplyPhase
+---
+name: ApplyResourceState
+ts: 2026-05-29 08:25:30.898042+00:00
+type: keep_private
+full_path: _internal.output.apply_state.ApplyResourceState
+---
+name: DiagnosticEmission
+ts: 2026-05-29 08:25:30.898050+00:00
+type: keep_private
+full_path: _internal.output.apply_state.DiagnosticEmission
+---
+name: CompletionEmission
+ts: 2026-05-29 08:25:30.898056+00:00
+type: keep_private
+full_path: _internal.output.apply_state.CompletionEmission
+---
+name: ApplyProgressState
+ts: 2026-05-29 08:25:30.898063+00:00
+type: keep_private
+full_path: _internal.output.apply_state.ApplyProgressState
+---
+name: TfDoUserConfig
+ts: 2026-05-29 08:25:32.065813+00:00
+type: additional_change
+auto_generated: true
+change_kind: optional_field_added
+details: 'added optional field ''apply_display'' (default: None)'
+field_name: apply_display
+group: __ROOT__
+---
+name: config
+ts: 2026-05-29 08:26:15.319015+00:00
+type: group_module
+module_path: _internal.output.apply_display
+---
+name: ApplyDisplayOptions
+ts: 2026-05-29 08:26:15.324021+00:00
+type: make_public
+details: created in _internal/output/apply_display.py
+full_path: _internal.output.apply_display.ApplyDisplayOptions
+group: config

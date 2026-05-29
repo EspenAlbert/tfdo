@@ -24,7 +24,7 @@
 > **Since:** 0.1.0
 
 ```python
-def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>) -> None:
+def apply_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>, hide_provision_output: bool | None = None) -> None:
     ...
 ```
 
@@ -43,6 +43,7 @@ Run terraform apply.
 | `--show-full-config-annex` | `bool | None` | `None` | - | - |
 | `--show-json-annex` | `bool | None` | `None` | - | - |
 | `--detail` | `DetailLevel` | `<DetailLevel.COMPACT: 'compact'>` | - | Plan display depth: compact (default) or full [compact, full] |
+| `--hide-provision-output` | `bool | None` | `None` | - | Suppress provisioner output during apply |
 
 ### Changes
 
@@ -90,7 +91,7 @@ Run terraform fmt check + validate (ruff-style).
 > **Since:** 0.1.0
 
 ```python
-def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>) -> None:
+def destroy_cmd(*, auto_approve: bool = False, var_file: Path | None = None, init_mode: InitMode = <InitMode.AUTO: 'auto'>, show_computed_drift: bool | None = None, show_computed_deltas: bool | None = None, show_create_defaults: bool | None = None, show_full_config_annex: bool | None = None, show_json_annex: bool | None = None, detail: DetailLevel = <DetailLevel.COMPACT: 'compact'>, hide_provision_output: bool | None = None) -> None:
     ...
 ```
 
@@ -109,6 +110,7 @@ Run terraform destroy.
 | `--show-full-config-annex` | `bool | None` | `None` | - | - |
 | `--show-json-annex` | `bool | None` | `None` | - | - |
 | `--detail` | `DetailLevel` | `<DetailLevel.COMPACT: 'compact'>` | - | Plan display depth: compact (default) or full [compact, full] |
+| `--hide-provision-output` | `bool | None` | `None` | - | Suppress provisioner output during apply |
 
 ### Changes
 
@@ -182,7 +184,7 @@ Run terraform plan.
 <a id="initmode_def"></a>
 
 ### class: `InitMode`
-- [source](../../tfdo/_internal/models.py#L19)
+- [source](../../tfdo/_internal/models.py#L20)
 > **Since:** 0.2.0
 
 ```python
