@@ -1,0 +1,6 @@
+  Error: local-exec provisioner error
+    main.tf:16
+    local_file.config
+       16 |   provisioner "local-exec" {
+          |                            ^
+    Error running command 'echo before-fail; exit 1': exit status 1. Output: before-fail

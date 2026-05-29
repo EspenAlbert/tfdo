@@ -1,0 +1,3 @@
+✅ module.a.aws_instance.web  destroyed  2s
+✅ module.a.aws_instance.web  created  4s
+Apply complete: 1 ✅  total 0s

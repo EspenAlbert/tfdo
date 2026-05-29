@@ -10,6 +10,7 @@ from tfdo._internal.core import failure_output, plan_subprocess
 from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.hcl_read import find_lock_file
 from tfdo._internal.models import PlanInput, PlanResult
+from tfdo._internal.output.apply_state import plan_has_applyable_changes
 from tfdo._internal.output.complex_render import ComplexRenderConfig
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_artifacts import (
@@ -73,13 +74,16 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
     if not bin_path.is_file():
         return _exit_plan(input_model, plan_result, report=plan_exit_code != 0)
 
-    plan_output, show_exit = plan_subprocess.show_plan_json(settings, bin_path)
-    if show_exit != 0:
-        show_result = PlanResult(exit_code=show_exit, stderr=plan_result.stderr)
-        return _exit_plan(input_model, show_result)
+    show_result = plan_subprocess.show_plan_json(settings, bin_path)
+    if show_result.exit_code != 0:
+        show_plan_result = PlanResult(exit_code=show_result.exit_code, stderr=plan_result.stderr)
+        return _exit_plan(input_model, show_plan_result)
 
+    plan_output = show_result.plan_output
+    raw_plan_json = show_result.raw_json
     assert plan_output is not None
-    atomic_write_text(json_path, json.dumps(plan_output.model_dump(mode="json"), indent=2))
+    assert raw_plan_json is not None
+    atomic_write_text(json_path, json.dumps(json.loads(raw_plan_json), indent=2))
 
     try:
         plan = parse_plan_file(json_path, settings=settings)
@@ -126,8 +130,17 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         resource_schema=lookups.resource_schema,
         complex_config=ComplexRenderConfig(max_structural_lines=plan_display.max_inline_lines),
         plan_display=plan_display,
+        has_applyable_changes=plan_has_applyable_changes(plan),
     )
-    return _exit_plan(input_model, PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr), report=False)
+    return _exit_plan(
+        input_model,
+        PlanResult(
+            exit_code=plan_exit_code,
+            stderr=plan_result.stderr,
+            has_applyable_changes=plan_has_applyable_changes(plan),
+        ),
+        report=False,
+    )
 
 
 def run_plan(input_model: PlanInput) -> PlanResult:

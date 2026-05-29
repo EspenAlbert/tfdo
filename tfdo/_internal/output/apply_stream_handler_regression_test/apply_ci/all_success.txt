@@ -1,0 +1,5 @@
+apply: ✅ random_pet.server created 0s
+apply: ✅ random_string.suffix created 0s
+apply: ✅ local_file.config created 0s
+apply: 3 ✅  total 0s
+apply: 🟢 3 added

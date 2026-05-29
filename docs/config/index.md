@@ -4,6 +4,7 @@
 <!-- === OK_EDIT: pkg-ext header === -->
 
 <!-- === DO_NOT_EDIT: pkg-ext symbols === -->
+- [`ApplyDisplayOptions`](#applydisplayoptions_def)
 - [`BackendType`](#backendtype_def)
 - [`CiConfig`](#ciconfig_def)
 - [DependencyRef](./dependencyref.md)
@@ -299,3 +300,31 @@ class DetailLevel(StrEnum):
 |---------|--------|
 | 0.8.0 | Made public |
 <!-- === OK_EDIT: pkg-ext detaillevel_def === -->
+<!-- === DO_NOT_EDIT: pkg-ext applydisplayoptions_def === -->
+<a id="applydisplayoptions_def"></a>
+
+### class: `ApplyDisplayOptions`
+- [source](../../tfdo/_internal/output/apply_display.py#L12)
+> **Since:** unreleased
+
+```python
+class ApplyDisplayOptions(BaseModel):
+    slow_threshold: str = '2m'
+    very_slow_threshold: str = '10m'
+    heartbeat_interval: str = '30s'
+    hide_provision_output: bool = False
+```
+
+| Field | Type | Default | Since |
+|---|---|---|---|
+| slow_threshold | `str` | `'2m'` | unreleased |
+| very_slow_threshold | `str` | `'10m'` | unreleased |
+| heartbeat_interval | `str` | `'30s'` | unreleased |
+| hide_provision_output | `bool` | `False` | unreleased |
+
+### Changes
+
+| Version | Change |
+|---------|--------|
+| unreleased | Made public |
+<!-- === OK_EDIT: pkg-ext applydisplayoptions_def === -->

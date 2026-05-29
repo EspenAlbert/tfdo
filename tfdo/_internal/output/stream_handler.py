@@ -11,7 +11,8 @@ from ask_shell.console import RemoveLivePart
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.text import Text
 
-from tfdo._internal.output.diagnostic_renderer import render_diagnostic
+from tfdo._internal.output.diagnostic_emitter import DiagnosticEmitter
+from tfdo._internal.output.diagnostic_link import resolve_resource_addr
 from tfdo._internal.output.stream_models import ChangeSummaryEvent, DiagnosticEvent, RefreshEvent
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class PlanStreamHandler:
         self._in_flight: set[str] = set()
         self._done = 0
         self._planning_emitted = False
-        self._diagnostic_emitted = False
+        self._diagnostics = DiagnosticEmitter()
         self._carry = ""
         self._status = _PlanStatusRenderable(self)
         self._remove_panel: RemoveLivePart | None = ask_console.add_renderable(
@@ -63,7 +64,7 @@ class PlanStreamHandler:
 
     @property
     def diagnostics_emitted(self) -> bool:
-        return self._diagnostic_emitted
+        return self._diagnostics.blocks_emitted > 0
 
     def _handle_line(self, line: str) -> None:
         try:
@@ -92,11 +93,8 @@ class PlanStreamHandler:
         diag = event.diagnostic
         if diag is None:
             return
-        if not self._diagnostic_emitted:
-            self._diagnostic_emitted = True
-            ask_console.print_to_live("")
-        for line in render_diagnostic(diag):
-            ask_console.print_to_live(line)
+        resource_addr = resolve_resource_addr(diag)
+        self._diagnostics.emit(diag, resource_addr=resource_addr, leading_blank=not self._diagnostics.blocks_emitted)
 
     def _on_refresh_start(self, event: RefreshEvent) -> None:
         if event.hook and event.hook.resource:

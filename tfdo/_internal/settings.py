@@ -12,6 +12,7 @@ from ask_shell.console import interactive_shell
 from model_lib import StaticSettings
 from pydantic import BaseModel, ConfigDict, Field
 
+from tfdo._internal.output.apply_display import ApplyDisplayOptions
 from tfdo._internal.output.plan_display import PlanDisplayOptions
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ class TfDoSettings(StaticSettings):
     model_config = ConfigDict(populate_by_name=True)  # type: ignore
 
     DEP_TFVARS_SUFFIX: ClassVar[str] = ".dep.tfvars.json"
+    STREAM_PARSE_FAILURE_FILENAME: ClassVar[str] = "stream_parse_failure.ndjson"
 
     ENV_NAME_BINARY: ClassVar[str] = f"{ENV_PREFIX}BINARY"
     binary: str = Field(
@@ -140,6 +142,7 @@ class CheckConfig(BaseModel):
 class TfDoUserConfig(BaseModel):
     check: CheckConfig | None = None
     plan_display: PlanDisplayOptions | None = None
+    apply_display: ApplyDisplayOptions | None = None
 
 
 def load_user_config(settings: TfDoSettings) -> TfDoUserConfig:

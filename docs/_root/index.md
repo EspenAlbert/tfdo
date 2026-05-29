@@ -69,7 +69,7 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = None, w
 <a id="interactivemode_def"></a>
 
 ### class: `InteractiveMode`
-- [source](../../tfdo/_internal/settings.py#L26)
+- [source](../../tfdo/_internal/settings.py#L27)
 > **Since:** 0.2.0
 
 ```python

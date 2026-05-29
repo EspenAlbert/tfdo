@@ -61,6 +61,21 @@ def test_declined_apply_exits_zero_without_apply(
 
 
 @patch(f"{apply_logic.__name__}.{apply_logic._apply_saved_plan.__name__}")
+@patch(f"{apply_logic.__name__}.{apply_logic._confirm_apply.__name__}")
+@patch(f"{plan_logic.__name__}.{plan_logic.plan_and_render.__name__}")
+def test_no_applyable_changes_skips_confirm_and_apply(
+    plan_mock: MagicMock, confirm_mock: MagicMock, apply_mock: MagicMock, tmp_path: Path
+) -> None:
+    plan_mock.return_value = PlanResult(exit_code=0, has_applyable_changes=False)
+
+    result = apply_logic.run_apply(_apply_input(tmp_path))
+
+    confirm_mock.assert_not_called()
+    apply_mock.assert_not_called()
+    assert result.exit_code == 0
+
+
+@patch(f"{apply_logic.__name__}.{apply_logic._apply_saved_plan.__name__}")
 @patch(f"{plan_logic.__name__}.{plan_logic.plan_and_render.__name__}")
 def test_plan_failure_skips_apply(plan_mock: MagicMock, apply_mock: MagicMock, tmp_path: Path) -> None:
     plan_mock.return_value = PlanResult(exit_code=1, stderr="plan failed")

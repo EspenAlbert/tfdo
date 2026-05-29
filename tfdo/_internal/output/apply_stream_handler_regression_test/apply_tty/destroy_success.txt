@@ -1,0 +1,4 @@
+✅ local_file.db_config  destroyed  0s
+✅ random_pet.db_name    destroyed  0s
+Apply complete: 2 ✅  total 0s
+  🔴 2 destroyed

@@ -5,7 +5,12 @@ from pathlib import Path
 
 from ask_shell import ask
 
-from tfdo._internal.core import binary, failure_output, lifecycle_init_retry, lifecycle_shell, plan_logic
+from tfdo._internal.core import (
+    apply_subprocess,
+    failure_output,
+    lifecycle_shell,
+    plan_logic,
+)
 from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.models import ApplyInput, ApplyResult, PlanInput
 from tfdo._internal.output import plan_artifacts
@@ -32,16 +37,7 @@ def _confirm_apply() -> bool:
 
 
 def _apply_saved_plan(input_model: ApplyInput, plan_bin: Path) -> ApplyResult:
-    settings = input_model.settings
-    extra_flags = ["-auto-approve", str(plan_bin), *input_model.extra_args]
-    cmd = lifecycle_shell.build_lifecycle_command(
-        binary.resolve_binary(settings), "apply", input_model.var_file, extra_flags
-    )
-
-    def run_once() -> ApplyResult:
-        return lifecycle_shell.run_lifecycle_command(settings, cmd, ApplyResult, user_input=False)
-
-    return lifecycle_init_retry.run_with_init_retry(input_model, "apply", ApplyResult, run_once)
+    return apply_subprocess.run_streaming_apply(input_model, plan_bin, result_cls=ApplyResult)
 
 
 def run_apply(input_model: ApplyInput) -> ApplyResult:
@@ -61,6 +57,10 @@ def run_apply(input_model: ApplyInput) -> ApplyResult:
     plan_result = plan_logic.plan_and_render(_plan_input_from_apply(input_model))
     if plan_result.exit_code != 0:
         return ApplyResult(exit_code=plan_result.exit_code, stderr=plan_result.stderr)
+
+    if plan_result.has_applyable_changes is False:
+        logger.info("plan has no applyable changes; skipping apply")
+        return ApplyResult(exit_code=0)
 
     bin_path = plan_artifacts.plan_bin_path(input_model.settings.work_dir)
     if not bin_path.is_file():
