@@ -3,10 +3,11 @@ from shutil import which
 from unittest.mock import MagicMock, patch
 
 import pytest
+from ask_shell import console as ask_console
 from ask_shell.shell import AbortRetryError, ShellRun
 from typer.testing import CliRunner
 
-from tfdo._internal.core import apply_logic, binary, plan_logic, plan_subprocess, terraform_init
+from tfdo._internal.core import apply_logic, apply_subprocess, binary, plan_logic, plan_subprocess, terraform_init
 from tfdo._internal.core.executor import (
     _parse_tf_outputs,
     apply,
@@ -347,6 +348,30 @@ def test_auto_init_retries_on_init_needed_error(tmp_path: Path):
     cmds = [c[0][0] for c in mock_plan.call_args_list]
     assert "plan" in cmds[0]
     assert "plan" in cmds[1]
+
+
+def test_auto_init_retries_on_init_needed_error_apply(tmp_path: Path):
+    settings = _make_settings(tmp_path, interactive=InteractiveMode.ALWAYS)
+    _write_apply_artifacts(tmp_path)
+    fail_run = _mock_run(exit_code=1, stderr='Please run "terraform init"')
+    init_run = _mock_run(exit_code=0, attempt=1)
+    success_run = _mock_run(exit_code=0)
+    with (
+        patch(_patch_apply_run, side_effect=[fail_run, success_run]) as mock_apply,
+        patch(_patch_init_run, return_value=init_run),
+        patch.object(ask_console, "add_renderable") as mock_renderable,
+    ):
+        result = apply_subprocess.run_streaming_apply(
+            ApplyInput(settings=settings, auto_approve=True),
+            plan_bin_path(tmp_path),
+            result_cls=ApplyResult,
+        )
+    assert result.exit_code == 0
+    assert mock_apply.call_count == 2
+    cmds = [c[0][0] for c in mock_apply.call_args_list]
+    assert "apply" in cmds[0]
+    assert "apply" in cmds[1]
+    assert mock_renderable.call_count == 2
 
 
 def test_auto_init_skips_when_no_init_pattern(tmp_path: Path):

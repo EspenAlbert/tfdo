@@ -83,7 +83,6 @@ def run_streaming_apply(
     display = resolve_apply_display(ApplyDisplayOptions(), user_config.apply_display, input_model.apply_display_cli)
     plan_path = plan_json_path(settings.work_dir)
     state = build_apply_stream_state(settings, plan_path, display.options)
-    handler = ApplyStreamHandler(state, display, interactive=settings.is_interactive)
 
     extra_flags = ["-json", "-auto-approve", str(plan_bin), *input_model.extra_args]
     cmd = build_lifecycle_command(binary.resolve_binary(settings), "apply", input_model.var_file, extra_flags)
@@ -91,6 +90,7 @@ def run_streaming_apply(
     print_prefix = f"{label} apply"
 
     def run_once() -> T:
+        handler = ApplyStreamHandler(state, display, interactive=settings.is_interactive)
         result = _run_streaming_apply_command(
             settings,
             cmd,

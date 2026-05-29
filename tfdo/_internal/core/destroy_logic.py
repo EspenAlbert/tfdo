@@ -8,7 +8,6 @@ from ask_shell import ask
 from tfdo._internal.core import (
     apply_subprocess,
     failure_output,
-    lifecycle_init_retry,
     lifecycle_shell,
     plan_logic,
 )
@@ -39,10 +38,7 @@ def _confirm_destroy() -> bool:
 
 
 def _apply_saved_plan(input_model: DestroyInput, plan_bin: Path) -> DestroyResult:
-    def run_once() -> DestroyResult:
-        return apply_subprocess.run_streaming_apply(input_model, plan_bin, result_cls=DestroyResult)
-
-    return lifecycle_init_retry.run_with_init_retry(input_model, "apply", DestroyResult, run_once)
+    return apply_subprocess.run_streaming_apply(input_model, plan_bin, result_cls=DestroyResult)
 
 
 def run_destroy(input_model: DestroyInput) -> DestroyResult:

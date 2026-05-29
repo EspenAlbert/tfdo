@@ -8,7 +8,6 @@ from ask_shell import ask
 from tfdo._internal.core import (
     apply_subprocess,
     failure_output,
-    lifecycle_init_retry,
     lifecycle_shell,
     plan_logic,
 )
@@ -38,10 +37,7 @@ def _confirm_apply() -> bool:
 
 
 def _apply_saved_plan(input_model: ApplyInput, plan_bin: Path) -> ApplyResult:
-    def run_once() -> ApplyResult:
-        return apply_subprocess.run_streaming_apply(input_model, plan_bin, result_cls=ApplyResult)
-
-    return lifecycle_init_retry.run_with_init_retry(input_model, "apply", ApplyResult, run_once)
+    return apply_subprocess.run_streaming_apply(input_model, plan_bin, result_cls=ApplyResult)
 
 
 def run_apply(input_model: ApplyInput) -> ApplyResult:
