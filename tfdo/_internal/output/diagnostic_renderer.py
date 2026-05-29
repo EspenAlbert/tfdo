@@ -4,23 +4,25 @@ from rich.text import Text
 
 from tfdo._internal.output.stream_models import DiagnosticBody, DiagnosticSnippet
 
+SNIPPET_LINES_BEFORE = 2
+SNIPPET_LINES_AFTER = 1
+
 _DIAGNOSTIC_INDENT = "  "
 _DETAIL_INDENT = "    "
 _CODE_INDENT = "     "
 
 
-def render_diagnostic(diag: DiagnosticBody) -> list[Text | str]:
+def render_diagnostic(diag: DiagnosticBody, *, resource_addr: str | None = None) -> list[Text | str]:
     lines: list[Text | str] = []
     severity = (diag.severity or "error").lower()
     lines.append(_severity_heading(severity, _summary_after_label(diag.summary, severity)))
 
+    has_source = diag.source_range is not None or diag.snippet is not None
     if diag.source_range is not None:
-        lines.append(_DETAIL_INDENT + _range_line(diag.source_range.filename, diag.source_range.start.line))
-
-    if diag.snippet and diag.snippet.context:
-        lines.append(_DETAIL_INDENT + diag.snippet.context)
-
-    if diag.snippet:
+        lines.append(_range_text(diag.source_range.filename, diag.source_range.start.line))
+    if resource_addr:
+        lines.append(_DETAIL_INDENT + resource_addr)
+    if diag.snippet and has_source:
         lines.extend(_snippet_lines(diag.snippet, severity))
 
     if diag.detail:
@@ -55,34 +57,46 @@ def _severity_heading(severity: str, summary: str) -> Text:
     return text
 
 
-def _range_line(filename: str, line: int) -> str:
-    return f"{filename}:{line}"
+def _range_text(filename: str, line: int) -> Text:
+    return Text.assemble((_DETAIL_INDENT, ""), (f"{filename}:{line}", "dim"))
 
 
 def _snippet_lines(snippet: DiagnosticSnippet, severity: str) -> list[Text | str]:
     caret_style = "yellow" if severity == "warning" else "red"
-    lines: list[Text | str] = []
     code_lines = snippet.code.splitlines()
+    if not code_lines:
+        return []
+
+    highlight_line = _highlight_line_index(snippet, code_lines)
+    window_start = max(0, highlight_line - SNIPPET_LINES_BEFORE)
+    window_end = min(len(code_lines), highlight_line + SNIPPET_LINES_AFTER + 1)
+    sliced = code_lines[window_start:window_end]
+
+    prefix_len = sum(len(line) + 1 for line in code_lines[:window_start])
+    start_offset = snippet.highlight_start_offset - prefix_len
+    end_offset = snippet.highlight_end_offset - prefix_len
+    start_line = snippet.start_line + window_start
+    highlight_in_slice = highlight_line - window_start
+
+    lines: list[Text | str] = []
+    for offset, code in enumerate(sliced):
+        line_no = start_line + offset
+        lines.append(Text.assemble((_CODE_INDENT, ""), (f"{line_no:4d}", "dim"), " | ", code))
+        if offset == highlight_in_slice:
+            caret = _caret_line(code, start_offset, end_offset)
+            if caret:
+                lines.append(Text.assemble((_CODE_INDENT, ""), ("     | ", "dim"), (caret, caret_style)))
+    return lines
+
+
+def _highlight_line_index(snippet: DiagnosticSnippet, code_lines: list[str]) -> int:
     line_start = 0
-    highlight_line = 0
     for offset, code in enumerate(code_lines):
         line_end = line_start + len(code)
-        if snippet.highlight_start_offset < line_end or offset == len(code_lines) - 1:
-            highlight_line = offset
+        if snippet.highlight_start_offset < line_end:
+            return offset
         line_start = line_end + 1
-
-    line_start = 0
-    for offset, code in enumerate(code_lines):
-        line_no = snippet.start_line + offset
-        lines.append(f"{_CODE_INDENT}{line_no:4d} | {code}")
-        if offset == highlight_line:
-            local_start = snippet.highlight_start_offset - line_start
-            local_end = snippet.highlight_end_offset - line_start
-            caret = _caret_line(code, local_start, local_end)
-            if caret:
-                lines.append(Text(f"{_CODE_INDENT}     | {caret}", style=caret_style))
-        line_start += len(code) + 1
-    return lines
+    return max(len(code_lines) - 1, 0)
 
 
 def _caret_line(code: str, start: int, end: int) -> str:
@@ -101,8 +115,5 @@ def _detail_lines(detail: str) -> list[str]:
         if not block:
             continue
         for line in block.splitlines():
-            if line.startswith(" ") or line.startswith("\t"):
-                lines.append(_DETAIL_INDENT + line)
-            else:
-                lines.append(_DETAIL_INDENT + line)
+            lines.append(_DETAIL_INDENT + line)
     return lines

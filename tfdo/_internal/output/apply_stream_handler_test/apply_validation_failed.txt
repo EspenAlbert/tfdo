@@ -1,0 +1,6 @@
+  Error: Resource precondition failed
+    main.tf:28
+    local_file.second
+       28 |       condition     = length(random_pet.first.id) > 100
+          |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    intentional apply validation failure for fixture capture

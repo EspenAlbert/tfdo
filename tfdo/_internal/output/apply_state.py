@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 from enum import StrEnum
+from typing import NamedTuple
 
 from pydantic import BaseModel, ConfigDict
 
-from tfdo._internal.output.diagnostic_link import resolve_diagnostic_addr
+from tfdo._internal.output.diagnostic_link import resolve_resource_addr
 from tfdo._internal.output.models import Change, PlanOutput, ResourceAction, ResourceChange
 from tfdo._internal.output.stream_models import (
     ApplyHookEvent,
@@ -51,6 +52,11 @@ class ApplyResourceState(BaseModel):
     diagnostic: DiagnosticBody | None = None
 
 
+class DiagnosticEmission(NamedTuple):
+    diagnostic: DiagnosticBody
+    resource_addr: str | None
+
+
 class ApplyProgressState:
     def __init__(
         self,
@@ -79,6 +85,7 @@ class ApplyProgressState:
         self._saw_plan_change_summary = False
         self._saw_planned_change = False
         self._pending_error_addr: str | None = None
+        self._diagnostic_emissions: list[DiagnosticEmission] = []
 
     @property
     def total_count(self) -> int:
@@ -101,6 +108,11 @@ class ApplyProgressState:
         logs = self._provision_logs
         self._provision_logs = []
         return logs
+
+    def drain_diagnostic_emissions(self) -> list[DiagnosticEmission]:
+        emissions = self._diagnostic_emissions
+        self._diagnostic_emissions = []
+        return emissions
 
     def active_blockers(self, addr: str) -> list[str]:
         predecessors = self.blockers.get(addr, frozenset())
@@ -284,15 +296,22 @@ class ApplyProgressState:
         diag = event.diagnostic
         if diag is None:
             return
-        addr = self._pending_error_addr
-        if addr is None:
-            addr = resolve_diagnostic_addr(diag, frozenset(self.resources))
+        candidates = frozenset(self.resources)
+        resource_addr = resolve_resource_addr(
+            diag,
+            pending_hook_addr=self._pending_error_addr,
+            candidate_addrs=candidates,
+        )
+        self._diagnostic_emissions.append(DiagnosticEmission(diag, resource_addr))
+        addr = resource_addr
         if addr is None:
             self.orphan_diagnostic = diag
+            self._pending_error_addr = None
             return
         resource = self.resources.get(addr)
         if resource is None:
             self.orphan_diagnostic = diag
+            self._pending_error_addr = None
             return
         resource.diagnostic = diag
         if resource.status in (ApplyResourceStatus.PENDING, ApplyResourceStatus.IN_PROGRESS):

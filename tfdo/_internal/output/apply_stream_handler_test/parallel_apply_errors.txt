@@ -1,0 +1,11 @@
+  Error: intentional east failure
+    main.tf:10
+    module.example["east"].null_resource.app
+       10 | resource "null_resource" "app" {
+          |                                 ^
+
+  Error: intentional west failure
+    main.tf:10
+    module.example["west"].null_resource.app
+       10 | resource "null_resource" "app" {
+          |                                 ^

@@ -37,6 +37,24 @@ def addr_matches_type_name_suffix(addr: str, type_name_suffix: str) -> bool:
     return base.endswith(f".{type_name_suffix}")
 
 
+def resolve_resource_addr(
+    diagnostic: DiagnosticBody,
+    *,
+    pending_hook_addr: str | None = None,
+    candidate_addrs: frozenset[str] | None = None,
+) -> str | None:
+    candidates = candidate_addrs or frozenset()
+    if diagnostic.address:
+        if not candidates or diagnostic.address in candidates:
+            return diagnostic.address
+    if pending_hook_addr:
+        if not candidates or pending_hook_addr in candidates:
+            return pending_hook_addr
+    if candidates:
+        return resolve_diagnostic_addr(diagnostic, candidates)
+    return None
+
+
 def resolve_diagnostic_addr(
     diagnostic: DiagnosticBody,
     candidate_addrs: frozenset[str],

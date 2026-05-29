@@ -13,16 +13,7 @@ from tfdo._internal.output.apply_state import (
 )
 from tfdo._internal.output.models import Change, PlanOutput, ResourceAction, ResourceChange
 from tfdo._internal.output.parser import parse_plan_file
-
-APPLY_PROGRESS_DIR = Path(__file__).resolve().parents[4] / "00_debug" / "12_apply_progress"
-
-
-def _fixture(name: str) -> Path:
-    return APPLY_PROGRESS_DIR / name
-
-
-def _load_lines(path: Path) -> list[str]:
-    return [line for line in path.read_text().splitlines() if line.strip()]
+from tfdo._internal.output.testdata_paths import load_apply_progress_lines
 
 
 def _replay(state: ApplyProgressState, lines: list[str]) -> None:
@@ -49,9 +40,8 @@ def _inline_plan(addrs: list[tuple[str, list[str]]]) -> PlanOutput:
 
 
 def test_apply_all_success(create_flat_plan: Path) -> None:
-    path = _fixture("apply_all_success.ndjson")
     state = ApplyProgressState(parse_plan_file(create_flat_plan))
-    _replay(state, _load_lines(path))
+    _replay(state, load_apply_progress_lines("apply_all_success.ndjson"))
     assert state.phase == ApplyPhase.DONE
     assert all(r.status == ApplyResourceStatus.COMPLETED for r in state.resources.values())
     assert state.completed_count == state.total_count == 3
@@ -66,9 +56,8 @@ def test_apply_validation_failed() -> None:
             ("local_file.second", ["create"]),
         ]
     )
-    path = _fixture("apply_validation_failed.ndjson")
     state = ApplyProgressState(plan)
-    _replay(state, _load_lines(path))
+    _replay(state, load_apply_progress_lines("apply_validation_failed.ndjson"))
     assert state.resources["random_pet.first"].status == ApplyResourceStatus.COMPLETED
     second = state.resources["local_file.second"]
     assert second.status == ApplyResourceStatus.ERRORED
@@ -79,55 +68,48 @@ def test_apply_validation_failed() -> None:
 
 def test_provision_local_exec() -> None:
     plan = _inline_plan([("local_file.config", ["create"])])
-    path = _fixture("provision_local_exec.ndjson")
     state = ApplyProgressState(plan)
-    _replay(state, _load_lines(path))
+    _replay(state, load_apply_progress_lines("provision_local_exec.ndjson"))
     assert state.resources["local_file.config"].status == ApplyResourceStatus.COMPLETED
     assert state.drain_provision_logs()
 
 
-def test_pre_apply_refresh_from_live() -> None:
-    lines = _load_lines(_fixture("live_privatelink.ndjson"))
-    plan = plan_from_planned_changes(lines)
-    state = ApplyProgressState(plan)
-    prefix = lines[
-        : lines.index(
-            next(line for line in lines if '"type":"change_summary"' in line and '"operation":"plan"' in line)
-        )
-        + 1
-    ]
-    _replay(state, prefix)
+def test_pre_apply_refresh_logs() -> None:
+    lines = load_apply_progress_lines("pre_apply_refresh.ndjson")
+    state = ApplyProgressState(_inline_plan([("null_resource.one", ["create"])]))
+    _replay(state, lines)
     assert state.drain_pre_apply_logs() == [PRE_APPLY_REFRESH_START, PRE_APPLY_REFRESH_COMPLETE]
 
 
 def test_minimal_fixture_no_pre_apply_logs(create_flat_plan: Path) -> None:
-    path = _fixture("apply_all_success.ndjson")
     state = ApplyProgressState(parse_plan_file(create_flat_plan))
-    _replay(state, _load_lines(path))
+    _replay(state, load_apply_progress_lines("apply_all_success.ndjson"))
     assert state.drain_pre_apply_logs() == []
 
 
 def test_plan_from_planned_changes() -> None:
-    lines = _load_lines(_fixture("live_privatelink.ndjson"))
+    lines = load_apply_progress_lines("apply_all_success.ndjson")
     plan = plan_from_planned_changes(lines)
-    assert len(seed_apply_addrs(plan)) >= 2
+    assert len(seed_apply_addrs(plan)) == 3
     assert all(rc.change.action() != ResourceAction.READ for rc in plan.resource_changes)
 
 
 def test_destroy_saved_plan(destroy_plan: Path) -> None:
-    path = _fixture("apply_destroy_saved_plan.ndjson")
     state = ApplyProgressState(parse_plan_file(destroy_plan))
-    _replay(state, _load_lines(path))
+    _replay(state, load_apply_progress_lines("apply_destroy_saved_plan.ndjson"))
     assert all(r.plan_action == ResourceAction.DELETE for r in state.resources.values())
     assert state.terminal_summary and state.terminal_summary.changes
     assert state.terminal_summary.changes.remove >= 1
 
 
-def test_live_privatelink_partial() -> None:
-    lines = _load_lines(_fixture("live_privatelink.ndjson"))
+def test_parallel_apply_errors_partial() -> None:
+    lines = load_apply_progress_lines("parallel_apply_errors.ndjson")
     state = ApplyProgressState(plan_from_planned_changes(lines))
     _replay(state, lines)
     errored = [a for a, r in state.resources.items() if r.status == ApplyResourceStatus.ERRORED]
-    assert len(errored) >= 2
+    assert errored == [
+        'module.example["east"].null_resource.app',
+        'module.example["west"].null_resource.app',
+    ]
     assert state.phase != ApplyPhase.DONE
     assert state.terminal_summary is None

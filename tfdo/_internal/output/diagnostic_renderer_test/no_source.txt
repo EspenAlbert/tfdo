@@ -1,0 +1,2 @@
+  Error: Backend initialization required
+    Run "terraform init" to prepare this working directory.
