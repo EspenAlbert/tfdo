@@ -430,6 +430,14 @@ def seed_apply_addrs(plan: PlanOutput) -> dict[str, ResourceAction]:
     return result
 
 
+def plan_has_applyable_changes(plan: PlanOutput) -> bool:
+    if plan.applyable is not None:
+        return plan.applyable
+    if seed_apply_addrs(plan):
+        return True
+    return any(oc.actions != ["no-op"] for oc in plan.output_changes.values())
+
+
 def plan_from_planned_changes(lines: list[str], *, settings: TfDoSettings | None = None) -> PlanOutput:
     settings = settings or TfDoSettings.from_env()
     changes: list[ResourceChange] = []

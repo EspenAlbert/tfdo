@@ -293,6 +293,10 @@ def _action_counts(tree: PlanTree) -> PlanActionCounts:
     return PlanActionCounts(add=add, change=change, destroy=destroy, replace=replace, total=total)
 
 
+def _output_changes_have_applyable_actions(output_changes: dict[str, OutputChange]) -> bool:
+    return any(oc.actions != ["no-op"] for oc in output_changes.values())
+
+
 def _plan_header_line(tree: PlanTree, counts: PlanActionCounts) -> _PlanHeader:
     if not _has_resources(tree) and not tree.output_changes:
         return _PlanHeader(
@@ -302,6 +306,14 @@ def _plan_header_line(tree: PlanTree, counts: PlanActionCounts) -> _PlanHeader:
         )
     if not _has_resources(tree):
         return _PlanHeader(line="📋 Plan: no resource changes")
+    if counts.total == 0:
+        if _output_changes_have_applyable_actions(tree.output_changes):
+            return _PlanHeader(line="📋 Plan: no resource changes")
+        return _PlanHeader(
+            line="✅ Plan: no changes",
+            subtitle="Infrastructure matches configuration." if not tree.drift else None,
+            render_body=bool(tree.drift),
+        )
     parts: list[str] = []
     if counts.add:
         parts.append(f"🟢 {counts.add} to add")

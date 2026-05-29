@@ -10,6 +10,7 @@ from tfdo._internal.core import failure_output, plan_subprocess
 from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.hcl_read import find_lock_file
 from tfdo._internal.models import PlanInput, PlanResult
+from tfdo._internal.output.apply_state import plan_has_applyable_changes
 from tfdo._internal.output.complex_render import ComplexRenderConfig
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_artifacts import (
@@ -130,7 +131,15 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         complex_config=ComplexRenderConfig(max_structural_lines=plan_display.max_inline_lines),
         plan_display=plan_display,
     )
-    return _exit_plan(input_model, PlanResult(exit_code=plan_exit_code, stderr=plan_result.stderr), report=False)
+    return _exit_plan(
+        input_model,
+        PlanResult(
+            exit_code=plan_exit_code,
+            stderr=plan_result.stderr,
+            has_applyable_changes=plan_has_applyable_changes(plan),
+        ),
+        report=False,
+    )
 
 
 def run_plan(input_model: PlanInput) -> PlanResult:

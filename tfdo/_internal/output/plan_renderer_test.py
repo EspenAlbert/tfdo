@@ -12,11 +12,13 @@ from tfdo._internal.output.models import Change, OutputChange, PlanOutput, Resou
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.plan_renderer import (
+    _action_counts,
     _build_complex_results,
     _build_module_tree,
     _filter_attr_lines_by_addr,
     _format_output_section,
     _module_depth_by_address,
+    _plan_header_line,
 )
 from tfdo._internal.output.tree_builder import build_plan_tree
 
@@ -203,6 +205,35 @@ def test_empty_plan(empty_plan, capture_console) -> None:
     rendered = render_fixture(None, capture_console, plan=empty_plan)
     assert "✅ Plan: no changes" in rendered
     assert "Infrastructure matches configuration." in rendered
+
+
+def test_drift_only_no_planned_changes_header() -> None:
+    plan = PlanOutput(
+        format_version="1.2",
+        errored=False,
+        resource_changes=[
+            ResourceChange(
+                address="local_file.config",
+                mode="managed",
+                type="local_file",
+                name="config",
+                change=Change(actions=["no-op"]),
+            )
+        ],
+        resource_drift=[
+            ResourceChange(
+                address="local_file.config",
+                mode="managed",
+                type="local_file",
+                name="config",
+                change=Change(actions=["delete"]),
+            )
+        ],
+    )
+    tree = build_plan_tree(plan)
+    header = _plan_header_line(tree, _action_counts(tree))
+    assert header.line == "✅ Plan: no changes"
+    assert header.render_body
 
 
 def test_destroy_warning_partial(capture_console) -> None:

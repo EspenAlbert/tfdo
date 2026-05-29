@@ -138,6 +138,7 @@ class LifecycleResult(BaseModel):
 
 class PlanResult(LifecycleResult):
     diagnostics_emitted: bool = False
+    has_applyable_changes: bool | None = None
 
 
 class ApplyResult(LifecycleResult):

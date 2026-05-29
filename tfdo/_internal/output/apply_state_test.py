@@ -9,6 +9,7 @@ from tfdo._internal.output.apply_state import (
     ApplyProgressState,
     ApplyResourceStatus,
     plan_from_planned_changes,
+    plan_has_applyable_changes,
     seed_apply_addrs,
 )
 from tfdo._internal.output.models import Change, PlanOutput, ResourceAction, ResourceChange
@@ -37,6 +38,54 @@ def _inline_plan(addrs: list[tuple[str, list[str]]]) -> PlanOutput:
             for addr, actions in addrs
         ],
     )
+
+
+def test_plan_has_applyable_changes_empty(empty_plan: PlanOutput) -> None:
+    assert not plan_has_applyable_changes(empty_plan)
+
+
+def test_plan_has_applyable_changes_outputs_only(outputs_only_plan: Path) -> None:
+    plan = parse_plan_file(outputs_only_plan)
+    assert plan_has_applyable_changes(plan)
+
+
+def test_plan_has_applyable_changes_create(drift_plan: Path) -> None:
+    plan = parse_plan_file(drift_plan)
+    assert plan_has_applyable_changes(plan)
+
+
+def test_plan_has_applyable_changes_drift_only_no_op() -> None:
+    plan = PlanOutput(
+        format_version="1.2",
+        errored=False,
+        applyable=False,
+        resource_changes=[
+            ResourceChange(
+                address="local_file.config",
+                mode="managed",
+                type="local_file",
+                name="config",
+                change=Change(actions=["no-op"]),
+            )
+        ],
+        resource_drift=[
+            ResourceChange(
+                address="local_file.config",
+                mode="managed",
+                type="local_file",
+                name="config",
+                change=Change(actions=["delete"]),
+            )
+        ],
+    )
+    assert not plan_has_applyable_changes(plan)
+
+
+def test_plan_has_applyable_changes_respects_applyable() -> None:
+    plan = PlanOutput(format_version="1.2", errored=False, applyable=True)
+    assert plan_has_applyable_changes(plan)
+    plan.applyable = False
+    assert not plan_has_applyable_changes(plan)
 
 
 def test_apply_all_success(create_flat_plan: Path) -> None:

@@ -60,6 +60,21 @@ def test_declined_destroy_exits_zero_without_apply(
     assert result.exit_code == 0
 
 
+@patch(f"{destroy_logic.__name__}.{destroy_logic._apply_saved_plan.__name__}")
+@patch(f"{destroy_logic.__name__}.{destroy_logic._confirm_destroy.__name__}")
+@patch(f"{plan_logic.__name__}.{plan_logic.plan_and_render.__name__}")
+def test_no_applyable_changes_skips_confirm_and_destroy(
+    plan_mock: MagicMock, confirm_mock: MagicMock, apply_mock: MagicMock, tmp_path: Path
+) -> None:
+    plan_mock.return_value = PlanResult(exit_code=0, has_applyable_changes=False)
+
+    result = destroy_logic.run_destroy(_destroy_input(tmp_path))
+
+    confirm_mock.assert_not_called()
+    apply_mock.assert_not_called()
+    assert result.exit_code == 0
+
+
 @patch(f"{destroy_logic.__name__}.failure_output.report_lifecycle_failure")
 @patch(f"{destroy_logic.__name__}.{destroy_logic._apply_saved_plan.__name__}")
 @patch(f"{plan_artifacts.__name__}.{plan_artifacts.plan_bin_path.__name__}")

@@ -58,6 +58,10 @@ def run_apply(input_model: ApplyInput) -> ApplyResult:
     if plan_result.exit_code != 0:
         return ApplyResult(exit_code=plan_result.exit_code, stderr=plan_result.stderr)
 
+    if plan_result.has_applyable_changes is False:
+        logger.info("plan has no applyable changes; skipping apply")
+        return ApplyResult(exit_code=0)
+
     bin_path = plan_artifacts.plan_bin_path(input_model.settings.work_dir)
     if not bin_path.is_file():
         return ApplyResult(exit_code=plan_result.exit_code, stderr=plan_result.stderr)
