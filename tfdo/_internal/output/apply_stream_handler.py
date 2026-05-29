@@ -6,6 +6,7 @@ from ask_shell import console as ask_console
 from ask_shell._internal.events import ShellRunEventT, ShellRunStdOutput
 from ask_shell.console import RemoveLivePart
 from rich.console import Console, ConsoleOptions, RenderResult
+from rich.text import Text
 
 from tfdo._internal.output.apply_display import ResolvedApplyDisplay
 from tfdo._internal.output.apply_renderer import (
@@ -91,7 +92,7 @@ class ApplyStreamHandler:
         self._remove_live_panel()
         self._emit_final_summary()
 
-    def _live_status(self):
+    def _live_status(self) -> Text | None:
         addr_width = max_addr_width(self._state)
         return render_live_section(
             self._state,
