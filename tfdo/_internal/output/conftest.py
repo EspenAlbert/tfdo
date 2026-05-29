@@ -68,6 +68,11 @@ def testdata_dir() -> Path:
 
 
 @pytest.fixture
+def apply_blockers_count_plan() -> Path:
+    return TESTDATA_DIR / "10_apply_blockers_count.json"
+
+
+@pytest.fixture
 def create_flat_plan() -> Path:
     return TESTDATA_DIR / "01_create_flat.json"
 

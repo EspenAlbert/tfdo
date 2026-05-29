@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import NamedTuple
 
 from ask_shell._internal.models import EmptyOutputError
 from ask_shell.shell import ShellError, run_and_wait
@@ -17,6 +18,12 @@ from tfdo._internal.output.stream_handler import PlanStreamHandler, plan_stream_
 from tfdo._internal.settings import TfDoSettings
 
 logger = logging.getLogger(__name__)
+
+
+class ShowPlanJsonResult(NamedTuple):
+    plan_output: PlanOutput | None
+    raw_json: str | None
+    exit_code: int
 
 
 def _run_streaming_command(
@@ -69,7 +76,7 @@ def run_streaming_plan(input_model: PlanInput) -> PlanResult:
     return run_with_init_retry(input_model, "plan", PlanResult, run_once)
 
 
-def show_plan_json(settings: TfDoSettings, plan_bin: Path) -> tuple[PlanOutput | None, int]:
+def show_plan_json(settings: TfDoSettings, plan_bin: Path) -> ShowPlanJsonResult:
     cmd = f"{binary.resolve_binary(settings)} show -json {plan_bin}"
     try:
         run = run_and_wait(
@@ -81,13 +88,15 @@ def show_plan_json(settings: TfDoSettings, plan_bin: Path) -> tuple[PlanOutput |
         )
         exit_code = run.exit_code or 0
         if exit_code != 0:
-            return None, exit_code
-        return run.parse_output(PlanOutput), 0
+            return ShowPlanJsonResult(None, None, exit_code)
+        raw_json = run.stdout
+        plan_output = PlanOutput.model_validate_json(raw_json)
+        return ShowPlanJsonResult(plan_output, raw_json, 0)
     except ShellError as e:
-        return None, e.exit_code or 1
+        return ShowPlanJsonResult(None, None, e.exit_code or 1)
     except EmptyOutputError as e:
         logger.error(f"terraform show -json produced no stdout: {e}")
-        return None, 1
+        return ShowPlanJsonResult(None, None, 1)
     except json.JSONDecodeError as e:
         logger.error(f"failed to parse terraform show -json output: {e}")
-        return None, 1
+        return ShowPlanJsonResult(None, None, 1)

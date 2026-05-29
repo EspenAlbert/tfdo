@@ -36,6 +36,9 @@ class ApplyResourceStatus(StrEnum):
     ERRORED = "errored"
 
 
+_UNRESOLVED_BLOCKER_STATUSES = frozenset({ApplyResourceStatus.PENDING, ApplyResourceStatus.IN_PROGRESS})
+
+
 class ApplyPhase(StrEnum):
     PRE_APPLY = "pre_apply"
     APPLYING = "applying"
@@ -139,10 +142,37 @@ class ApplyProgressState:
 
     def active_blockers(self, addr: str) -> list[str]:
         predecessors = self.blockers.get(addr, frozenset())
-        in_progress = {
-            other for other, resource in self.resources.items() if resource.status == ApplyResourceStatus.IN_PROGRESS
-        }
-        return sorted(predecessors & in_progress)
+        waiting_on = {other for other in predecessors if self.resources[other].status in _UNRESOLVED_BLOCKER_STATUSES}
+        return sorted(waiting_on)
+
+    def pending_resources_sorted(self) -> list[ApplyResourceState]:
+        pending = [resource for resource in self.resources.values() if resource.status == ApplyResourceStatus.PENDING]
+        pending_addrs = frozenset(resource.addr for resource in pending)
+        depth_memo: dict[str, int] = {}
+
+        def sort_key(resource: ApplyResourceState) -> tuple[int, int, int, str]:
+            unresolved = self._unresolved_blockers(resource.addr)
+            in_progress_count = sum(
+                1 for other in unresolved if self.resources[other].status == ApplyResourceStatus.IN_PROGRESS
+            )
+            depth = self._pending_depth(resource.addr, pending_addrs, depth_memo)
+            return (len(unresolved), in_progress_count, depth, resource.addr)
+
+        return sorted(pending, key=sort_key)
+
+    def _unresolved_blockers(self, addr: str) -> list[str]:
+        predecessors = self.blockers.get(addr, frozenset())
+        return [other for other in predecessors if self.resources[other].status in _UNRESOLVED_BLOCKER_STATUSES]
+
+    def _pending_depth(self, addr: str, pending_addrs: frozenset[str], memo: dict[str, int]) -> int:
+        if addr in memo:
+            return memo[addr]
+        predecessors = self.blockers.get(addr, frozenset()) & pending_addrs
+        if not predecessors:
+            memo[addr] = 0
+        else:
+            memo[addr] = 1 + max(self._pending_depth(other, pending_addrs, memo) for other in predecessors)
+        return memo[addr]
 
     def feed_line(self, chunk: str) -> None:
         self._carry += chunk

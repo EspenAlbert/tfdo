@@ -1,0 +1,130 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.12.1",
+  "errored": false,
+  "resource_changes": [
+    {
+      "address": "module.gcp.module.cloud_provider_access[0].mongodbatlas_cloud_provider_access_authorization.this",
+      "mode": "managed",
+      "type": "mongodbatlas_cloud_provider_access_authorization",
+      "name": "this",
+      "change": { "actions": ["create"] }
+    },
+    {
+      "address": "module.gcp.module.cloud_provider_access[0].mongodbatlas_cloud_provider_access_setup.this",
+      "mode": "managed",
+      "type": "mongodbatlas_cloud_provider_access_setup",
+      "name": "this",
+      "change": { "actions": ["create"] }
+    },
+    {
+      "address": "module.gcp.module.log_integration[0].google_storage_bucket.atlas[0]",
+      "mode": "managed",
+      "type": "google_storage_bucket",
+      "name": "atlas",
+      "change": { "actions": ["create"] }
+    },
+    {
+      "address": "module.gcp.module.log_integration[0].google_storage_bucket_iam_member.atlas[\"default\"]",
+      "mode": "managed",
+      "type": "google_storage_bucket_iam_member",
+      "name": "atlas",
+      "change": { "actions": ["create"] }
+    },
+    {
+      "address": "module.gcp.module.log_integration[0].mongodbatlas_log_integration.this[0]",
+      "mode": "managed",
+      "type": "mongodbatlas_log_integration",
+      "name": "this",
+      "change": { "actions": ["create"] }
+    },
+    {
+      "address": "module.gcp.module.log_integration[0].time_sleep.iam_propagation[0]",
+      "mode": "managed",
+      "type": "time_sleep",
+      "name": "iam_propagation",
+      "change": { "actions": ["create"] }
+    }
+  ],
+  "configuration": {
+    "root_module": {
+      "module_calls": {
+        "gcp": {
+          "expressions": {},
+          "module": {
+            "module_calls": {
+              "cloud_provider_access": {
+                "expressions": {
+                  "project_id": { "references": ["var.project_id"] }
+                },
+                "module": {
+                  "resources": [
+                    {
+                      "address": "mongodbatlas_cloud_provider_access_authorization.this",
+                      "expressions": {
+                        "role_id": {
+                          "references": [
+                            "mongodbatlas_cloud_provider_access_setup.this",
+                            "mongodbatlas_cloud_provider_access_setup.this.role_id"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "address": "mongodbatlas_cloud_provider_access_setup.this",
+                      "expressions": {
+                        "project_id": { "references": ["var.project_id"] }
+                      }
+                    }
+                  ]
+                }
+              },
+              "log_integration": {
+                "expressions": {},
+                "module": {
+                  "resources": [
+                    {
+                      "address": "google_storage_bucket.atlas",
+                      "expressions": {
+                        "name": { "references": ["local.resolved_name"] }
+                      }
+                    },
+                    {
+                      "address": "google_storage_bucket_iam_member.atlas",
+                      "depends_on": ["google_storage_bucket.atlas"],
+                      "expressions": {
+                        "bucket": {
+                          "references": [
+                            "google_storage_bucket.atlas[0]",
+                            "google_storage_bucket.atlas[0].name"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "address": "mongodbatlas_log_integration.this",
+                      "depends_on": ["time_sleep.iam_propagation"],
+                      "expressions": {
+                        "project_id": { "references": ["var.project_id"] }
+                      }
+                    },
+                    {
+                      "address": "time_sleep.iam_propagation",
+                      "depends_on": [
+                        "google_storage_bucket_iam_member.atlas",
+                        "google_storage_bucket.atlas"
+                      ],
+                      "expressions": {
+                        "create_duration": { "constant_value": "30s" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

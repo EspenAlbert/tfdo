@@ -60,7 +60,7 @@ def render_live_section(
     in_progress = [
         resource for resource in state.resources.values() if resource.status == ApplyResourceStatus.IN_PROGRESS
     ]
-    pending = [resource for resource in state.resources.values() if resource.status == ApplyResourceStatus.PENDING]
+    pending = state.pending_resources_sorted()
     if not in_progress and not pending:
         return None
 

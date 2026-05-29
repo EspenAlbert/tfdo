@@ -1,5 +1,10 @@
+from __future__ import annotations
+
+from pathlib import Path
+
 import pytest
 
+from tfdo._internal.output.apply_blockers import build_apply_blockers
 from tfdo._internal.output.apply_display import (
     ApplyDisplayCliOverrides,
     ApplyDisplayOptions,
@@ -17,7 +22,15 @@ from tfdo._internal.output.apply_renderer import (
 )
 from tfdo._internal.output.apply_state import ApplyPhase, ApplyProgressState, ApplyResourceStatus, CompletionEmission
 from tfdo._internal.output.models import Change, PlanOutput, ResourceAction, ResourceChange
+from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.stream_models import ChangeCounts, ChangeSummaryEvent
+
+CPA_AUTH = "module.gcp.module.cloud_provider_access[0].mongodbatlas_cloud_provider_access_authorization.this"
+CPA_SETUP = "module.gcp.module.cloud_provider_access[0].mongodbatlas_cloud_provider_access_setup.this"
+LOG_BUCKET = "module.gcp.module.log_integration[0].google_storage_bucket.atlas[0]"
+LOG_IAM = 'module.gcp.module.log_integration[0].google_storage_bucket_iam_member.atlas["default"]'
+LOG_INTEGRATION = "module.gcp.module.log_integration[0].mongodbatlas_log_integration.this[0]"
+LOG_SLEEP = "module.gcp.module.log_integration[0].time_sleep.iam_propagation[0]"
 
 
 def _state(addrs: list[tuple[str, ResourceAction]]) -> ApplyProgressState:
@@ -81,6 +94,31 @@ def test_render_live_pending_blockers() -> None:
     text = str(live)
     assert "Apply: 0/2 resources" in text
     assert "waiting_on(aws_vpc.main)" in text
+
+
+def test_render_live_pending_sort_and_waiting_on(apply_blockers_count_plan: Path) -> None:
+    plan = parse_plan_file(apply_blockers_count_plan)
+    blockers = build_apply_blockers(apply_blockers_count_plan)
+    state = ApplyProgressState(plan, blockers)
+    state.phase = ApplyPhase.APPLYING
+    state.resources[CPA_SETUP].status = ApplyResourceStatus.IN_PROGRESS
+    state.resources[CPA_SETUP].hook_action = "create"
+    state.resources[CPA_SETUP].started_at = 0.0
+    assert [resource.addr for resource in state.pending_resources_sorted()] == [
+        LOG_BUCKET,
+        LOG_IAM,
+        LOG_INTEGRATION,
+        CPA_AUTH,
+        LOG_SLEEP,
+    ]
+    display = resolve_apply_display(ApplyDisplayOptions(), None, ApplyDisplayCliOverrides())
+    live = render_live_section(state, addr_width=120, display=display, now=10.0)
+    assert live is not None
+    text = str(live)
+    pending_section = text.split("── pending ──", maxsplit=1)[1]
+    assert f"waiting_on({CPA_SETUP})" in pending_section
+    assert f"waiting_on({LOG_BUCKET}" in pending_section
+    assert f"waiting_on({LOG_SLEEP})" in pending_section
 
 
 def test_ci_renderer_lines() -> None:

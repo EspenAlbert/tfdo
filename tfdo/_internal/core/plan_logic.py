@@ -73,13 +73,16 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
     if not bin_path.is_file():
         return _exit_plan(input_model, plan_result, report=plan_exit_code != 0)
 
-    plan_output, show_exit = plan_subprocess.show_plan_json(settings, bin_path)
-    if show_exit != 0:
-        show_result = PlanResult(exit_code=show_exit, stderr=plan_result.stderr)
-        return _exit_plan(input_model, show_result)
+    show_result = plan_subprocess.show_plan_json(settings, bin_path)
+    if show_result.exit_code != 0:
+        show_plan_result = PlanResult(exit_code=show_result.exit_code, stderr=plan_result.stderr)
+        return _exit_plan(input_model, show_plan_result)
 
+    plan_output = show_result.plan_output
+    raw_plan_json = show_result.raw_json
     assert plan_output is not None
-    atomic_write_text(json_path, json.dumps(plan_output.model_dump(mode="json"), indent=2))
+    assert raw_plan_json is not None
+    atomic_write_text(json_path, json.dumps(json.loads(raw_plan_json), indent=2))
 
     try:
         plan = parse_plan_file(json_path, settings=settings)
