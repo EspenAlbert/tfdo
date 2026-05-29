@@ -12,6 +12,7 @@ _DURATION_PART = re.compile(r"(?P<value>\d+)(?P<unit>[smh])")
 class ApplyDisplayOptions(BaseModel):
     slow_threshold: str = "2m"
     very_slow_threshold: str = "10m"
+    heartbeat_interval: str = "30s"
     hide_provision_output: bool = False
 
 
@@ -29,6 +30,7 @@ class ResolvedApplyDisplay(NamedTuple):
     options: ApplyDisplayOptions
     slow_seconds: float
     very_slow_seconds: float
+    heartbeat_seconds: float
 
 
 def parse_duration_seconds(value: str, *, key: str) -> float:
@@ -60,6 +62,14 @@ def format_elapsed(seconds: float) -> str:
     return f"{secs}s"
 
 
+def format_elapsed_compact(seconds: float) -> str:
+    whole = max(0, int(seconds))
+    mins, _secs = divmod(whole, 60)
+    if mins:
+        return f"{mins}m"
+    return f"{whole}s"
+
+
 def slow_tier(elapsed: float, slow_s: float, very_slow_s: float) -> _SlowTier:
     if elapsed >= very_slow_s:
         return _SlowTier.VERY_SLOW
@@ -78,6 +88,7 @@ def merge_apply_display(
     return ApplyDisplayOptions(
         slow_threshold=merged.slow_threshold,
         very_slow_threshold=merged.very_slow_threshold,
+        heartbeat_interval=merged.heartbeat_interval,
         hide_provision_output=hide,
     )
 
@@ -90,4 +101,10 @@ def resolve_apply_display(
     options = merge_apply_display(base, user, cli)
     slow_seconds = parse_duration_seconds(options.slow_threshold, key="slow_threshold")
     very_slow_seconds = parse_duration_seconds(options.very_slow_threshold, key="very_slow_threshold")
-    return ResolvedApplyDisplay(options=options, slow_seconds=slow_seconds, very_slow_seconds=very_slow_seconds)
+    heartbeat_seconds = parse_duration_seconds(options.heartbeat_interval, key="heartbeat_interval")
+    return ResolvedApplyDisplay(
+        options=options,
+        slow_seconds=slow_seconds,
+        very_slow_seconds=very_slow_seconds,
+        heartbeat_seconds=heartbeat_seconds,
+    )

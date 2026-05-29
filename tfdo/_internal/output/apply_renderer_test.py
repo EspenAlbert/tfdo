@@ -1,5 +1,20 @@
-from tfdo._internal.output.apply_display import ApplyDisplayCliOverrides, ApplyDisplayOptions, resolve_apply_display
-from tfdo._internal.output.apply_renderer import render_completion_line, render_final_summary, render_live_section
+import pytest
+
+from tfdo._internal.output.apply_display import (
+    ApplyDisplayCliOverrides,
+    ApplyDisplayOptions,
+    format_elapsed_compact,
+    parse_duration_seconds,
+    resolve_apply_display,
+)
+from tfdo._internal.output.apply_renderer import (
+    render_ci_completion_line,
+    render_ci_final_summary,
+    render_ci_heartbeat_line,
+    render_completion_line,
+    render_final_summary,
+    render_live_section,
+)
 from tfdo._internal.output.apply_state import ApplyPhase, ApplyProgressState, ApplyResourceStatus, CompletionEmission
 from tfdo._internal.output.models import Change, PlanOutput, ResourceAction, ResourceChange
 from tfdo._internal.output.stream_models import ChangeCounts, ChangeSummaryEvent
@@ -66,3 +81,41 @@ def test_render_live_pending_blockers() -> None:
     text = str(live)
     assert "Apply: 0/2 resources" in text
     assert "waiting_on(aws_vpc.main)" in text
+
+
+def test_ci_renderer_lines() -> None:
+    display = resolve_apply_display(ApplyDisplayOptions(), None, ApplyDisplayCliOverrides())
+    slow_line = render_ci_completion_line(
+        CompletionEmission("aws_rds_instance.db", False, 720.0, "create"),
+        display=display,
+    )
+    assert slow_line.startswith("apply: ✅")
+    assert slow_line.endswith("🐌")
+    assert format_elapsed_compact(18.0) == "18s"
+    assert format_elapsed_compact(130.0) == "2m"
+    with pytest.raises(ValueError, match="heartbeat_interval"):
+        parse_duration_seconds("bad", key="heartbeat_interval")
+
+    state = _state(
+        [
+            ("random_pet.alpha", ResourceAction.CREATE),
+            ("random_pet.beta", ResourceAction.CREATE),
+            ("local_file.gamma", ResourceAction.CREATE),
+        ]
+    )
+    state.phase = ApplyPhase.APPLYING
+    state.resources["random_pet.alpha"].status = ApplyResourceStatus.IN_PROGRESS
+    state.resources["random_pet.alpha"].elapsed_seconds = 130.0
+    state.resources["random_pet.beta"].status = ApplyResourceStatus.IN_PROGRESS
+    state.resources["random_pet.beta"].elapsed_seconds = 18.0
+    heartbeat = render_ci_heartbeat_line(state, display=display, now=1000.0)
+    assert heartbeat is not None
+    assert "in progress:" in heartbeat
+    assert "pending: 1" in heartbeat
+    assert "🐢 random_pet.alpha (2m)" in heartbeat
+
+    state.phase = ApplyPhase.DONE
+    state.resources["random_pet.alpha"].status = ApplyResourceStatus.COMPLETED
+    state.terminal_summary = ChangeSummaryEvent(changes=ChangeCounts(add=1, operation="apply"))
+    summary = render_ci_final_summary(state, total_elapsed_s=52.0)
+    assert summary == ["apply: 1 ✅  total 52s", "apply: 🟢 1 added"]

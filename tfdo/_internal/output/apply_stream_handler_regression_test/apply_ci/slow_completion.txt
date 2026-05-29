@@ -1,0 +1,3 @@
+apply: ✅ random_pet.slow created 12m 00s 🐌
+apply: 1 ✅  total 0s
+apply: 🟢 1 added

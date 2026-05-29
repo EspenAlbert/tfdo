@@ -42,7 +42,7 @@ def _capture_replay(plan: PlanOutput, lines: list[str]) -> str:
     handler = ApplyStreamHandler(
         ApplyProgressState(plan),
         display,
-        interactive=False,
+        interactive=True,
         run_started=1000.0,
     )
     with (
