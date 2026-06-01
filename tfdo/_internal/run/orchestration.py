@@ -8,6 +8,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import NamedTuple
 
+from ask_shell.console import live_print_scope
 from ask_shell.shell import run_and_wait, run_pool
 from pydantic import BaseModel, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text, find_repo_root
@@ -35,6 +36,7 @@ from tfdo._internal.models import (
     PlanInput,
     PlanResult,
 )
+from tfdo._internal.output.apply_live_mode import ApplyLiveMode, resolve_apply_live_mode
 from tfdo._internal.output.orchestration_display import OrchestrationDisplay
 from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
 from tfdo._internal.run import filtering, tags_injection, var_file_resolution
@@ -96,6 +98,8 @@ class RunOrchestrationInput(BaseModel):
     detail: DetailLevel = DetailLevel.COMPACT
     plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
     orchestration_active: bool = False
+    run_dir_key: str = ""
+    apply_live_mode: ApplyLiveMode | None = None
 
 
 class RunDirResult(BaseModel):
@@ -423,6 +427,8 @@ def _dispatch_command(
                 detail=inp.detail,
                 plan_display_cli=inp.plan_display_cli,
                 orchestration_active=inp.orchestration_active,
+                run_dir_key=inp.run_dir_key,
+                apply_live_mode=inp.apply_live_mode,
             )
         )
         return _outcome_from_plan(plan_result)
@@ -437,6 +443,8 @@ def _dispatch_command(
                 detail=inp.detail,
                 plan_display_cli=inp.plan_display_cli,
                 orchestration_active=inp.orchestration_active,
+                run_dir_key=inp.run_dir_key,
+                apply_live_mode=inp.apply_live_mode,
             )
         )
         return _outcome_from_apply(apply_result)
@@ -451,6 +459,8 @@ def _dispatch_command(
                 detail=inp.detail,
                 plan_display_cli=inp.plan_display_cli,
                 orchestration_active=inp.orchestration_active,
+                run_dir_key=inp.run_dir_key,
+                apply_live_mode=inp.apply_live_mode,
             )
         )
         return _outcome_from_apply(destroy_result)
@@ -478,38 +488,45 @@ def _execute_run_dir(
     def finish(outcome: _DispatchOutcome) -> RunDirResult:
         return _run_dir_result(rel, inp.command, outcome, duration_s=time.monotonic() - started)
 
-    try:
-        prepared = prepare_run_dir(inp.settings, run_dir_path, ctx, config, inp.var_file)
-    except Exception as e:
-        logger.error(f"{rel}: preparation failed: {e}")
-        return finish(
-            _DispatchOutcome(1, False, "", str(e), None, None, None),
-        )
-
-    registry = _build_hook_registry(config, run_dir_path)
-    hook_ctx = HookContext(run_dir=run_dir_path, command=inp.command)
-    all_extra = [*prepared.lifecycle_flags, *inp.extra_flags]
-
-    before_event, after_event = hook_execution.lifecycle_events(inp.command)
-    if registry:
+    def body() -> RunDirResult:
         try:
-            hook_execution.run_hooks(registry, before_event, hook_ctx)
-        except HookAbortError as e:
-            _run_event_hooks(registry, LifecycleEvent.ON_ERROR, hook_ctx, rel)
-            return finish(_DispatchOutcome(1, False, "", str(e), None, None, None))
+            prepared = prepare_run_dir(inp.settings, run_dir_path, ctx, config, inp.var_file)
+        except Exception as e:
+            logger.error(f"{rel}: preparation failed: {e}")
+            return finish(
+                _DispatchOutcome(1, False, "", str(e), None, None, None),
+            )
 
-    outcome = _dispatch_command(inp, prepared, all_extra, rel)
-    result_dir = finish(outcome)
+        registry = _build_hook_registry(config, run_dir_path)
+        hook_ctx = HookContext(run_dir=run_dir_path, command=inp.command)
+        all_extra = [*prepared.lifecycle_flags, *inp.extra_flags]
 
-    if registry:
-        try:
-            hook_execution.run_hooks(registry, after_event, hook_ctx)
-        except HookAbortError as e:
-            logger.warning(f"{rel}: {e}")
-        ok_or_error = LifecycleEvent.ON_OK if result_dir.exit_code == 0 else LifecycleEvent.ON_ERROR
-        _run_event_hooks(registry, ok_or_error, hook_ctx, rel)
+        before_event, after_event = hook_execution.lifecycle_events(inp.command)
+        if registry:
+            try:
+                hook_execution.run_hooks(registry, before_event, hook_ctx)
+            except HookAbortError as e:
+                _run_event_hooks(registry, LifecycleEvent.ON_ERROR, hook_ctx, rel)
+                return finish(_DispatchOutcome(1, False, "", str(e), None, None, None))
 
-    return result_dir
+        dir_inp = inp.model_copy(update={"run_dir_key": rel})
+        outcome = _dispatch_command(dir_inp, prepared, all_extra, rel)
+        result_dir = finish(outcome)
+
+        if registry:
+            try:
+                hook_execution.run_hooks(registry, after_event, hook_ctx)
+            except HookAbortError as e:
+                logger.warning(f"{rel}: {e}")
+            ok_or_error = LifecycleEvent.ON_OK if result_dir.exit_code == 0 else LifecycleEvent.ON_ERROR
+            _run_event_hooks(registry, ok_or_error, hook_ctx, rel)
+
+        return result_dir
+
+    if inp.orchestration_active:
+        with live_print_scope(prefix=f"[{rel}] "):
+            return body()
+    return body()
 
 
 def _log_run_dir_output(result: RunDirResult, command: str) -> None:
@@ -911,7 +928,22 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
         )
 
     display = _create_orchestration_display(inp, plan)
-    exec_inp = inp.model_copy(update={"orchestration_active": display is not None})
+    orchestration_active = display is not None
+    apply_live_mode = (
+        resolve_apply_live_mode(
+            orchestration_active=True,
+            parallel=inp.parallel,
+            interactive=inp.settings.is_interactive,
+        )
+        if orchestration_active
+        else None
+    )
+    exec_inp = inp.model_copy(
+        update={
+            "orchestration_active": orchestration_active,
+            "apply_live_mode": apply_live_mode,
+        }
+    )
     results = _execute_plan(plan, exec_inp, repo_root, contexts, configs, display)
     if display is not None:
         display.on_run_complete()

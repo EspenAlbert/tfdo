@@ -12,6 +12,7 @@ from tfdo._internal.core.lifecycle_shell import build_lifecycle_command
 from tfdo._internal.models import ApplyInput, ApplyResult, DestroyInput, DestroyResult
 from tfdo._internal.output.apply_blockers import build_apply_blockers
 from tfdo._internal.output.apply_display import ApplyDisplayOptions, resolve_apply_display
+from tfdo._internal.output.apply_live_mode import resolve_apply_live_mode
 from tfdo._internal.output.apply_state import ApplyProgressState
 from tfdo._internal.output.apply_stream_handler import ApplyStreamHandler, apply_stream_callback
 from tfdo._internal.output.parser import parse_plan_file
@@ -95,11 +96,18 @@ def run_streaming_apply(
     print_prefix = f"{label} apply"
 
     def run_once() -> T:
+        live_mode = input_model.apply_live_mode or resolve_apply_live_mode(
+            orchestration_active=input_model.orchestration_active,
+            parallel=0,
+            interactive=settings.is_interactive,
+        )
         handler = ApplyStreamHandler(
             state,
             display,
             interactive=settings.is_interactive,
             settings=settings,
+            run_dir_key=input_model.run_dir_key,
+            live_mode=live_mode,
         )
         result = _run_streaming_apply_command(
             settings,

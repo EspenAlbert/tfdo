@@ -31,6 +31,8 @@ def _plan_input_from_destroy(input_model: DestroyInput) -> PlanInput:
         detail=input_model.detail,
         destroy_plan=True,
         orchestration_active=input_model.orchestration_active,
+        run_dir_key=input_model.run_dir_key,
+        apply_live_mode=input_model.apply_live_mode,
     )
 
 

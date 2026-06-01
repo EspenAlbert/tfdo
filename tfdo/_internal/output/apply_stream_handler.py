@@ -10,6 +10,7 @@ from rich.text import Text
 
 from tfdo._internal.output import apply_outputs_renderer
 from tfdo._internal.output.apply_display import ResolvedApplyDisplay
+from tfdo._internal.output.apply_live_mode import ApplyLiveMode, apply_status_renderable_name
 from tfdo._internal.output.apply_renderer import (
     max_addr_width,
     render_ci_completion_line,
@@ -50,10 +51,13 @@ class ApplyStreamHandler:
         settings: TfDoSettings,
         run_started: float | None = None,
         exit_code: int | None = None,
+        run_dir_key: str = "",
+        live_mode: ApplyLiveMode = ApplyLiveMode.FULL,
     ) -> None:
         self._state = state
         self._display = display
         self._interactive = interactive
+        self._live_mode = live_mode
         self._settings = settings
         self._exit_code = exit_code
         self._started = run_started if run_started is not None else time.monotonic()
@@ -63,9 +67,13 @@ class ApplyStreamHandler:
         self._remove_panel: RemoveLivePart | None = None
         self._pending_ci_error_completions: list[CompletionEmission] = []
         self._last_heartbeat: float | None = None
-        if interactive:
+        if interactive and live_mode == ApplyLiveMode.FULL:
             self._status = _ApplyStatusRenderable(self)
-            self._remove_panel = ask_console.add_renderable(self._status, order=10, name="apply-status")
+            self._remove_panel = ask_console.add_renderable(
+                self._status,
+                order=10,
+                name=apply_status_renderable_name(run_dir_key),
+            )
 
     @property
     def state(self) -> ApplyProgressState:
@@ -115,14 +123,18 @@ class ApplyStreamHandler:
         for message in self._state.drain_pre_apply_logs():
             ask_console.print_to_live(message)
         for addr, text in self._state.drain_provision_logs():
-            if self._interactive:
+            if self._use_tty_emitters:
                 ask_console.print_to_live(f"{addr}: {text}", style="dim")
             else:
                 ask_console.print_to_live(f"{addr}: {text}")
-        if self._interactive:
+        if self._use_tty_emitters:
             self._emit_tty_drained()
         else:
             self._emit_ci_drained()
+
+    @property
+    def _use_tty_emitters(self) -> bool:
+        return self._interactive and self._live_mode == ApplyLiveMode.FULL
 
     def _emit_tty_drained(self) -> None:
         addr_width = max_addr_width(self._state)
@@ -189,7 +201,7 @@ class ApplyStreamHandler:
             return
         self._summary_emitted = True
         total_elapsed = time.monotonic() - self._started
-        if self._interactive:
+        if self._use_tty_emitters:
             lines = render_final_summary(self._state, total_elapsed_s=total_elapsed, display=self._display)
         else:
             lines = render_ci_final_summary(self._state, total_elapsed_s=total_elapsed)

@@ -3,11 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+from ask_shell import console as ask_console
 from pytest_regressions.file_regression import FileRegressionFixture
 
 from tfdo._internal.core import executor
 from tfdo._internal.models import OutputResult
 from tfdo._internal.output.apply_display import ApplyDisplayCliOverrides, ApplyDisplayOptions, resolve_apply_display
+from tfdo._internal.output.apply_live_mode import ApplyLiveMode
 from tfdo._internal.output.apply_state import ApplyProgressState, plan_from_planned_changes
 from tfdo._internal.output.apply_stream_handler import ApplyStreamHandler
 from tfdo._internal.output.conftest import create_capture_console
@@ -64,6 +66,20 @@ def _capture_replay(plan: PlanOutput, lines: list[str]) -> str:
     return console.end_capture()
 
 
+def _handler(*, run_dir_key: str = "", live_mode: ApplyLiveMode = ApplyLiveMode.FULL) -> ApplyStreamHandler:
+    settings = TfDoSettings(work_dir=Path("/tmp/tfdo-apply-test"))
+    display = resolve_apply_display(ApplyDisplayOptions(), None, ApplyDisplayCliOverrides())
+    state = ApplyProgressState(PlanOutput(format_version="1.2", errored=False), settings=settings)
+    return ApplyStreamHandler(
+        state,
+        display,
+        interactive=True,
+        settings=settings,
+        run_dir_key=run_dir_key,
+        live_mode=live_mode,
+    )
+
+
 def test_apply_validation_failed(file_regression: FileRegressionFixture) -> None:
     plan = _inline_plan(
         [
@@ -80,3 +96,31 @@ def test_parallel_apply_errors(file_regression: FileRegressionFixture) -> None:
     plan = plan_from_planned_changes(lines)
     text = _capture_replay(plan, lines)
     file_regression.check(text, basename="parallel_apply_errors", extension=".txt")
+
+
+def test_flush_removes_only_matching_renderable() -> None:
+    active: dict[str, object] = {}
+
+    def fake_add(_renderable: object, *, order: int, name: str):
+        def remove() -> None:
+            active.pop(name, None)
+
+        active[name] = remove
+        return remove
+
+    with patch.object(ask_console, "add_renderable", side_effect=fake_add):
+        first = _handler(run_dir_key="dir-a")
+        second = _handler(run_dir_key="dir-b")
+        assert "apply-status:dir-a" in active
+        assert "apply-status:dir-b" in active
+        first.flush()
+        assert "apply-status:dir-a" not in active
+        assert "apply-status:dir-b" in active
+        second.flush()
+        assert not active
+
+
+def test_compact_mode_skips_renderable() -> None:
+    with patch.object(ask_console, "add_renderable") as add_mock:
+        _handler(live_mode=ApplyLiveMode.COMPACT)
+    add_mock.assert_not_called()

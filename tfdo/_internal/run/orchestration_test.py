@@ -9,6 +9,7 @@ from tfdo._internal.config.enums import LifecycleCommand, TagsInject
 from tfdo._internal.core import executor as executor_core
 from tfdo._internal.core import terraform_init as terraform_init_core
 from tfdo._internal.models import (
+    ApplyInput,
     ApplyResult,
     InitInput,
     InitMode,
@@ -18,6 +19,7 @@ from tfdo._internal.models import (
     PlanInput,
     PlanResult,
 )
+from tfdo._internal.output.apply_live_mode import ApplyLiveMode
 from tfdo._internal.run import orchestration as orchestration_module
 from tfdo._internal.run.run_context import RunDirContext
 from tfdo._internal.run.run_dir_summary import FAILURE_LABEL, ResourceActionCounts, build_run_dir_summary
@@ -342,3 +344,62 @@ def test_execute_plan_skips_log_output_when_display_active(tmp_path: Path, caplo
     log_mock.assert_not_called()
     assert any(r.message.startswith("plan: ✅") for r in caplog.records)
     assert any(r.message.startswith("orchestration: complete") for r in caplog.records)
+
+
+def test_dispatch_apply_passes_run_dir_key_and_live_mode(tmp_path: Path) -> None:
+    settings = TfDoSettings(work_dir=tmp_path)
+    prepared = orchestration_module.PreparedRunDir(
+        init_input=InitInput(settings=settings),
+        lifecycle_flags=[],
+    )
+    captured: list[ApplyInput] = []
+
+    def fake_apply(apply_input: ApplyInput) -> ApplyResult:
+        captured.append(apply_input)
+        return ApplyResult(exit_code=0)
+
+    inp = orchestration_module.RunOrchestrationInput(
+        settings=settings,
+        command=LifecycleCommand.APPLY,
+        auto_approve=True,
+        orchestration_active=True,
+        run_dir_key="envs/dev/app",
+        apply_live_mode=ApplyLiveMode.COMPACT,
+    )
+    with patch.object(orchestration_module.executor, executor_core.apply.__name__, side_effect=fake_apply):
+        orchestration_module._dispatch_command(inp, prepared, [], "envs/dev/app")
+
+    assert captured[0].run_dir_key == "envs/dev/app"
+    assert captured[0].apply_live_mode == ApplyLiveMode.COMPACT
+
+
+def test_execute_run_dir_sets_run_dir_key(tmp_path: Path) -> None:
+    settings = TfDoSettings(work_dir=tmp_path)
+    config = _minimal_resolved_config()
+    ctx = RunDirContext(name="app", path="envs/dev/app", repo_owner="o", repo_name="r")
+    inp = orchestration_module.RunOrchestrationInput(
+        settings=settings,
+        command=LifecycleCommand.PLAN,
+        orchestration_active=True,
+    )
+    prepared = orchestration_module.PreparedRunDir(
+        init_input=InitInput(settings=settings),
+        lifecycle_flags=[],
+    )
+    captured: list[orchestration_module.RunOrchestrationInput] = []
+
+    def fake_dispatch(
+        run_inp: orchestration_module.RunOrchestrationInput,
+        *_args: object,
+        **_kwargs: object,
+    ) -> orchestration_module._DispatchOutcome:
+        captured.append(run_inp)
+        return orchestration_module._DispatchOutcome(0, False, "", "", None, None, None)
+
+    with (
+        patch.object(orchestration_module, "prepare_run_dir", return_value=prepared),
+        patch.object(orchestration_module, "_dispatch_command", side_effect=fake_dispatch),
+    ):
+        orchestration_module._execute_run_dir(inp, tmp_path, ctx, config)
+
+    assert captured[0].run_dir_key == "envs/dev/app"
