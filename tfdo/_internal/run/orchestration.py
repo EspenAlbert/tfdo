@@ -95,6 +95,7 @@ class RunOrchestrationInput(BaseModel):
     auto_approve: bool = False
     detail: DetailLevel = DetailLevel.COMPACT
     plan_display_cli: PlanDisplayCliOverrides = Field(default_factory=PlanDisplayCliOverrides)
+    orchestration_active: bool = False
 
 
 class RunDirResult(BaseModel):
@@ -421,6 +422,7 @@ def _dispatch_command(
                 init_backend_args=backend_args,
                 detail=inp.detail,
                 plan_display_cli=inp.plan_display_cli,
+                orchestration_active=inp.orchestration_active,
             )
         )
         return _outcome_from_plan(plan_result)
@@ -434,6 +436,7 @@ def _dispatch_command(
                 init_backend_args=backend_args,
                 detail=inp.detail,
                 plan_display_cli=inp.plan_display_cli,
+                orchestration_active=inp.orchestration_active,
             )
         )
         return _outcome_from_apply(apply_result)
@@ -447,6 +450,7 @@ def _dispatch_command(
                 init_backend_args=backend_args,
                 detail=inp.detail,
                 plan_display_cli=inp.plan_display_cli,
+                orchestration_active=inp.orchestration_active,
             )
         )
         return _outcome_from_apply(destroy_result)
@@ -907,7 +911,8 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
         )
 
     display = _create_orchestration_display(inp, plan)
-    results = _execute_plan(plan, inp, repo_root, contexts, configs, display)
+    exec_inp = inp.model_copy(update={"orchestration_active": display is not None})
+    results = _execute_plan(plan, exec_inp, repo_root, contexts, configs, display)
     if display is not None:
         display.on_run_complete()
     _fire_on_all_done(repo_root, inp)

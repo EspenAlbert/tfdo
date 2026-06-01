@@ -22,7 +22,7 @@ from tfdo._internal.output.plan_artifacts import (
     resolve_plan_out,
     tfdo_dir,
 )
-from tfdo._internal.output.plan_display import detail_preset, merge_plan_display
+from tfdo._internal.output.plan_display import DetailLevel, detail_preset, merge_plan_display
 from tfdo._internal.output.plan_render_input import build_attr_lines_by_addr
 from tfdo._internal.output.plan_renderer import render_plan
 from tfdo._internal.output.schema_lookup import build_schema_lookups
@@ -55,7 +55,8 @@ def _exit_plan(
             message=message,
             diagnostics_already_shown=result.diagnostics_emitted,
         )
-    print_lifecycle_footer(input_model.settings, detail=input_model.detail)
+    if not input_model.orchestration_active or report:
+        print_lifecycle_footer(input_model.settings, detail=input_model.detail)
     return result
 
 
@@ -124,6 +125,7 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
     )
     console = ask_console.get_live_console()
     terminal_width = console.size.width or 120
+    header_only = input_model.orchestration_active and input_model.detail != DetailLevel.FULL
     render_plan(
         tree,
         attr_lines,
@@ -135,6 +137,7 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         complex_config=ComplexRenderConfig(max_structural_lines=plan_display.max_inline_lines),
         plan_display=plan_display,
         has_applyable_changes=applyable,
+        header_only=header_only,
     )
     return _exit_plan(
         input_model,

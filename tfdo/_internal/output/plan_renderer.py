@@ -106,7 +106,16 @@ def render_plan(
     show_unknown_outputs: bool = True,
     plan_display: PlanDisplayOptions | None = None,
     has_applyable_changes: bool | None = None,
+    header_only: bool = False,
 ) -> None:
+    if header_only:
+        state = _PrintState()
+        header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=has_applyable_changes)
+        state.emit(header.line)
+        if header.subtitle:
+            state.emit(header.subtitle, style="dim")
+        return
+
     display = plan_display or PlanDisplayOptions()
     config = complex_config or ComplexRenderConfig()
     lookup = computed_at_path or (lambda _p, _t, _path: None)

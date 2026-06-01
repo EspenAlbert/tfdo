@@ -8,7 +8,16 @@ from tfdo._internal.config.config_resolution import ResolvedConfig
 from tfdo._internal.config.enums import LifecycleCommand, TagsInject
 from tfdo._internal.core import executor as executor_core
 from tfdo._internal.core import terraform_init as terraform_init_core
-from tfdo._internal.models import ApplyResult, InitInput, InitMode, InitResult, OutputInput, OutputResult, PlanResult
+from tfdo._internal.models import (
+    ApplyResult,
+    InitInput,
+    InitMode,
+    InitResult,
+    OutputInput,
+    OutputResult,
+    PlanInput,
+    PlanResult,
+)
 from tfdo._internal.run import orchestration as orchestration_module
 from tfdo._internal.run.run_context import RunDirContext
 from tfdo._internal.run.run_dir_summary import FAILURE_LABEL, ResourceActionCounts, build_run_dir_summary
@@ -240,11 +249,41 @@ def test_dispatch_plan_outcome(tmp_path: Path) -> None:
         resource_counts=ResourceActionCounts(add=1, change=0, destroy=0, replace=0),
         has_applyable_changes=False,
     )
+    captured: list[PlanInput] = []
 
-    with patch.object(orchestration_module.executor, executor_core.plan.__name__, return_value=plan_result):
+    def fake_plan(plan_input: PlanInput) -> PlanResult:
+        captured.append(plan_input)
+        return plan_result
+
+    with patch.object(orchestration_module.executor, executor_core.plan.__name__, side_effect=fake_plan):
         outcome = orchestration_module._dispatch_command(inp, prepared, [], "envs/dev/app")
 
     assert outcome.has_applyable_changes is False
+    assert len(captured) == 1
+    assert not captured[0].orchestration_active
+
+
+def test_dispatch_plan_passes_orchestration_active(tmp_path: Path) -> None:
+    settings = TfDoSettings(work_dir=tmp_path)
+    prepared = orchestration_module.PreparedRunDir(
+        init_input=InitInput(settings=settings),
+        lifecycle_flags=[],
+    )
+    inp = orchestration_module.RunOrchestrationInput(
+        settings=settings,
+        command=LifecycleCommand.PLAN,
+        orchestration_active=True,
+    )
+    captured: list[PlanInput] = []
+
+    with patch.object(
+        orchestration_module.executor,
+        executor_core.plan.__name__,
+        side_effect=lambda plan_input: captured.append(plan_input) or PlanResult(exit_code=0),
+    ):
+        orchestration_module._dispatch_command(inp, prepared, [], "envs/dev/app")
+
+    assert captured[0].orchestration_active
 
 
 def test_execute_run_dir_prep_failure_sets_fail_label(tmp_path: Path) -> None:

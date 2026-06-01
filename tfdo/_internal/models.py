@@ -50,6 +50,7 @@ class LifecycleInput(TfDoBaseInput):
     init_mode: InitMode = InitMode.AUTO
     extra_args: list[str] = Field(default_factory=list)
     init_backend_args: list[str] = Field(default_factory=list)
+    orchestration_active: bool = False
 
 
 class PlanInput(LifecycleInput):
