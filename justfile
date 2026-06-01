@@ -82,3 +82,20 @@ docs-serve:
 # === OK_EDIT: path-sync docs ===
 
 # Custom recipes below
+
+ORCH_FIXTURE := "tests/fixtures/orchestration_rendering"
+
+orchestration-fixture-init:
+  uv run tfdo -w {{ORCH_FIXTURE}} run --parallel 2 init
+
+orchestration-smoke:
+  #!/usr/bin/env bash
+  set -uo pipefail
+  fixture=tests/fixtures/orchestration_rendering
+  uv run tfdo -w "$fixture" run --env staging --parallel 2 plan
+  code=$?
+  if [[ "$code" -ne 0 && "$code" -ne 2 ]]; then
+    exit "$code"
+  fi
+  uv run tfdo -w "$fixture" run --env staging --parallel 2 apply --auto-approve
+  exit $?

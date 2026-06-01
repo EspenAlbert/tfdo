@@ -10,10 +10,10 @@ from typing import NamedTuple
 
 from ask_shell.shell import run_and_wait, run_pool
 from pydantic import BaseModel, Field
-from zero_3rdparty.file_utils import ensure_parents_write_text, find_repo_root
+from zero_3rdparty.file_utils import ensure_parents_write_text
 
 from tfdo._internal.config import backend_resolution, config_resolution
-from tfdo._internal.config.config_file import load_config_layers
+from tfdo._internal.config.config_file import load_config_layers, resolve_orchestration_root
 from tfdo._internal.config.config_model import DependencyRef
 from tfdo._internal.config.config_resolution import ResolvedConfig
 from tfdo._internal.config.enums import LifecycleCommand, LifecycleEvent
@@ -886,7 +886,7 @@ def _fire_on_all_done(repo_root: Path, inp: RunOrchestrationInput) -> None:
 
 
 def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
-    repo_root = find_repo_root(inp.settings.work_dir)
+    repo_root = resolve_orchestration_root(inp.settings.work_dir)
     all_discovered = _discover_run_dirs(repo_root)
     if not all_discovered:
         logger.warning("no run directories matched filters")

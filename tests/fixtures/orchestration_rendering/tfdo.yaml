@@ -1,0 +1,5 @@
+run_dir_discovery: "envs/{env}/{app}"
+
+backend:
+  type: local
+  path: "/tmp/tfdo-orchestration/{env}/{app}/terraform.tfstate"

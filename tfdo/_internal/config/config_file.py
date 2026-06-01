@@ -59,6 +59,16 @@ def load_config_layers(work_dir: Path) -> list[ConfigLayer]:
     return layers
 
 
+def resolve_orchestration_root(work_dir: Path) -> Path:
+    layers = load_config_layers(work_dir)
+    if not layers:
+        raise ValueError(f"no tfdo.yaml found at or above {work_dir}")
+    for layer in reversed(layers):
+        if layer.config.run_dir_discovery:
+            return layer.path.parent
+    raise ValueError("root tfdo.yaml must define run_dir_discovery pattern")
+
+
 def root_tfdo_config(work_dir: Path) -> TfDoConfig | None:
     work_dir = work_dir.resolve()
     layers = load_config_layers(work_dir)

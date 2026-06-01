@@ -1,0 +1,3 @@
+dependencies:
+  - ref: networking
+  - ref: compute
