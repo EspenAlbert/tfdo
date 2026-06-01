@@ -157,7 +157,7 @@ def render_final_summary(
     lines: list[str | Text] = [render_run_complete_header(state, total_elapsed_s=total_elapsed_s)]
     totals = sum_resource_counts(state.completed_rows)
     aggregate = render_aggregate_line(state.command, totals)
-    if aggregate and state.command == LifecycleCommand.PLAN:
+    if aggregate:
         lines.append(aggregate)
     for summary in state.completed_rows:
         lines.append(render_final_dir_row_styled(summary) if interactive else render_final_dir_row_plain(summary))

@@ -1,0 +1,5 @@
+Run complete: 3 directories, 2 waves  total 5m 14s
+Apply: 🟢 4 added, 🟡 1 changed
+✅ 🟢3 🟡1                    envs/staging/networking  11s
+❌ 🟢1                       envs/staging/compute  4s
+✅ no changes               envs/staging/database  2s

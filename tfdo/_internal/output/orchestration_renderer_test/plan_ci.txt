@@ -1,6 +1,8 @@
-orchestration: wave 1/1 started (3 dirs)
+orchestration: wave 1/2 started (2 dirs)
 plan: ✅ envs/staging/networking 🟢3 🟡1 📤2 4s
 plan: ✅ envs/staging/database no changes 2s
+orchestration: wave 1/2 complete (2 ✅, 0 ❌)
+orchestration: wave 2/2 started (1 dirs)
 plan: ❌ envs/staging/monitoring FAIL 1s
-orchestration: wave 1/1 complete (2 ✅, 1 ❌)
-orchestration: complete 3 dirs, 1 waves, 48s
+orchestration: wave 2/2 complete (0 ✅, 1 ❌)
+orchestration: complete 3 dirs, 2 waves, 48s

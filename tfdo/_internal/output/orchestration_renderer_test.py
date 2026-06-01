@@ -101,16 +101,30 @@ def test_plan_final_summary_regression(file_regression: FileRegressionFixture) -
 
 
 def test_plan_ci_regression(file_regression: FileRegressionFixture) -> None:
-    rows = _plan_rows()[:3]
-    state = OrchestrationProgressState(command=LifecycleCommand.PLAN, total_dirs=3, total_waves=1)
-    begin_wave(state, wave_index=1, wave_dirs=3)
+    wave1, wave2 = _plan_rows()[:2], [_plan_rows()[2]]
+    state = OrchestrationProgressState(command=LifecycleCommand.PLAN, total_dirs=3, total_waves=2)
+    begin_wave(state, wave_index=1, wave_dirs=2)
     out = [
         render_wave_started(state),
-        *[render_dir_completion_ci(r) for r in rows],
-        render_wave_complete(state, ok=2, fail=1),
-        *render_non_tty_footer(state, total_elapsed_s=48.0),
+        *[render_dir_completion_ci(r) for r in wave1],
+        render_wave_complete(state, ok=2, fail=0),
     ]
+    begin_wave(state, wave_index=2, wave_dirs=1)
+    out.extend(
+        [
+            render_wave_started(state),
+            render_dir_completion_ci(wave2[0]),
+            render_wave_complete(state, ok=0, fail=1),
+            *render_non_tty_footer(state, total_elapsed_s=48.0),
+        ]
+    )
     file_regression.check("\n".join(out), basename="plan_ci", extension=".txt")
+
+
+def test_apply_final_summary_regression(file_regression: FileRegressionFixture) -> None:
+    state = _state(LifecycleCommand.APPLY, _apply_rows())
+    lines = render_final_summary(state, total_elapsed_s=314.0, interactive=False)
+    file_regression.check("\n".join(str(line) for line in lines), basename="apply_final", extension=".txt")
 
 
 def test_apply_ci_regression(file_regression: FileRegressionFixture) -> None:
