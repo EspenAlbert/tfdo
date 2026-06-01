@@ -45,17 +45,18 @@ def test_non_interactive_emits_ci_lines(caplog: pytest.LogCaptureFixture) -> Non
 
 
 def test_interactive_prints_completion_and_final() -> None:
-    display = OrchestrationDisplay(
-        command=LifecycleCommand.PLAN,
-        total_dirs=2,
-        total_waves=1,
-        interactive=True,
-        started_at=0.0,
-    )
+    removed: list[bool] = []
+
+    class _Remove:
+        def __call__(self, *, print_after_removing: bool = False) -> None:
+            removed.append(print_after_removing)
+
+    display_module = OrchestrationDisplay.__module__
     console_module = __import__("ask_shell.console", fromlist=["print_to_live"])
     printed: list[object] = []
 
     with (
+        patch(f"{display_module}.register_orchestration_live", return_value=_Remove()),
         patch("time.monotonic", return_value=5.0),
         patch.object(
             console_module,
@@ -63,9 +64,18 @@ def test_interactive_prints_completion_and_final() -> None:
             side_effect=lambda *args, **kwargs: printed.append(args[0]),
         ),
     ):
+        display = OrchestrationDisplay(
+            command=LifecycleCommand.PLAN,
+            total_dirs=2,
+            total_waves=1,
+            interactive=True,
+            started_at=0.0,
+        )
         display.on_dir_complete(_plan_summary())
         display.on_run_complete()
 
+    assert removed == [False]
+    assert display._remove_live is None
     assert any("envs/dev/app" in str(line) for line in printed)
     assert any(str(line).startswith("Run complete:") for line in printed)
 

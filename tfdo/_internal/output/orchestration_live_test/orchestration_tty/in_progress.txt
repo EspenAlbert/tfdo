@@ -1,0 +1,2 @@
+Orchestration: wave 2/3  dirs 6/10
+  wave-2      60%   ━━━━━━━━━━━━━━━━━━━━━━━━                                12s

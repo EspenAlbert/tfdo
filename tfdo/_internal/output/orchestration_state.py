@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 from tfdo._internal.run.run_dir_summary import RunDirSummary
@@ -15,6 +16,7 @@ class OrchestrationProgressState:
     wave_dirs_total: int = 0
     wave_dirs_done: int = 0
     started_at: float = 0.0
+    wave_started_at: float = 0.0
     completed_rows: list[RunDirSummary] = field(default_factory=list)
 
     @property
@@ -34,6 +36,7 @@ def begin_wave(state: OrchestrationProgressState, *, wave_index: int, wave_dirs:
     state.current_wave_index = wave_index
     state.wave_dirs_total = wave_dirs
     state.wave_dirs_done = 0
+    state.wave_started_at = time.monotonic()
 
 
 def record_dir_complete(state: OrchestrationProgressState, summary: RunDirSummary) -> None:

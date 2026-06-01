@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
 from rich.text import Text
 
 from tfdo._internal.config.enums import LifecycleCommand
@@ -171,3 +172,29 @@ def render_non_tty_footer(state: OrchestrationProgressState, *, total_elapsed_s:
         if aggregate:
             lines.append(aggregate)
     return lines
+
+
+def render_orchestration_live_header(state: OrchestrationProgressState) -> str:
+    return (
+        f"Orchestration: wave {state.current_wave_index}/{state.total_waves}  "
+        f"dirs {state.dirs_completed}/{state.total_dirs}"
+    )
+
+
+def build_wave_progress(state: OrchestrationProgressState, *, now: float) -> Progress:
+    elapsed = format_elapsed(max(0.0, now - state.wave_started_at))
+    progress = Progress(
+        TextColumn("  [progress.description]{task.description}"),
+        TaskProgressColumn(),
+        BarColumn(),
+        TextColumn(elapsed),
+        expand=True,
+        transient=True,
+    )
+    total = max(state.wave_dirs_total, 1)
+    progress.add_task(
+        f"wave-{state.current_wave_index}",
+        total=total,
+        completed=min(state.wave_dirs_done, total),
+    )
+    return progress

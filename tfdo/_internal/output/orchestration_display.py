@@ -5,8 +5,10 @@ import time
 from threading import Lock
 
 from ask_shell import console as ask_console
+from ask_shell.console import RemoveLivePart
 
 from tfdo._internal.output import orchestration_renderer as renderer
+from tfdo._internal.output.orchestration_live import register_orchestration_live
 from tfdo._internal.output.orchestration_state import OrchestrationProgressState, begin_wave, record_dir_complete
 from tfdo._internal.run.run_dir_summary import RunDirSummary
 
@@ -33,6 +35,9 @@ class OrchestrationDisplay:
             total_waves=total_waves,
             started_at=started,
         )
+        self._remove_live: RemoveLivePart | None = None
+        if interactive:
+            self._remove_live = register_orchestration_live(self)
 
     @staticmethod
     def log_dry_run_line(wave_index: int, run_dir: str, command: str) -> None:
@@ -59,6 +64,7 @@ class OrchestrationDisplay:
             logger.info(renderer.render_wave_complete(self.state, ok=ok, fail=fail))
 
     def on_run_complete(self) -> None:
+        self._remove_live_panel()
         elapsed = time.monotonic() - self._started_at
         with self._lock:
             if self._interactive:
@@ -67,3 +73,9 @@ class OrchestrationDisplay:
             else:
                 for line in renderer.render_non_tty_footer(self.state, total_elapsed_s=elapsed):
                     logger.info(line)
+
+    def _remove_live_panel(self) -> None:
+        if self._remove_live is None:
+            return
+        self._remove_live(print_after_removing=False)
+        self._remove_live = None
