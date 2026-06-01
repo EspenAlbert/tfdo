@@ -22,7 +22,7 @@ wheels = [
 
 [[package]]
 name = "ask-shell"
-version = "0.9.1"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "model-lib", extra = ["toml"] },
@@ -31,9 +31,9 @@ dependencies = [
     { name = "typer" },
     { name = "zero-3rdparty" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/70/aa/0cbfa8c044e6195ae32cad90b0f06ac86b247d1bae776b41f2e0f5b1992a/ask_shell-0.9.1.tar.gz", hash = "sha256:6960b0b2442e07826ef1bb73beac53577aa57e8cc630ed54179b9745bb8486e6", size = 34599, upload-time = "2026-05-29T10:47:26.91Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/61/ef469231a5210f7bfb13c25388de658e9894496986e838d061dc53dc810a/ask_shell-0.10.0.tar.gz", hash = "sha256:1cae4ca81607ba1a6e12c5e3c62e2572a2a21854eb18f2f138bc7e4c2c3f66c5", size = 35009, upload-time = "2026-06-01T12:39:20.031Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/29/0bab1438b8db58a24790638bb641c0f061ef6f375d30bc4a0f44ba8a3491/ask_shell-0.9.1-py3-none-any.whl", hash = "sha256:68ca64fadb45fb6c5ff3c008c129885b926ae3b993da66ce33d5a1f30285763a", size = 39872, upload-time = "2026-05-29T10:47:25.734Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/d2/db52f9f370e6390cbf2aeee37eccf94f5718f685135ab1e4df2cd60ce51b/ask_shell-0.10.0-py3-none-any.whl", hash = "sha256:b544b85ee8c949bc2772bcbf6c3405f8dcf818d97d41c02037089d1a19be0549", size = 40609, upload-time = "2026-06-01T12:39:18.653Z" },
 ]
 
 [[package]]
@@ -1063,7 +1063,7 @@ wheels = [
 
 [[package]]
 name = "tfdo"
-version = "0.9.0"
+version = "0.9.1"
 source = { editable = "." }
 dependencies = [
     { name = "ask-shell" },
