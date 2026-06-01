@@ -115,7 +115,7 @@ def test_parallel_dir_complete_does_not_deadlock_on_live_refresh() -> None:
             order=-110,
         )
 
-        def print_and_refresh(*args: object, **kwargs: object) -> None:
+        def print_and_refresh(*args, **kwargs) -> None:
             rich_live.print_to_live(*args, **kwargs)
             render_live_mock()
 

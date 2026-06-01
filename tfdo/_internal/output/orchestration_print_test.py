@@ -12,6 +12,7 @@ def test_orchestration_print_scope_serializes_whole_blocks() -> None:
 
     def worker(tag: str) -> None:
         active = orchestration_print_lock()
+        assert active is not None
         assert active is lock
         with active:
             for i in range(3):
