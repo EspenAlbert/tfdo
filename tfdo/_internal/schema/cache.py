@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from uuid import uuid4
 
 from tfdo._internal.hcl_read import LOCK_FILENAME, REGISTRY_HOST_PREFIX, find_lock_file, lock_provider_version
 
@@ -60,8 +61,17 @@ def schema_cache_hit(schema_cache_dir: Path, source: str, version: str) -> bool:
 
 def write_cached_schema(cache_root: Path, relative_path: Path, payload: dict) -> None:
     dest = cache_root / relative_path
+    if try_read_cached_schema(dest) is not None:
+        return
     dest.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
-    tmp = dest.with_suffix(f"{dest.suffix}.tmp")
-    tmp.write_text(text, encoding="utf-8")
-    tmp.replace(dest)
+    tmp = dest.parent / f".{dest.name}.{uuid4().hex}.tmp"
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(dest)
+    except OSError:
+        if try_read_cached_schema(dest) is not None:
+            return
+        raise
+    finally:
+        tmp.unlink(missing_ok=True)

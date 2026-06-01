@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 import pytest
@@ -131,3 +132,23 @@ def test_write_then_read_cached_schema(tmp_path: Path) -> None:
     schema_cache.write_cached_schema(tmp_path, rel, payload)
     full = tmp_path / rel
     assert schema_cache.try_read_cached_schema(full) == payload
+
+
+def test_write_cached_schema_concurrent_writes(tmp_path: Path) -> None:
+    rel = Path("random") / "hashicorp" / "random" / "3.9.0.json"
+    payload = {"format_version": "1.0", "provider_schemas": {"registry.terraform.io/hashicorp/random": {}}}
+    errors: list[BaseException] = []
+
+    def write() -> None:
+        try:
+            schema_cache.write_cached_schema(tmp_path, rel, payload)
+        except BaseException as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=write) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert not errors
+    assert schema_cache.try_read_cached_schema(tmp_path / rel) == payload
