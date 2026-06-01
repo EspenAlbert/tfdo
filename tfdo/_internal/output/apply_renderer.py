@@ -17,6 +17,7 @@ from tfdo._internal.output.apply_state import (
     CompletionEmission,
 )
 from tfdo._internal.output.apply_verbs import display_verbs_for_hook_action
+from tfdo._internal.output.count_phrases import apply_past_phrase
 from tfdo._internal.output.models import ResourceAction
 from tfdo._internal.output.stream_models import ChangeSummaryEvent, DiagnosticBody
 
@@ -29,6 +30,12 @@ _APPLY_PREFIX = "apply: "
 _IN_PROGRESS_PREFIX = "in progress: "
 
 
+def scrollback_run_dir_prefix(run_dir_key: str) -> str:
+    if not run_dir_key:
+        return ""
+    return f"{run_dir_key} | "
+
+
 def max_addr_width(state: ApplyProgressState) -> int:
     return max((len(addr) for addr in state.resources), default=0)
 
@@ -37,11 +44,14 @@ def render_completion_line(
     emission: CompletionEmission,
     *,
     addr_width: int,
+    run_dir_key: str = "",
 ) -> Text:
     marker = _CHECK_FAIL if emission.errored else _CHECK_OK
     verb = display_verbs_for_hook_action(emission.hook_action or "create").past
     duration = format_elapsed(emission.elapsed_seconds or 0)
     text = Text()
+    if run_dir_key:
+        text.append(scrollback_run_dir_prefix(run_dir_key))
     text.append(f"{marker} ")
     text.append(emission.addr.ljust(addr_width))
     text.append(f"  {verb}  {duration}")
@@ -82,6 +92,7 @@ def render_ci_completion_line(
     *,
     display: ResolvedApplyDisplay,
     diagnostic: DiagnosticBody | None = None,
+    run_dir_key: str = "",
 ) -> str:
     marker = _CHECK_FAIL if emission.errored else _CHECK_OK
     verb = display_verbs_for_hook_action(emission.hook_action or "create").past
@@ -93,7 +104,7 @@ def render_ci_completion_line(
             slow_suffix = f" {_VERY_SLOW_EMOJI}"
         case _SlowTier.SLOW:
             slow_suffix = f" {_SLOW_EMOJI}"
-    line = f"{_APPLY_PREFIX}{marker} {emission.addr} {verb} {duration}{slow_suffix}"
+    line = f"{scrollback_run_dir_prefix(run_dir_key)}{_APPLY_PREFIX}{marker} {emission.addr} {verb} {duration}{slow_suffix}"
     if emission.errored and diagnostic:
         line += f" | {_diagnostic_recap_plain(diagnostic)}"
     return line
@@ -121,18 +132,25 @@ def render_ci_heartbeat_line(
     return line
 
 
-def render_ci_final_summary(state: ApplyProgressState, *, total_elapsed_s: float) -> list[str]:
+def render_ci_final_summary(
+    state: ApplyProgressState,
+    *,
+    total_elapsed_s: float,
+    run_dir_key: str = "",
+) -> list[str]:
+    dir_prefix = scrollback_run_dir_prefix(run_dir_key)
     success, failed = _outcome_counts(state)
     if failed:
         outcome = (
-            f"{_APPLY_PREFIX}{success} {_CHECK_OK}, {failed} {_CHECK_FAIL}  total {format_elapsed(total_elapsed_s)}"
+            f"{dir_prefix}{_APPLY_PREFIX}{success} {_CHECK_OK}, {failed} {_CHECK_FAIL}  "
+            f"total {format_elapsed(total_elapsed_s)}"
         )
     else:
-        outcome = f"{_APPLY_PREFIX}{success} {_CHECK_OK}  total {format_elapsed(total_elapsed_s)}"
+        outcome = f"{dir_prefix}{_APPLY_PREFIX}{success} {_CHECK_OK}  total {format_elapsed(total_elapsed_s)}"
     lines = [outcome]
     breakdown = _breakdown_plain(state)
     if breakdown:
-        lines.append(f"{_APPLY_PREFIX}{breakdown}")
+        lines.append(f"{dir_prefix}{_APPLY_PREFIX}{breakdown}")
     return lines
 
 
@@ -141,10 +159,13 @@ def render_final_summary(
     *,
     total_elapsed_s: float,
     display: ResolvedApplyDisplay,
+    run_dir_key: str = "",
 ) -> list[Text | str]:
     success, failed = _outcome_counts(state)
     lines: list[Text | str] = []
     outcome = Text()
+    if run_dir_key:
+        outcome.append(scrollback_run_dir_prefix(run_dir_key))
     outcome.append("Apply complete: ")
     if failed:
         outcome.append(f"{success} {_CHECK_OK}, {failed} {_CHECK_FAIL}  ")
@@ -155,7 +176,13 @@ def render_final_summary(
 
     breakdown = _breakdown_line(state)
     if breakdown:
-        lines.append(breakdown)
+        if run_dir_key:
+            prefixed = Text()
+            prefixed.append(scrollback_run_dir_prefix(run_dir_key))
+            prefixed.append_text(breakdown)
+            lines.append(prefixed)
+        else:
+            lines.append(breakdown)
 
     failed_lines = _failed_recap_lines(state)
     if failed_lines:
@@ -235,7 +262,7 @@ def _breakdown_from_changes(summary: ChangeSummaryEvent) -> Text | None:
     text = Text("  ")
     labels = []
     for emoji, count in parts:
-        label = _count_label(emoji, count)
+        label = apply_past_phrase(emoji, count)
         if label:
             labels.append(label)
     text.append(", ".join(labels))
@@ -249,9 +276,9 @@ def _breakdown_from_resources(state: ApplyProgressState) -> Text | None:
             continue
         _accumulate_plan_action(counts, resource.plan_action)
     parts = [
-        _count_label("🟢", counts["add"]),
-        _count_label("🟡", counts["change"]),
-        _count_label("🔴", counts["remove"]),
+        apply_past_phrase("🟢", counts["add"]),
+        apply_past_phrase("🟡", counts["change"]),
+        apply_past_phrase("🔴", counts["remove"]),
     ]
     parts = [part for part in parts if part]
     if not parts:
@@ -270,20 +297,6 @@ def _accumulate_plan_action(counts: dict[str, int], action: ResourceAction) -> N
         case ResourceAction.REPLACE_DESTROY_FIRST | ResourceAction.REPLACE_CREATE_FIRST:
             counts["add"] += 1
             counts["remove"] += 1
-
-
-def _count_label(emoji: str, count: int) -> str:
-    if not count:
-        return ""
-    match emoji:
-        case "🟢":
-            return f"{emoji} {count} added"
-        case "🟡":
-            return f"{emoji} {count} changed"
-        case "🔴":
-            return f"{emoji} {count} destroyed"
-        case _:
-            return ""
 
 
 def _failed_recap_lines(state: ApplyProgressState) -> list[Text]:
@@ -349,11 +362,11 @@ def _breakdown_plain_from_changes(summary: ChangeSummaryEvent) -> str | None:
         return None
     parts: list[str] = []
     if changes.add:
-        parts.append(_count_label("🟢", changes.add))
+        parts.append(apply_past_phrase("🟢", changes.add))
     if changes.change:
-        parts.append(_count_label("🟡", changes.change))
+        parts.append(apply_past_phrase("🟡", changes.change))
     if changes.remove:
-        parts.append(_count_label("🔴", changes.remove))
+        parts.append(apply_past_phrase("🔴", changes.remove))
     parts = [part for part in parts if part]
     if not parts:
         return None
@@ -367,9 +380,9 @@ def _breakdown_plain_from_resources(state: ApplyProgressState) -> str | None:
             continue
         _accumulate_plan_action(counts, resource.plan_action)
     parts = [
-        _count_label("🟢", counts["add"]),
-        _count_label("🟡", counts["change"]),
-        _count_label("🔴", counts["remove"]),
+        apply_past_phrase("🟢", counts["add"]),
+        apply_past_phrase("🟡", counts["change"]),
+        apply_past_phrase("🔴", counts["remove"]),
     ]
     parts = [part for part in parts if part]
     if not parts:

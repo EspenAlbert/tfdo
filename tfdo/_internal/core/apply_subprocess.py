@@ -12,10 +12,12 @@ from tfdo._internal.core.lifecycle_shell import build_lifecycle_command
 from tfdo._internal.models import ApplyInput, ApplyResult, DestroyInput, DestroyResult
 from tfdo._internal.output.apply_blockers import build_apply_blockers
 from tfdo._internal.output.apply_display import ApplyDisplayOptions, resolve_apply_display
+from tfdo._internal.output.apply_live_mode import resolve_apply_live_mode
 from tfdo._internal.output.apply_state import ApplyProgressState
 from tfdo._internal.output.apply_stream_handler import ApplyStreamHandler, apply_stream_callback
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_artifacts import plan_json_path
+from tfdo._internal.run.run_dir_summary import resource_counts_from_apply_state
 from tfdo._internal.settings import TfDoSettings, load_user_config
 
 T = TypeVar("T", ApplyResult, DestroyResult)
@@ -63,6 +65,7 @@ def _run_streaming_apply_command(
             exit_code=run.exit_code or 0,
             stderr=run.stderr or None,
             diagnostics_emitted=handler.diagnostics_emitted,
+            resource_counts=resource_counts_from_apply_state(handler.state),
         )
     except ShellError as e:
         handler.set_exit_code(e.exit_code or 1)
@@ -71,6 +74,7 @@ def _run_streaming_apply_command(
             exit_code=e.exit_code or 1,
             stderr=e.stderr or None,
             diagnostics_emitted=handler.diagnostics_emitted,
+            resource_counts=resource_counts_from_apply_state(handler.state),
         )
 
 
@@ -92,11 +96,18 @@ def run_streaming_apply(
     print_prefix = f"{label} apply"
 
     def run_once() -> T:
+        live_mode = input_model.apply_live_mode or resolve_apply_live_mode(
+            orchestration_active=input_model.orchestration_active,
+            parallel=0,
+            interactive=settings.is_interactive,
+        )
         handler = ApplyStreamHandler(
             state,
             display,
             interactive=settings.is_interactive,
             settings=settings,
+            run_dir_key=input_model.run_dir_key,
+            live_mode=live_mode,
         )
         result = _run_streaming_apply_command(
             settings,
@@ -108,6 +119,7 @@ def run_streaming_apply(
             exit_code=result.exit_code,
             stderr=result.stderr,
             diagnostics_emitted=result.diagnostics_emitted,
+            resource_counts=result.resource_counts,
         )
 
     return run_with_init_retry(input_model, "apply", result_cls, run_once)

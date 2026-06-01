@@ -29,6 +29,9 @@ def _plan_input_from_apply(input_model: ApplyInput) -> PlanInput:
         init_backend_args=input_model.init_backend_args,
         plan_display_cli=input_model.plan_display_cli,
         detail=input_model.detail,
+        orchestration_active=input_model.orchestration_active,
+        run_dir_key=input_model.run_dir_key,
+        apply_live_mode=input_model.apply_live_mode,
     )
 
 

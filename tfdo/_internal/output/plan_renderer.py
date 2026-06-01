@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import nullcontext
 from typing import NamedTuple, cast
 
 from ask_shell import console as ask_console
@@ -8,7 +9,7 @@ from rich.console import RenderableType
 from rich.text import Text
 from rich.tree import Tree
 
-from tfdo._internal.output import display_path, output_value_format
+from tfdo._internal.output import display_path, orchestration_print, output_value_format
 from tfdo._internal.output.attr_diff import AttrLine, AttrPrefix, ValueKind
 from tfdo._internal.output.complex_render import (
     ComplexRenderConfig,
@@ -16,6 +17,7 @@ from tfdo._internal.output.complex_render import (
     DetailBlock,
     render_complex_value,
 )
+from tfdo._internal.output.count_phrases import format_plan_aggregate_phrases
 from tfdo._internal.output.models import Change, OutputChange, ResourceAction
 from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.plan_filters import (
@@ -38,6 +40,7 @@ from tfdo._internal.output.render_thresholds import (
 from tfdo._internal.output.schema_lookup import CollectionKindLookup, ResourceSchemaLookup
 from tfdo._internal.output.tree_builder import ModuleNode, PlanTree, ResourceNode
 from tfdo._internal.output.unknown_markers import has_unknown_values
+from tfdo._internal.run.run_dir_summary import ResourceActionCounts
 
 ATTR_CONTEXT_INDENT = 7
 ATTR_CHANGED_INDENT = 5
@@ -72,6 +75,14 @@ class _ComplexKey(NamedTuple):
     attr_name: str
 
 
+def _emit_orchestration_dir_header(state: _PrintState, run_dir_key: str) -> None:
+    if not run_dir_key:
+        return
+    if orchestration_print.orchestration_dir_block_separator():
+        state.blank()
+    state.emit(Text(run_dir_key, style="bold"))
+
+
 class _PrintState:
     __slots__ = ("lines",)
 
@@ -104,7 +115,54 @@ def render_plan(
     show_unknown_outputs: bool = True,
     plan_display: PlanDisplayOptions | None = None,
     has_applyable_changes: bool | None = None,
+    header_only: bool = False,
+    run_dir_key: str = "",
 ) -> None:
+    lock = orchestration_print.orchestration_print_lock()
+    print_ctx = lock if lock is not None else nullcontext()
+    with print_ctx:
+        _render_plan_body(
+            tree,
+            attr_lines,
+            terminal_width=terminal_width,
+            provider_by_addr=provider_by_addr,
+            collection_kind=collection_kind,
+            computed_at_path=computed_at_path,
+            resource_schema=resource_schema,
+            complex_config=complex_config,
+            show_unknown_outputs=show_unknown_outputs,
+            plan_display=plan_display,
+            has_applyable_changes=has_applyable_changes,
+            header_only=header_only,
+            run_dir_key=run_dir_key,
+        )
+
+
+def _render_plan_body(
+    tree: PlanTree,
+    attr_lines: ResourceAttrLines,
+    *,
+    terminal_width: int,
+    provider_by_addr: dict[str, str] | None = None,
+    collection_kind: CollectionKindLookup | None = None,
+    computed_at_path: ComputedOnlyLookup | None = None,
+    resource_schema: ResourceSchemaLookup | None = None,
+    complex_config: ComplexRenderConfig | None = None,
+    show_unknown_outputs: bool = True,
+    plan_display: PlanDisplayOptions | None = None,
+    has_applyable_changes: bool | None = None,
+    header_only: bool = False,
+    run_dir_key: str = "",
+) -> None:
+    if header_only:
+        state = _PrintState()
+        header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=has_applyable_changes)
+        _emit_orchestration_dir_header(state, run_dir_key)
+        state.emit(header.line)
+        if header.subtitle:
+            state.emit(header.subtitle, style="dim")
+        return
+
     display = plan_display or PlanDisplayOptions()
     config = complex_config or ComplexRenderConfig()
     lookup = computed_at_path or (lambda _p, _t, _path: None)
@@ -136,6 +194,7 @@ def render_plan(
         _print_detail_blocks(state, _collect_detail_blocks(complex_results))
 
     header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=has_applyable_changes)
+    _emit_orchestration_dir_header(state, run_dir_key)
     state.emit(header.line)
     if header.subtitle:
         state.emit(header.subtitle, style="dim")
@@ -323,16 +382,15 @@ def _plan_header_line(
             subtitle="Infrastructure matches configuration." if not tree.drift else None,
             render_body=bool(tree.drift),
         )
-    parts: list[str] = []
-    if counts.add:
-        parts.append(f"🟢 {counts.add} to add")
-    if counts.change:
-        parts.append(f"🟡 {counts.change} to change")
-    if counts.destroy:
-        parts.append(f"🔴 {counts.destroy} to destroy")
-    if counts.replace:
-        parts.append(f"🟣 {counts.replace} to replace")
-    return _PlanHeader(line=f"📋 Plan: {', '.join(parts)}")
+    phrases = format_plan_aggregate_phrases(
+        ResourceActionCounts(
+            add=counts.add,
+            change=counts.change,
+            destroy=counts.destroy,
+            replace=counts.replace,
+        )
+    )
+    return _PlanHeader(line=f"📋 Plan: {', '.join(phrases)}")
 
 
 def _destroy_warning_line(counts: PlanActionCounts) -> str | None:

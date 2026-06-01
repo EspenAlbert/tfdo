@@ -14,9 +14,9 @@ from tfdo._internal.settings import CheckConfig
 from tfdo._internal.settings import InteractiveMode
 from tfdo._internal.settings import TfDoSettings
 from tfdo._internal.settings import TfDoUserConfig
-from tfdo import sync
 from tfdo._internal.typer_app import get_settings
 from tfdo._internal.typer_app import main_callback
+from tfdo import sync
 
 VERSION = "0.9.1"
 __all__ = [
@@ -34,7 +34,7 @@ __all__ = [
     "InteractiveMode",
     "TfDoSettings",
     "TfDoUserConfig",
-    "sync",
     "get_settings",
     "main_callback",
+    "sync",
 ]

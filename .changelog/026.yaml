@@ -1,0 +1,279 @@
+name: build_run_dir_summary
+ts: 2026-06-01 12:40:05.348665+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.build_run_dir_summary
+---
+name: skipped_run_dir_summary
+ts: 2026-06-01 12:40:05.348774+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.skipped_run_dir_summary
+---
+name: resource_counts_from_plan_tree
+ts: 2026-06-01 12:40:05.348786+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.resource_counts_from_plan_tree
+---
+name: output_change_count_from_plan_tree
+ts: 2026-06-01 12:40:05.348794+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.output_change_count_from_plan_tree
+---
+name: resource_counts_from_change_counts
+ts: 2026-06-01 12:40:05.348798+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.resource_counts_from_change_counts
+---
+name: resource_counts_from_apply_state
+ts: 2026-06-01 12:40:05.348803+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.resource_counts_from_apply_state
+---
+name: ResourceActionCounts
+ts: 2026-06-01 12:41:06.713018+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.ResourceActionCounts
+---
+name: RunDirSummary
+ts: 2026-06-01 12:41:06.713100+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.RunDirSummary
+---
+name: begin_wave
+ts: 2026-06-01 14:45:27.724695+00:00
+type: keep_private
+full_path: _internal.output.orchestration_state.begin_wave
+---
+name: record_dir_complete
+ts: 2026-06-01 14:45:27.724752+00:00
+type: keep_private
+full_path: _internal.output.orchestration_state.record_dir_complete
+---
+name: orchestration_print_scope
+ts: 2026-06-01 14:45:32.427185+00:00
+type: keep_private
+full_path: _internal.output.orchestration_print.orchestration_print_scope
+---
+name: orchestration_print_lock
+ts: 2026-06-01 14:45:32.427460+00:00
+type: keep_private
+full_path: _internal.output.orchestration_print.orchestration_print_lock
+---
+name: register_orchestration_live
+ts: 2026-06-01 14:45:35.765815+00:00
+type: keep_private
+full_path: _internal.output.orchestration_live.register_orchestration_live
+---
+name: sum_resource_counts
+ts: 2026-06-01 14:45:38.984937+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.sum_resource_counts
+---
+name: format_output_badge
+ts: 2026-06-01 14:45:38.985017+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.format_output_badge
+---
+name: format_dir_counts_segment
+ts: 2026-06-01 14:45:38.985024+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.format_dir_counts_segment
+---
+name: render_wave_started
+ts: 2026-06-01 14:45:38.985037+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_wave_started
+---
+name: render_wave_complete
+ts: 2026-06-01 14:45:38.985041+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_wave_complete
+---
+name: render_dir_completion_ci
+ts: 2026-06-01 14:45:38.985046+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_dir_completion_ci
+---
+name: render_orchestration_complete_ci
+ts: 2026-06-01 14:45:38.985050+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_orchestration_complete_ci
+---
+name: render_aggregate_line
+ts: 2026-06-01 14:45:38.985055+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_aggregate_line
+---
+name: render_run_complete_header
+ts: 2026-06-01 14:45:38.985059+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_run_complete_header
+---
+name: render_final_dir_row_plain
+ts: 2026-06-01 14:45:38.985064+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_final_dir_row_plain
+---
+name: render_final_dir_row_styled
+ts: 2026-06-01 14:45:38.985067+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_final_dir_row_styled
+---
+name: render_completed_dir_tty
+ts: 2026-06-01 14:45:38.985072+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_completed_dir_tty
+---
+name: render_final_summary
+ts: 2026-06-01 14:45:38.985077+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_final_summary
+---
+name: render_non_tty_footer
+ts: 2026-06-01 14:45:38.985080+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_non_tty_footer
+---
+name: render_orchestration_live_header
+ts: 2026-06-01 14:45:38.985087+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_orchestration_live_header
+---
+name: build_wave_progress
+ts: 2026-06-01 14:45:38.985092+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.build_wave_progress
+---
+name: apply_past_phrase
+ts: 2026-06-01 14:45:42.471709+00:00
+type: keep_private
+full_path: _internal.output.count_phrases.apply_past_phrase
+---
+name: plan_future_phrase
+ts: 2026-06-01 14:45:42.471786+00:00
+type: keep_private
+full_path: _internal.output.count_phrases.plan_future_phrase
+---
+name: format_apply_aggregate_phrases
+ts: 2026-06-01 14:45:42.471795+00:00
+type: keep_private
+full_path: _internal.output.count_phrases.format_apply_aggregate_phrases
+---
+name: format_plan_aggregate_phrases
+ts: 2026-06-01 14:45:42.471800+00:00
+type: keep_private
+full_path: _internal.output.count_phrases.format_plan_aggregate_phrases
+---
+name: format_compact_action_tokens
+ts: 2026-06-01 14:45:42.471805+00:00
+type: keep_private
+full_path: _internal.output.count_phrases.format_compact_action_tokens
+---
+name: sum_resource_action_counts
+ts: 2026-06-01 14:45:42.471810+00:00
+type: keep_private
+full_path: _internal.output.count_phrases.sum_resource_action_counts
+---
+name: apply_status_renderable_name
+ts: 2026-06-01 14:45:45.748200+00:00
+type: keep_private
+full_path: _internal.output.apply_live_mode.apply_status_renderable_name
+---
+name: plan_status_renderable_name
+ts: 2026-06-01 14:45:45.748271+00:00
+type: keep_private
+full_path: _internal.output.apply_live_mode.plan_status_renderable_name
+---
+name: resolve_apply_live_mode
+ts: 2026-06-01 14:45:45.748279+00:00
+type: keep_private
+full_path: _internal.output.apply_live_mode.resolve_apply_live_mode
+---
+name: OrchestrationProgressState
+ts: 2026-06-01 14:45:50.897478+00:00
+type: keep_private
+full_path: _internal.output.orchestration_state.OrchestrationProgressState
+---
+name: OrchestrationDisplay
+ts: 2026-06-01 14:45:54.206271+00:00
+type: keep_private
+full_path: _internal.output.orchestration_display.OrchestrationDisplay
+---
+name: OrchestrationStatusRenderable
+ts: 2026-06-01 14:45:56.986914+00:00
+type: keep_private
+full_path: _internal.output.orchestration_live.OrchestrationStatusRenderable
+---
+name: ApplyLiveMode
+ts: 2026-06-01 14:46:03.624957+00:00
+type: keep_private
+full_path: _internal.output.apply_live_mode.ApplyLiveMode
+---
+name: ''
+ts: 2026-06-01 14:46:06.547412+00:00
+type: fix
+author: Espen Albert
+group: ''
+ignored: true
+message: 'fix(orchestration): Release display lock before live console I/O to avoid deadlock'
+short_sha: 57433b
+---
+name: ''
+ts: 2026-06-01 14:46:07.702508+00:00
+type: fix
+author: Espen Albert
+group: ''
+ignored: true
+message: 'fix(output): Suppresses orchestration plan scroll noise and prefixes headers'
+short_sha: 1f43c4
+---
+name: ''
+ts: 2026-06-01 14:46:09.656230+00:00
+type: fix
+author: Espen Albert
+group: ''
+ignored: true
+message: 'fix(output): Implement orchestration print locking to prevent race conditions during live console output'
+short_sha: e4265c
+---
+name: ''
+ts: 2026-06-01 14:46:11.775907+00:00
+type: fix
+author: Espen Albert
+group: ''
+ignored: true
+message: 'fix(tfdo): Fix pyright errors in orchestration print tests'
+short_sha: f3806a
+---
+name: reset_orchestration_dir_blocks
+ts: 2026-06-01 15:49:34.632764+00:00
+type: keep_private
+full_path: _internal.output.orchestration_print.reset_orchestration_dir_blocks
+---
+name: orchestration_dir_block_separator
+ts: 2026-06-01 15:49:34.632820+00:00
+type: keep_private
+full_path: _internal.output.orchestration_print.orchestration_dir_block_separator
+---
+name: render_wave_tty_header
+ts: 2026-06-01 15:49:37.259319+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_wave_tty_header
+---
+name: scrollback_run_dir_prefix
+ts: 2026-06-01 15:49:39.963335+00:00
+type: keep_private
+full_path: _internal.output.apply_renderer.scrollback_run_dir_prefix
+---
+name: resolve_orchestration_root
+ts: 2026-06-01 15:49:42.322463+00:00
+type: keep_private
+full_path: _internal.config.config_file.resolve_orchestration_root
+---
+name: schema
+ts: 2026-06-01 15:49:58.474066+00:00
+type: fix
+author: Espen Albert
+changelog_message: 'fix(schema): Makes schema cache writes safe under parallel plan'
+group: schema
+message: 'fix(schema): Makes schema cache writes safe under parallel plan'
+short_sha: 77d9fd

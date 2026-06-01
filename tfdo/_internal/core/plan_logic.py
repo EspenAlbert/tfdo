@@ -27,6 +27,7 @@ from tfdo._internal.output.plan_render_input import build_attr_lines_by_addr
 from tfdo._internal.output.plan_renderer import render_plan
 from tfdo._internal.output.schema_lookup import build_schema_lookups
 from tfdo._internal.output.tree_builder import build_plan_tree
+from tfdo._internal.run.run_dir_summary import output_change_count_from_plan_tree, resource_counts_from_plan_tree
 from tfdo._internal.schema.plan_warm import warm_plan_schema_cache
 from tfdo._internal.settings import load_user_config
 
@@ -54,7 +55,8 @@ def _exit_plan(
             message=message,
             diagnostics_already_shown=result.diagnostics_emitted,
         )
-    print_lifecycle_footer(input_model.settings, detail=input_model.detail)
+    if not input_model.orchestration_active or report:
+        print_lifecycle_footer(input_model.settings, detail=input_model.detail)
     return result
 
 
@@ -111,6 +113,9 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         input_model.plan_display_cli,
     )
     tree = build_plan_tree(plan)
+    plan_counts = resource_counts_from_plan_tree(tree)
+    plan_output_changes = output_change_count_from_plan_tree(tree)
+    applyable = plan_has_applyable_changes(plan)
     provider_by_addr = {rc.address: rc.provider_name or "" for rc in [*plan.resource_changes, *plan.resource_drift]}
     attr_lines = build_attr_lines_by_addr(
         tree,
@@ -120,6 +125,7 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
     )
     console = ask_console.get_live_console()
     terminal_width = console.size.width or 120
+    header_only = False
     render_plan(
         tree,
         attr_lines,
@@ -130,14 +136,18 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         resource_schema=lookups.resource_schema,
         complex_config=ComplexRenderConfig(max_structural_lines=plan_display.max_inline_lines),
         plan_display=plan_display,
-        has_applyable_changes=plan_has_applyable_changes(plan),
+        has_applyable_changes=applyable,
+        header_only=header_only,
+        run_dir_key=input_model.run_dir_key,
     )
     return _exit_plan(
         input_model,
         PlanResult(
             exit_code=plan_exit_code,
             stderr=plan_result.stderr,
-            has_applyable_changes=plan_has_applyable_changes(plan),
+            has_applyable_changes=applyable,
+            resource_counts=plan_counts,
+            output_change_count=plan_output_changes,
         ),
         report=False,
     )

@@ -68,3 +68,17 @@ def test_apply_events_and_planning_status(_add_mock: MagicMock) -> None:
     assert planning_status is not None
     assert planning_status.plain == "planning…"
     assert "plan: computing changes…" in [c[0][0] for c in print_mock.call_args_list]
+
+
+@patch(f"{_MODULE}.ask_console.add_renderable", return_value=MagicMock())
+def test_orchestration_skips_planning_scroll_line(_add_mock: MagicMock) -> None:
+    handler = PlanStreamHandler(orchestration_active=True)
+    with patch(f"{_MODULE}.ask_console.print_to_live") as print_mock:
+        handler.feed_line(_line({"type": "planned_change", "change": {}}))
+    assert not any("plan: computing changes…" in str(c) for c in print_mock.call_args_list)
+
+
+def test_orchestration_skips_plan_status_renderable() -> None:
+    with patch(f"{_MODULE}.ask_console.add_renderable") as add_mock:
+        PlanStreamHandler(orchestration_active=True)
+    add_mock.assert_not_called()

@@ -1,0 +1,5 @@
+**/.terraform/
+**/.terraform.lock.hcl
+**/.tfdo/
+**/terraform.tfstate*
+**/_tfdo_tags.tfvars.json

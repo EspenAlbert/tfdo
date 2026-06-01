@@ -1,0 +1,6 @@
+Run complete: 4 directories, 2 waves  total 48s
+📋 Plan: 🟢 3 to add, 🟡 1 to change
+✅ 🟢3 🟡1 📤2                 envs/staging/networking  4s
+✅ no changes               envs/staging/database  2s
+❌ FAIL                     envs/staging/monitoring  1s
+🚫                           envs/prod/monitoring  -
