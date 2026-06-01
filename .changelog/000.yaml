@@ -1,0 +1,39 @@
+name: build_run_dir_summary
+ts: 2026-06-01 12:40:05.348665+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.build_run_dir_summary
+---
+name: skipped_run_dir_summary
+ts: 2026-06-01 12:40:05.348774+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.skipped_run_dir_summary
+---
+name: resource_counts_from_plan_tree
+ts: 2026-06-01 12:40:05.348786+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.resource_counts_from_plan_tree
+---
+name: output_change_count_from_plan_tree
+ts: 2026-06-01 12:40:05.348794+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.output_change_count_from_plan_tree
+---
+name: resource_counts_from_change_counts
+ts: 2026-06-01 12:40:05.348798+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.resource_counts_from_change_counts
+---
+name: resource_counts_from_apply_state
+ts: 2026-06-01 12:40:05.348803+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.resource_counts_from_apply_state
+---
+name: ResourceActionCounts
+ts: 2026-06-01 12:41:06.713018+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.ResourceActionCounts
+---
+name: RunDirSummary
+ts: 2026-06-01 12:41:06.713100+00:00
+type: keep_private
+full_path: _internal.run.run_dir_summary.RunDirSummary

@@ -184,7 +184,7 @@ Run terraform plan.
 <a id="initmode_def"></a>
 
 ### class: `InitMode`
-- [source](../../tfdo/_internal/models.py#L20)
+- [source](../../tfdo/_internal/models.py#L21)
 > **Since:** 0.2.0
 
 ```python

@@ -16,6 +16,7 @@ from tfdo._internal.output.apply_state import ApplyProgressState
 from tfdo._internal.output.apply_stream_handler import ApplyStreamHandler, apply_stream_callback
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_artifacts import plan_json_path
+from tfdo._internal.run.run_dir_summary import resource_counts_from_apply_state
 from tfdo._internal.settings import TfDoSettings, load_user_config
 
 T = TypeVar("T", ApplyResult, DestroyResult)
@@ -63,6 +64,7 @@ def _run_streaming_apply_command(
             exit_code=run.exit_code or 0,
             stderr=run.stderr or None,
             diagnostics_emitted=handler.diagnostics_emitted,
+            resource_counts=resource_counts_from_apply_state(handler.state),
         )
     except ShellError as e:
         handler.set_exit_code(e.exit_code or 1)
@@ -71,6 +73,7 @@ def _run_streaming_apply_command(
             exit_code=e.exit_code or 1,
             stderr=e.stderr or None,
             diagnostics_emitted=handler.diagnostics_emitted,
+            resource_counts=resource_counts_from_apply_state(handler.state),
         )
 
 
@@ -108,6 +111,7 @@ def run_streaming_apply(
             exit_code=result.exit_code,
             stderr=result.stderr,
             diagnostics_emitted=result.diagnostics_emitted,
+            resource_counts=result.resource_counts,
         )
 
     return run_with_init_retry(input_model, "apply", result_cls, run_once)

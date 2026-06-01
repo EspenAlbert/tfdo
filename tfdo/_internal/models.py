@@ -12,6 +12,7 @@ from tfdo._internal.check.models import CheckResult as RunDirProviderResult
 from tfdo._internal.config.config_file import resolve_run_context_label
 from tfdo._internal.output.apply_display import ApplyDisplayCliOverrides
 from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
+from tfdo._internal.run.run_dir_summary import ResourceActionCounts
 from tfdo._internal.settings import TfDoSettings
 
 _TF_PLUGIN_CACHE_DIR_KEY = "TF_PLUGIN_CACHE_DIR"
@@ -140,14 +141,18 @@ class LifecycleResult(BaseModel):
 class PlanResult(LifecycleResult):
     diagnostics_emitted: bool = False
     has_applyable_changes: bool | None = None
+    resource_counts: ResourceActionCounts | None = None
+    output_change_count: int | None = None
 
 
 class ApplyResult(LifecycleResult):
     diagnostics_emitted: bool = False
+    resource_counts: ResourceActionCounts | None = None
 
 
 class DestroyResult(LifecycleResult):
     diagnostics_emitted: bool = False
+    resource_counts: ResourceActionCounts | None = None
 
 
 class TflintPos(BaseModel):

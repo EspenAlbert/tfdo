@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from concurrent.futures import Future
 from enum import StrEnum
 from pathlib import Path
@@ -23,7 +24,17 @@ from tfdo._internal.hooks.execution import HookContext
 from tfdo._internal.hooks.models import HookAbortError
 from tfdo._internal.hooks.registry import HookRegistry
 from tfdo._internal.hooks.runner import LocalHookRunner
-from tfdo._internal.models import ApplyInput, DestroyInput, InitInput, InitMode, OutputInput, PlanInput
+from tfdo._internal.models import (
+    ApplyInput,
+    ApplyResult,
+    DestroyInput,
+    DestroyResult,
+    InitInput,
+    InitMode,
+    OutputInput,
+    PlanInput,
+    PlanResult,
+)
 from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
 from tfdo._internal.run import filtering, tags_injection, var_file_resolution
 from tfdo._internal.run.discovery import (
@@ -33,11 +44,31 @@ from tfdo._internal.run.discovery import (
 )
 from tfdo._internal.run.filtering import TagFilter
 from tfdo._internal.run.run_context import RunDirContext
+from tfdo._internal.run.run_dir_summary import (
+    ResourceActionCounts,
+    RunDirSummary,
+    build_run_dir_summary,
+    skipped_run_dir_summary,
+)
 from tfdo._internal.settings import TfDoSettings, load_user_config
 
 logger = logging.getLogger(__name__)
 
 MIN_CONCURRENT_SUBMITS = 2
+
+_SUMMARY_COMMANDS = frozenset(
+    {LifecycleCommand.PLAN, LifecycleCommand.APPLY, LifecycleCommand.DESTROY},
+)
+
+
+class _DispatchOutcome(NamedTuple):
+    exit_code: int
+    skipped: bool
+    stdout: str
+    stderr: str
+    resource_counts: ResourceActionCounts | None
+    output_change_count: int | None
+    has_applyable_changes: bool | None
 
 
 class FailureMode(StrEnum):
@@ -71,6 +102,7 @@ class RunDirResult(BaseModel):
     skipped: bool = False
     stdout: str = ""
     stderr: str = ""
+    summary: RunDirSummary | None = None
 
 
 class OrchestrationResult(BaseModel):
@@ -282,6 +314,68 @@ def _write_dep_tfvars(dependent_run_dir: Path, dep_name: str, mapped_values: dic
     return path
 
 
+def _outcome_from_plan(result: PlanResult) -> _DispatchOutcome:
+    return _DispatchOutcome(
+        exit_code=result.exit_code,
+        skipped=False,
+        stdout=result.stdout,
+        stderr=result.stderr or "",
+        resource_counts=result.resource_counts,
+        output_change_count=result.output_change_count,
+        has_applyable_changes=result.has_applyable_changes,
+    )
+
+
+def _outcome_from_apply(result: ApplyResult | DestroyResult) -> _DispatchOutcome:
+    return _DispatchOutcome(
+        exit_code=result.exit_code,
+        skipped=False,
+        stdout=result.stdout,
+        stderr=result.stderr or "",
+        resource_counts=result.resource_counts,
+        output_change_count=None,
+        has_applyable_changes=None,
+    )
+
+
+def _run_dir_result(
+    rel: str,
+    command: LifecycleCommand,
+    outcome: _DispatchOutcome,
+    *,
+    duration_s: float,
+) -> RunDirResult:
+    summary = None
+    if command in _SUMMARY_COMMANDS:
+        summary = build_run_dir_summary(
+            run_dir=rel,
+            command=command,
+            exit_code=outcome.exit_code,
+            skipped=outcome.skipped,
+            duration_s=duration_s,
+            resource_counts=outcome.resource_counts,
+            output_change_count=outcome.output_change_count,
+            has_applyable_changes=outcome.has_applyable_changes,
+        )
+    return RunDirResult(
+        run_dir=rel,
+        exit_code=outcome.exit_code,
+        skipped=outcome.skipped,
+        stdout=outcome.stdout,
+        stderr=outcome.stderr,
+        summary=summary,
+    )
+
+
+def _skipped_run_dir_result(run_dir: str, command: LifecycleCommand, exit_code: int) -> RunDirResult:
+    return RunDirResult(
+        run_dir=run_dir,
+        exit_code=exit_code,
+        skipped=True,
+        summary=skipped_run_dir_summary(run_dir, command, exit_code),
+    )
+
+
 def _build_hook_registry(config: ResolvedConfig, run_dir_path: Path) -> HookRegistry | None:
     if not config.hook_configs:
         return None
@@ -294,7 +388,7 @@ def _dispatch_command(
     prepared: PreparedRunDir,
     extra_flags: list[str],
     rel: str,
-) -> RunDirResult:
+) -> _DispatchOutcome:
     dir_settings = prepared.init_input.settings
     if inp.command == LifecycleCommand.INIT:
         init_input = prepared.init_input
@@ -306,13 +400,19 @@ def _dispatch_command(
                 env=init_input.env,
             )
         init_result = terraform_init.init(init_input)
-        return RunDirResult(
-            run_dir=rel, exit_code=init_result.exit_code, stdout=init_result.stdout, stderr=init_result.stderr or ""
+        return _DispatchOutcome(
+            exit_code=init_result.exit_code,
+            skipped=False,
+            stdout=init_result.stdout,
+            stderr=init_result.stderr or "",
+            resource_counts=None,
+            output_change_count=None,
+            has_applyable_changes=None,
         )
     mode = inp.init_mode
     backend_args = prepared.init_input.backend_args
     if inp.command == LifecycleCommand.PLAN:
-        result = executor.plan(
+        plan_result = executor.plan(
             PlanInput(
                 settings=dir_settings,
                 init_mode=mode,
@@ -322,8 +422,9 @@ def _dispatch_command(
                 plan_display_cli=inp.plan_display_cli,
             )
         )
-    elif inp.command == LifecycleCommand.APPLY:
-        result = executor.apply(
+        return _outcome_from_plan(plan_result)
+    if inp.command == LifecycleCommand.APPLY:
+        apply_result = executor.apply(
             ApplyInput(
                 settings=dir_settings,
                 auto_approve=inp.auto_approve,
@@ -334,8 +435,9 @@ def _dispatch_command(
                 plan_display_cli=inp.plan_display_cli,
             )
         )
-    elif inp.command == LifecycleCommand.DESTROY:
-        result = executor.destroy(
+        return _outcome_from_apply(apply_result)
+    if inp.command == LifecycleCommand.DESTROY:
+        destroy_result = executor.destroy(
             DestroyInput(
                 settings=dir_settings,
                 auto_approve=inp.auto_approve,
@@ -346,9 +448,8 @@ def _dispatch_command(
                 plan_display_cli=inp.plan_display_cli,
             )
         )
-    else:
-        raise ValueError(f"unsupported command: {inp.command}")
-    return RunDirResult(run_dir=rel, exit_code=result.exit_code, stdout=result.stdout, stderr=result.stderr or "")
+        return _outcome_from_apply(destroy_result)
+    raise ValueError(f"unsupported command: {inp.command}")
 
 
 def _run_event_hooks(registry: HookRegistry, event: LifecycleEvent, hook_ctx: HookContext, rel: str) -> None:
@@ -366,12 +467,19 @@ def _execute_run_dir(
     ctx: RunDirContext,
     config: ResolvedConfig,
 ) -> RunDirResult:
+    started = time.monotonic()
     rel = ctx.path
+
+    def finish(outcome: _DispatchOutcome) -> RunDirResult:
+        return _run_dir_result(rel, inp.command, outcome, duration_s=time.monotonic() - started)
+
     try:
         prepared = prepare_run_dir(inp.settings, run_dir_path, ctx, config, inp.var_file)
     except Exception as e:
         logger.error(f"{rel}: preparation failed: {e}")
-        return RunDirResult(run_dir=rel, exit_code=1, stderr=str(e))
+        return finish(
+            _DispatchOutcome(1, False, "", str(e), None, None, None),
+        )
 
     registry = _build_hook_registry(config, run_dir_path)
     hook_ctx = HookContext(run_dir=run_dir_path, command=inp.command)
@@ -383,9 +491,10 @@ def _execute_run_dir(
             hook_execution.run_hooks(registry, before_event, hook_ctx)
         except HookAbortError as e:
             _run_event_hooks(registry, LifecycleEvent.ON_ERROR, hook_ctx, rel)
-            return RunDirResult(run_dir=rel, exit_code=1, stderr=str(e))
+            return finish(_DispatchOutcome(1, False, "", str(e), None, None, None))
 
-    result_dir = _dispatch_command(inp, prepared, all_extra, rel)
+    outcome = _dispatch_command(inp, prepared, all_extra, rel)
+    result_dir = finish(outcome)
 
     if registry:
         try:
@@ -487,7 +596,7 @@ def _execute_wave_sequential(
         if collected_outputs is not None and inp.command in _OUTPUT_INJECT_COMMANDS:
             dep_flags = _inject_dep_outputs(rel_path, inp, repo_root, configs, collected_outputs)
             if dep_flags is None:
-                results.append(RunDirResult(run_dir=rel_path, exit_code=0, skipped=True))
+                results.append(_skipped_run_dir_result(rel_path, inp.command, 0))
                 continue
             if dep_flags:
                 inp = inp.model_copy(update={"extra_flags": [*inp.extra_flags, *dep_flags]})
@@ -588,7 +697,7 @@ def _execute_plan(
         if has_failure and inp.on_failure == FailureMode.STOP:
             for remaining_wave in plan.waves[wave.wave_index + 1 :]:
                 for rd in remaining_wave.run_dirs:
-                    all_results.append(RunDirResult(run_dir=rd, exit_code=1, skipped=True))
+                    all_results.append(_skipped_run_dir_result(rd, inp.command, 1))
             break
     return all_results
 
@@ -694,7 +803,7 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
             for rd in wave.run_dirs:
                 logger.info(f"[dry-run] wave {wave.wave_index}: {rd} -> {inp.command}")
         return OrchestrationResult(
-            results=[RunDirResult(run_dir=rd, exit_code=0, skipped=True) for w in plan.waves for rd in w.run_dirs],
+            results=[_skipped_run_dir_result(rd, inp.command, 0) for w in plan.waves for rd in w.run_dirs],
         )
 
     results = _execute_plan(plan, inp, repo_root, contexts, configs)
