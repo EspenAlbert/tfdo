@@ -35,6 +35,7 @@ from tfdo._internal.models import (
     PlanInput,
     PlanResult,
 )
+from tfdo._internal.output.orchestration_display import OrchestrationDisplay
 from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
 from tfdo._internal.run import filtering, tags_injection, var_file_resolution
 from tfdo._internal.run.discovery import (
@@ -518,6 +519,61 @@ def _log_run_dir_output(result: RunDirResult, command: str) -> None:
     logger.info(f"--- {status} ---")
 
 
+def _create_orchestration_display(inp: RunOrchestrationInput, plan: ExecutionPlan) -> OrchestrationDisplay | None:
+    if plan.total_run_dirs < 2:
+        return None
+    return OrchestrationDisplay(
+        command=inp.command,
+        total_dirs=plan.total_run_dirs,
+        total_waves=len(plan.waves),
+        interactive=inp.settings.is_interactive,
+        started_at=time.monotonic(),
+    )
+
+
+def _dir_summary_from_result(result: RunDirResult, command: LifecycleCommand) -> RunDirSummary | None:
+    if result.summary is not None:
+        return result.summary
+    if command not in _SUMMARY_COMMANDS:
+        return None
+    return build_run_dir_summary(
+        run_dir=result.run_dir,
+        command=command,
+        exit_code=result.exit_code,
+        skipped=result.skipped,
+        duration_s=0.0,
+    )
+
+
+def _notify_dir_result(
+    display: OrchestrationDisplay | None,
+    result: RunDirResult,
+    command: LifecycleCommand,
+) -> None:
+    if display is None:
+        _log_run_dir_output(result, command)
+        return
+    if summary := _dir_summary_from_result(result, command):
+        display.on_dir_complete(summary)
+
+
+def _wave_ok_fail_counts(results: list[RunDirResult]) -> tuple[int, int]:
+    ok = sum(1 for r in results if not r.skipped and r.exit_code == 0)
+    fail = sum(1 for r in results if not r.skipped and r.exit_code != 0)
+    return ok, fail
+
+
+def _parallel_dir_done_callback(
+    future: Future[RunDirResult], display: OrchestrationDisplay, command: LifecycleCommand
+) -> None:
+    try:
+        result = future.result()
+    except Exception:
+        return
+    if summary := _dir_summary_from_result(result, command):
+        display.on_dir_complete(summary)
+
+
 def _discover_run_dirs(repo_root: Path) -> list[DiscoveredRunDir]:
     root_layers = load_config_layers(repo_root)
     if not root_layers:
@@ -589,6 +645,7 @@ def _execute_wave_sequential(
     contexts: dict[str, RunDirContext],
     configs: dict[str, ResolvedConfig],
     collected_outputs: dict[str, dict[str, object] | None] | None = None,
+    display: OrchestrationDisplay | None = None,
 ) -> tuple[list[RunDirResult], bool]:
     results: list[RunDirResult] = []
     has_failure = False
@@ -596,13 +653,15 @@ def _execute_wave_sequential(
         if collected_outputs is not None and inp.command in _OUTPUT_INJECT_COMMANDS:
             dep_flags = _inject_dep_outputs(rel_path, inp, repo_root, configs, collected_outputs)
             if dep_flags is None:
-                results.append(_skipped_run_dir_result(rel_path, inp.command, 0))
+                skipped = _skipped_run_dir_result(rel_path, inp.command, 0)
+                results.append(skipped)
+                _notify_dir_result(display, skipped, inp.command)
                 continue
             if dep_flags:
                 inp = inp.model_copy(update={"extra_flags": [*inp.extra_flags, *dep_flags]})
         result = _execute_run_dir(inp, repo_root / rel_path, contexts[rel_path], configs[rel_path])
         results.append(result)
-        _log_run_dir_output(result, inp.command)
+        _notify_dir_result(display, result, inp.command)
         if result.exit_code == 0 and collected_outputs is not None and inp.command != LifecycleCommand.DESTROY:
             collected_outputs[rel_path] = _collect_dependency_outputs(
                 inp.settings,
@@ -625,6 +684,7 @@ def _execute_wave_parallel(
     configs: dict[str, ResolvedConfig],
     effective_parallel: int,
     collected_outputs: dict[str, dict[str, object] | None] | None = None,
+    display: OrchestrationDisplay | None = None,
 ) -> tuple[list[RunDirResult], bool]:
     max_submits = min(max(effective_parallel, MIN_CONCURRENT_SUBMITS), len(wave.run_dirs))
     futures: list[tuple[str, Future[RunDirResult]]] = []
@@ -637,6 +697,8 @@ def _execute_wave_parallel(
     ) as pool:
         for rel_path in wave.run_dirs:
             fut = pool.submit(_execute_run_dir, inp, repo_root / rel_path, contexts[rel_path], configs[rel_path])
+            if display is not None:
+                fut.add_done_callback(lambda f, d=display, cmd=inp.command: _parallel_dir_done_callback(f, d, cmd))
             futures.append((rel_path, fut))
 
     results: list[RunDirResult] = []
@@ -644,7 +706,8 @@ def _execute_wave_parallel(
     for rel_path, fut in futures:
         result = fut.result()
         results.append(result)
-        _log_run_dir_output(result, inp.command)
+        if display is None:
+            _log_run_dir_output(result, inp.command)
         if result.exit_code == 0 and collected_outputs is not None and inp.command != LifecycleCommand.DESTROY:
             collected_outputs[rel_path] = _collect_dependency_outputs(
                 inp.settings,
@@ -659,12 +722,59 @@ def _execute_wave_parallel(
     return results, has_failure
 
 
+def _append_stop_skipped_dirs(
+    plan: ExecutionPlan,
+    wave: ExecutionWave,
+    inp: RunOrchestrationInput,
+    all_results: list[RunDirResult],
+    display: OrchestrationDisplay | None,
+) -> None:
+    for remaining_wave in plan.waves[wave.wave_index + 1 :]:
+        for rd in remaining_wave.run_dirs:
+            skipped = _skipped_run_dir_result(rd, inp.command, 1)
+            all_results.append(skipped)
+            _notify_dir_result(display, skipped, inp.command)
+
+
+def _execute_plan_waves(
+    plan: ExecutionPlan,
+    inp: RunOrchestrationInput,
+    repo_root: Path,
+    contexts: dict[str, RunDirContext],
+    configs: dict[str, ResolvedConfig],
+    collected_outputs: dict[str, dict[str, object] | None] | None,
+    sequential: bool,
+    display: OrchestrationDisplay | None,
+) -> list[RunDirResult]:
+    all_results: list[RunDirResult] = []
+    for wave in plan.waves:
+        if display is not None:
+            display.on_wave_start(wave.wave_index + 1, len(wave.run_dirs))
+        use_sequential = sequential or len(wave.run_dirs) <= 1
+        wave_results, has_failure = (
+            _execute_wave_sequential(wave, inp, repo_root, contexts, configs, collected_outputs, display)
+            if use_sequential
+            else _execute_wave_parallel(
+                wave, inp, repo_root, contexts, configs, inp.parallel, collected_outputs, display
+            )
+        )
+        if display is not None:
+            ok, fail = _wave_ok_fail_counts(wave_results)
+            display.on_wave_complete(ok=ok, fail=fail)
+        all_results.extend(wave_results)
+        if has_failure and inp.on_failure == FailureMode.STOP:
+            _append_stop_skipped_dirs(plan, wave, inp, all_results, display)
+            break
+    return all_results
+
+
 def _execute_plan(
     plan: ExecutionPlan,
     inp: RunOrchestrationInput,
     repo_root: Path,
     contexts: dict[str, RunDirContext],
     configs: dict[str, ResolvedConfig],
+    display: OrchestrationDisplay | None = None,
 ) -> list[RunDirResult]:
     needs_approval = not inp.auto_approve and inp.command in (LifecycleCommand.APPLY, LifecycleCommand.DESTROY)
     sequential = inp.parallel == 1 or needs_approval
@@ -685,21 +795,7 @@ def _execute_plan(
                     inp.init_mode,
                     inp.var_file,
                 )
-    all_results: list[RunDirResult] = []
-    for wave in plan.waves:
-        use_sequential = sequential or len(wave.run_dirs) <= 1
-        wave_results, has_failure = (
-            _execute_wave_sequential(wave, inp, repo_root, contexts, configs, collected_outputs)
-            if use_sequential
-            else _execute_wave_parallel(wave, inp, repo_root, contexts, configs, inp.parallel, collected_outputs)
-        )
-        all_results.extend(wave_results)
-        if has_failure and inp.on_failure == FailureMode.STOP:
-            for remaining_wave in plan.waves[wave.wave_index + 1 :]:
-                for rd in remaining_wave.run_dirs:
-                    all_results.append(_skipped_run_dir_result(rd, inp.command, 1))
-            break
-    return all_results
+    return _execute_plan_waves(plan, inp, repo_root, contexts, configs, collected_outputs, sequential, display)
 
 
 def _resolve_ref_path(ref: str, run_dir_path: str) -> str:
@@ -799,13 +895,20 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
         plan = plan.reversed()
 
     if inp.dry_run:
+        multi_dir = plan.total_run_dirs >= 2
         for wave in plan.waves:
             for rd in wave.run_dirs:
-                logger.info(f"[dry-run] wave {wave.wave_index}: {rd} -> {inp.command}")
+                if multi_dir:
+                    OrchestrationDisplay.log_dry_run_line(wave.wave_index, rd, inp.command)
+                else:
+                    logger.info(f"[dry-run] wave {wave.wave_index}: {rd} -> {inp.command}")
         return OrchestrationResult(
             results=[_skipped_run_dir_result(rd, inp.command, 0) for w in plan.waves for rd in w.run_dirs],
         )
 
-    results = _execute_plan(plan, inp, repo_root, contexts, configs)
+    display = _create_orchestration_display(inp, plan)
+    results = _execute_plan(plan, inp, repo_root, contexts, configs, display)
+    if display is not None:
+        display.on_run_complete()
     _fire_on_all_done(repo_root, inp)
     return OrchestrationResult(results=results)

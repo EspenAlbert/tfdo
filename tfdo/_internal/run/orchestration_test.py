@@ -11,8 +11,8 @@ from tfdo._internal.core import terraform_init as terraform_init_core
 from tfdo._internal.models import ApplyResult, InitInput, InitMode, InitResult, OutputInput, OutputResult, PlanResult
 from tfdo._internal.run import orchestration as orchestration_module
 from tfdo._internal.run.run_context import RunDirContext
-from tfdo._internal.run.run_dir_summary import FAILURE_LABEL, ResourceActionCounts
-from tfdo._internal.settings import CheckConfig, TfDoSettings
+from tfdo._internal.run.run_dir_summary import FAILURE_LABEL, ResourceActionCounts, build_run_dir_summary
+from tfdo._internal.settings import CheckConfig, InteractiveMode, TfDoSettings
 
 
 def test_collect_dependency_outputs_applies_resolved_config_binary_and_tf_version(tmp_path: Path) -> None:
@@ -259,3 +259,47 @@ def test_execute_run_dir_prep_failure_sets_fail_label(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert result.summary is not None
     assert result.summary.failure_label == FAILURE_LABEL
+
+
+def test_execute_plan_skips_log_output_when_display_active(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    settings = TfDoSettings.for_testing(tmp_path, interactive=InteractiveMode.NEVER)
+    dirs = ["envs/a", "envs/b"]
+    plan = orchestration_module.ExecutionPlan(
+        waves=[orchestration_module.ExecutionWave(wave_index=0, run_dirs=dirs)],
+    )
+    inp = orchestration_module.RunOrchestrationInput(settings=settings, command=LifecycleCommand.PLAN, parallel=1)
+    contexts = {p: RunDirContext(name=p, path=p, repo_owner="o", repo_name="r") for p in dirs}
+    configs = {p: _minimal_resolved_config() for p in dirs}
+    display = orchestration_module._create_orchestration_display(inp, plan)
+    assert display is not None
+
+    def fake_execute(
+        _inp: object, run_dir: Path, *_args: object, **_kwargs: object
+    ) -> orchestration_module.RunDirResult:
+        rel = str(run_dir.relative_to(tmp_path))
+        return orchestration_module.RunDirResult(
+            run_dir=rel,
+            exit_code=0,
+            summary=build_run_dir_summary(
+                run_dir=rel,
+                command=LifecycleCommand.PLAN,
+                exit_code=0,
+                skipped=False,
+                duration_s=1.0,
+                resource_counts=ResourceActionCounts(add=1),
+            ),
+        )
+
+    module_name = orchestration_module.__name__
+    with (
+        patch(f"{module_name}.{orchestration_module._execute_run_dir.__name__}", side_effect=fake_execute),
+        patch(f"{module_name}.{orchestration_module._collect_dependency_outputs.__name__}", return_value=None),
+        patch(f"{module_name}.{orchestration_module._log_run_dir_output.__name__}") as log_mock,
+        patch("time.monotonic", return_value=1.0),
+    ):
+        orchestration_module._execute_plan(plan, inp, tmp_path, contexts, configs, display)
+        display.on_run_complete()
+
+    log_mock.assert_not_called()
+    assert any(r.message.startswith("plan: ✅") for r in caplog.records)
+    assert any(r.message.startswith("orchestration: complete") for r in caplog.records)
