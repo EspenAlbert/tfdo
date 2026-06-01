@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import nullcontext
 from typing import NamedTuple, cast
 
 from ask_shell import console as ask_console
@@ -18,6 +19,7 @@ from tfdo._internal.output.complex_render import (
 )
 from tfdo._internal.output.count_phrases import format_plan_aggregate_phrases
 from tfdo._internal.output.models import Change, OutputChange, ResourceAction
+from tfdo._internal.output.orchestration_print import orchestration_print_lock
 from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.plan_filters import (
     KNOWN_AFTER_APPLY,
@@ -115,6 +117,42 @@ def render_plan(
     header_only: bool = False,
     run_dir_key: str = "",
 ) -> None:
+    lock = orchestration_print_lock()
+    print_ctx = lock if lock is not None else nullcontext()
+    with print_ctx:
+        _render_plan_body(
+            tree,
+            attr_lines,
+            terminal_width=terminal_width,
+            provider_by_addr=provider_by_addr,
+            collection_kind=collection_kind,
+            computed_at_path=computed_at_path,
+            resource_schema=resource_schema,
+            complex_config=complex_config,
+            show_unknown_outputs=show_unknown_outputs,
+            plan_display=plan_display,
+            has_applyable_changes=has_applyable_changes,
+            header_only=header_only,
+            run_dir_key=run_dir_key,
+        )
+
+
+def _render_plan_body(
+    tree: PlanTree,
+    attr_lines: ResourceAttrLines,
+    *,
+    terminal_width: int,
+    provider_by_addr: dict[str, str] | None = None,
+    collection_kind: CollectionKindLookup | None = None,
+    computed_at_path: ComputedOnlyLookup | None = None,
+    resource_schema: ResourceSchemaLookup | None = None,
+    complex_config: ComplexRenderConfig | None = None,
+    show_unknown_outputs: bool = True,
+    plan_display: PlanDisplayOptions | None = None,
+    has_applyable_changes: bool | None = None,
+    header_only: bool = False,
+    run_dir_key: str = "",
+) -> None:
     if header_only:
         state = _PrintState()
         header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=has_applyable_changes)
@@ -154,7 +192,7 @@ def render_plan(
         _print_detail_blocks(state, _collect_detail_blocks(complex_results))
 
     header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=has_applyable_changes)
-    state.emit(header.line)
+    state.emit(_prefix_orchestration_header(header.line, run_dir_key))
     if header.subtitle:
         state.emit(header.subtitle, style="dim")
     if not header.render_body:

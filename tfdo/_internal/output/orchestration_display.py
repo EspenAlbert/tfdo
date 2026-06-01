@@ -29,6 +29,7 @@ class OrchestrationDisplay:
         self._interactive = interactive
         self._started_at = started
         self._lock = Lock()
+        self._print_lock = Lock()
         self.state = OrchestrationProgressState(
             command=command,
             total_dirs=total_dirs,
@@ -38,6 +39,10 @@ class OrchestrationDisplay:
         self._remove_live: RemoveLivePart | None = None
         if interactive:
             self._remove_live = register_orchestration_live(self)
+
+    @property
+    def print_lock(self) -> Lock:
+        return self._print_lock
 
     @staticmethod
     def log_dry_run_line(wave_index: int, run_dir: str, command: str) -> None:
@@ -56,7 +61,8 @@ class OrchestrationDisplay:
             tty_line = renderer.render_completed_dir_tty(summary) if self._interactive else None
             ci_line = None if self._interactive else renderer.render_dir_completion_ci(summary)
         if tty_line is not None:
-            ask_console.print_to_live(tty_line)
+            with self._print_lock:
+                ask_console.print_to_live(tty_line)
         elif ci_line is not None:
             logger.info(ci_line)
 
@@ -76,8 +82,9 @@ class OrchestrationDisplay:
             else:
                 final_lines = list(renderer.render_non_tty_footer(self.state, total_elapsed_s=elapsed))
         if self._interactive:
-            for line in final_lines:
-                ask_console.print_to_live(line)
+            with self._print_lock:
+                for line in final_lines:
+                    ask_console.print_to_live(line)
         else:
             for line in final_lines:
                 logger.info(line)

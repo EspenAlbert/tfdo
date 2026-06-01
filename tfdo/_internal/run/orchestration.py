@@ -38,6 +38,7 @@ from tfdo._internal.models import (
 )
 from tfdo._internal.output.apply_live_mode import ApplyLiveMode, resolve_apply_live_mode
 from tfdo._internal.output.orchestration_display import OrchestrationDisplay
+from tfdo._internal.output.orchestration_print import orchestration_print_scope
 from tfdo._internal.output.plan_display import DetailLevel, PlanDisplayCliOverrides
 from tfdo._internal.run import filtering, tags_injection, var_file_resolution
 from tfdo._internal.run.discovery import (
@@ -944,8 +945,11 @@ def run_orchestration(inp: RunOrchestrationInput) -> OrchestrationResult:
             "apply_live_mode": apply_live_mode,
         }
     )
-    results = _execute_plan(plan, exec_inp, repo_root, contexts, configs, display)
     if display is not None:
+        with orchestration_print_scope(display.print_lock):
+            results = _execute_plan(plan, exec_inp, repo_root, contexts, configs, display)
         display.on_run_complete()
+    else:
+        results = _execute_plan(plan, exec_inp, repo_root, contexts, configs, display)
     _fire_on_all_done(repo_root, inp)
     return OrchestrationResult(results=results)

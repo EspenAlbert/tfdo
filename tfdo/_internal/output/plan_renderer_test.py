@@ -368,3 +368,21 @@ def test_header_only_prefixes_run_dir(create_flat_plan: Path) -> None:
         )
 
     assert any(str(line).startswith("envs/staging/compute: 📋 Plan:") for line in printed)
+
+
+def test_compact_render_prefixes_run_dir_header(create_flat_plan: Path) -> None:
+    plan = parse_plan_file(create_flat_plan)
+    tree = build_plan_tree(plan)
+    printed: list[object] = []
+
+    with patch.object(ask_console, "print_to_live", side_effect=lambda *args, **_kw: printed.extend(args)):
+        render_plan(
+            tree,
+            build_attr_lines_by_addr(tree, plan=plan),
+            terminal_width=120,
+            run_dir_key="envs/staging/compute",
+        )
+
+    prefixed = [line for line in printed if str(line).startswith("envs/staging/compute: 📋 Plan:")]
+    assert len(prefixed) == 1
+    assert any("random_pet" in str(line) for line in printed)

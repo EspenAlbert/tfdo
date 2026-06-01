@@ -97,11 +97,8 @@ def test_run_plan_exports_user_out(tmp_path: Path) -> None:
     assert user_out.read_bytes() == b"tfplan-bytes"
 
 
-@pytest.mark.parametrize(
-    ("detail", "header_only"),
-    [(DetailLevel.COMPACT, True), (DetailLevel.FULL, False)],
-)
-def test_run_plan_orchestration_header_only(tmp_path: Path, detail: DetailLevel, header_only: bool) -> None:
+@pytest.mark.parametrize("detail", [DetailLevel.COMPACT, DetailLevel.FULL])
+def test_run_plan_orchestration_renders_compact_tree(tmp_path: Path, detail: DetailLevel) -> None:
     settings = _settings(tmp_path)
     plan_output, raw_plan_json = _plan_success_mocks(tmp_path)
 
@@ -124,7 +121,7 @@ def test_run_plan_orchestration_header_only(tmp_path: Path, detail: DetailLevel,
             ),
         )
 
-    assert render_mock.call_args.kwargs["header_only"] is header_only
+    assert render_mock.call_args.kwargs["header_only"] is False
     assert render_mock.call_args.kwargs["run_dir_key"] == "envs/staging/compute"
     footer_mock.assert_not_called()
 

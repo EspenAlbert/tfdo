@@ -22,7 +22,7 @@ from tfdo._internal.output.plan_artifacts import (
     resolve_plan_out,
     tfdo_dir,
 )
-from tfdo._internal.output.plan_display import DetailLevel, detail_preset, merge_plan_display
+from tfdo._internal.output.plan_display import detail_preset, merge_plan_display
 from tfdo._internal.output.plan_render_input import build_attr_lines_by_addr
 from tfdo._internal.output.plan_renderer import render_plan
 from tfdo._internal.output.schema_lookup import build_schema_lookups
@@ -125,7 +125,7 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
     )
     console = ask_console.get_live_console()
     terminal_width = console.size.width or 120
-    header_only = input_model.orchestration_active and input_model.detail != DetailLevel.FULL
+    header_only = False
     render_plan(
         tree,
         attr_lines,
