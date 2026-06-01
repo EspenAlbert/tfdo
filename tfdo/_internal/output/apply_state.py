@@ -11,9 +11,11 @@ from tfdo._internal.output.diagnostic_link import resolve_resource_addr
 from tfdo._internal.output.models import Change, PlanOutput, ResourceAction, ResourceChange
 from tfdo._internal.output.stream_models import (
     ApplyHookEvent,
+    ApplyOutputValue,
     ChangeSummaryEvent,
     DiagnosticBody,
     DiagnosticEvent,
+    OutputsEvent,
     PlannedChangeEvent,
     RefreshEvent,
     parse_stream_line,
@@ -87,6 +89,8 @@ class ApplyProgressState:
         self.phase = ApplyPhase.PRE_APPLY
         self.hide_provision_output = hide_provision_output
         self.terminal_summary: ChangeSummaryEvent | None = None
+        self.post_apply_outputs: dict[str, ApplyOutputValue] | None = None
+        self._post_apply_outputs_received = False
         self.orphan_diagnostic: DiagnosticBody | None = None
         self._provision_logs: list[tuple[str, str]] = []
         self.pre_apply_logs: list[str] = []
@@ -134,6 +138,16 @@ class ApplyProgressState:
         logs = self._provision_logs
         self._provision_logs = []
         return logs
+
+    def resolved_output_values(self) -> dict[str, object] | None:
+        if not self.post_apply_outputs:
+            return None
+        values = {name: entry.value for name, entry in self.post_apply_outputs.items() if entry.value is not None}
+        return values or None
+
+    @property
+    def post_apply_outputs_received(self) -> bool:
+        return self._post_apply_outputs_received
 
     def drain_diagnostic_emissions(self) -> list[DiagnosticEmission]:
         emissions = self._diagnostic_emissions
@@ -195,6 +209,9 @@ class ApplyProgressState:
         if not isinstance(msg_type, str):
             return
         if self.phase == ApplyPhase.PRE_APPLY and self._handle_pre_apply(msg_type, data):
+            return
+        if msg_type == "outputs":
+            self._on_outputs(OutputsEvent.model_validate(data))
             return
         if self.phase == ApplyPhase.DONE:
             return
@@ -418,6 +435,12 @@ class ApplyProgressState:
             return
         self.terminal_summary = event
         self.phase = ApplyPhase.DONE
+
+    def _on_outputs(self, event: OutputsEvent) -> None:
+        if self.terminal_summary is None:
+            return
+        self.post_apply_outputs = event.outputs
+        self._post_apply_outputs_received = True
 
 
 def seed_apply_addrs(plan: PlanOutput) -> dict[str, ResourceAction]:

@@ -13,7 +13,7 @@ from tfdo._internal.core import (
 )
 from tfdo._internal.core.lifecycle_footer import print_lifecycle_footer
 from tfdo._internal.models import ApplyInput, ApplyResult, PlanInput
-from tfdo._internal.output import plan_artifacts
+from tfdo._internal.output import apply_outputs_renderer, plan_artifacts
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,11 @@ def run_apply(input_model: ApplyInput) -> ApplyResult:
 
     if plan_result.has_applyable_changes is False:
         logger.info("plan has no applyable changes; skipping apply")
+        apply_outputs_renderer.emit_apply_outputs(
+            input_model.settings,
+            interactive=input_model.settings.is_interactive,
+            exit_code=0,
+        )
         return ApplyResult(exit_code=0)
 
     bin_path = plan_artifacts.plan_bin_path(input_model.settings.work_dir)

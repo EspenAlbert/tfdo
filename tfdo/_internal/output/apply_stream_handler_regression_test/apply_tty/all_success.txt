@@ -3,3 +3,7 @@
 ✅ local_file.config     created  0s
 Apply complete: 3 ✅  total 0s
   🟢 3 added
+
+📤 Outputs
+  config_path = "./output/app.conf"
+  server_name = "web-pure-elk"

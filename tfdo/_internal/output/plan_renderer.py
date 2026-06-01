@@ -8,7 +8,7 @@ from rich.console import RenderableType
 from rich.text import Text
 from rich.tree import Tree
 
-from tfdo._internal.output import display_path
+from tfdo._internal.output import display_path, output_value_format
 from tfdo._internal.output.attr_diff import AttrLine, AttrPrefix, ValueKind
 from tfdo._internal.output.complex_render import (
     ComplexRenderConfig,
@@ -50,7 +50,7 @@ _MODULE_TREE_LABEL_STYLE = "bold"
 _MODULE_TREE_GUIDE_STYLE = "dim"
 
 _REPLACE_ACTIONS = frozenset({ResourceAction.REPLACE_DESTROY_FIRST, ResourceAction.REPLACE_CREATE_FIRST})
-_SENSITIVE = "(sensitive)"
+_SENSITIVE = output_value_format.SENSITIVE
 
 
 class PlanActionCounts(NamedTuple):
@@ -593,9 +593,7 @@ def _format_drift_resource_header(node: ResourceNode) -> Text:
 
 
 def _format_scalar(value: object) -> str:
-    if value == KNOWN_AFTER_APPLY:
-        return KNOWN_AFTER_APPLY
-    return display_path.inline_json(value)
+    return output_value_format.format_scalar(value)
 
 
 def _format_attr_value(line: AttrLine, value: object) -> str:

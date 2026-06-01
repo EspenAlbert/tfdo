@@ -8,6 +8,7 @@ from ask_shell.console import RemoveLivePart
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.text import Text
 
+from tfdo._internal.output import apply_outputs_renderer
 from tfdo._internal.output.apply_display import ResolvedApplyDisplay
 from tfdo._internal.output.apply_renderer import (
     max_addr_width,
@@ -26,6 +27,7 @@ from tfdo._internal.output.apply_state import (
 )
 from tfdo._internal.output.diagnostic_emitter import DiagnosticEmitter
 from tfdo._internal.output.stream_models import DiagnosticBody
+from tfdo._internal.settings import TfDoSettings
 
 
 class _ApplyStatusRenderable:
@@ -45,11 +47,15 @@ class ApplyStreamHandler:
         display: ResolvedApplyDisplay,
         *,
         interactive: bool,
+        settings: TfDoSettings,
         run_started: float | None = None,
+        exit_code: int | None = None,
     ) -> None:
         self._state = state
         self._display = display
         self._interactive = interactive
+        self._settings = settings
+        self._exit_code = exit_code
         self._started = run_started if run_started is not None else time.monotonic()
         self._emitter = DiagnosticEmitter()
         self._carry = ""
@@ -91,6 +97,10 @@ class ApplyStreamHandler:
         self._flush_pending_ci_error_completions()
         self._remove_live_panel()
         self._emit_final_summary()
+        self._emit_apply_outputs()
+
+    def set_exit_code(self, exit_code: int) -> None:
+        self._exit_code = exit_code
 
     def _live_status(self) -> Text | None:
         addr_width = max_addr_width(self._state)
@@ -190,6 +200,16 @@ class ApplyStreamHandler:
         if not self._state.resources:
             return False
         return all(self._state.counts_toward_completed(addr) for addr in self._state.resources)
+
+    def _emit_apply_outputs(self) -> None:
+        if self._exit_code is None:
+            return
+        apply_outputs_renderer.emit_apply_outputs(
+            self._settings,
+            interactive=self._interactive,
+            exit_code=self._exit_code,
+            state=self._state,
+        )
 
 
 def apply_stream_callback(handler: ApplyStreamHandler):

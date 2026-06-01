@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 from pytest_regressions.file_regression import FileRegressionFixture
 
+from tfdo._internal.core import executor
+from tfdo._internal.models import OutputResult
 from tfdo._internal.output import apply_state
 from tfdo._internal.output.apply_display import ApplyDisplayCliOverrides, ApplyDisplayOptions, resolve_apply_display
 from tfdo._internal.output.apply_state import ApplyProgressState, plan_from_planned_changes
@@ -12,6 +14,7 @@ from tfdo._internal.output.apply_stream_handler import ApplyStreamHandler
 from tfdo._internal.output.conftest import create_capture_console
 from tfdo._internal.output.models import PlanOutput
 from tfdo._internal.output.parser import parse_plan_file
+from tfdo._internal.settings import TfDoSettings
 
 _REGRESSION_DIR = Path(__file__).parent / "apply_stream_handler_regression_test"
 
@@ -26,14 +29,17 @@ def _capture_handler_replay(
     *,
     interactive: bool,
     monotonic_values: list[float] | None = None,
+    work_dir: Path | None = None,
 ) -> str:
     console = create_capture_console()
     console.begin_capture()
     display = resolve_apply_display(ApplyDisplayOptions(), None, ApplyDisplayCliOverrides())
+    settings = TfDoSettings(work_dir=work_dir or Path("/tmp/tfdo-apply-test"))
     handler = ApplyStreamHandler(
-        ApplyProgressState(plan),
+        ApplyProgressState(plan, settings=settings),
         display,
         interactive=interactive,
+        settings=settings,
         run_started=1000.0,
     )
 
@@ -57,9 +63,11 @@ def _capture_handler_replay(
         patch("tfdo._internal.output.diagnostic_emitter.ask_console.print_to_live", side_effect=_print),
         patch(f"{handler_module}.time.monotonic", side_effect=_monotonic),
         patch(f"{state_module}.time.monotonic", side_effect=_monotonic),
+        patch.object(executor, "output_json", return_value=OutputResult(exit_code=0)),
     ):
         for line in lines:
             handler.feed_line(line + "\n")
+        handler.set_exit_code(0)
         handler.flush()
     return console.end_capture()
 

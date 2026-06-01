@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 from tfdo._internal.core import apply_logic, lifecycle_shell, plan_logic
 from tfdo._internal.models import ApplyInput, ApplyResult, PlanResult
-from tfdo._internal.output import plan_artifacts
+from tfdo._internal.output import apply_outputs_renderer, plan_artifacts
 from tfdo._internal.settings import InteractiveMode, TfDoSettings
 
 
@@ -60,11 +60,16 @@ def test_declined_apply_exits_zero_without_apply(
     assert result.exit_code == 0
 
 
+@patch(f"{apply_outputs_renderer.__name__}.{apply_outputs_renderer.emit_apply_outputs.__name__}")
 @patch(f"{apply_logic.__name__}.{apply_logic._apply_saved_plan.__name__}")
 @patch(f"{apply_logic.__name__}.{apply_logic._confirm_apply.__name__}")
 @patch(f"{plan_logic.__name__}.{plan_logic.plan_and_render.__name__}")
 def test_no_applyable_changes_skips_confirm_and_apply(
-    plan_mock: MagicMock, confirm_mock: MagicMock, apply_mock: MagicMock, tmp_path: Path
+    plan_mock: MagicMock,
+    confirm_mock: MagicMock,
+    apply_mock: MagicMock,
+    emit_outputs_mock: MagicMock,
+    tmp_path: Path,
 ) -> None:
     plan_mock.return_value = PlanResult(exit_code=0, has_applyable_changes=False)
 
@@ -72,6 +77,7 @@ def test_no_applyable_changes_skips_confirm_and_apply(
 
     confirm_mock.assert_not_called()
     apply_mock.assert_not_called()
+    emit_outputs_mock.assert_called_once()
     assert result.exit_code == 0
 
 

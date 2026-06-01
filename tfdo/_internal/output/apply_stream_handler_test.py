@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import patch
 
 from pytest_regressions.file_regression import FileRegressionFixture
 
+from tfdo._internal.core import executor
+from tfdo._internal.models import OutputResult
 from tfdo._internal.output.apply_display import ApplyDisplayCliOverrides, ApplyDisplayOptions, resolve_apply_display
 from tfdo._internal.output.apply_state import ApplyProgressState, plan_from_planned_changes
 from tfdo._internal.output.apply_stream_handler import ApplyStreamHandler
 from tfdo._internal.output.conftest import create_capture_console
 from tfdo._internal.output.models import Change, PlanOutput, ResourceChange
 from tfdo._internal.output.testdata_paths import load_apply_progress_lines
+from tfdo._internal.settings import TfDoSettings
 
 
 def _inline_plan(addrs: list[tuple[str, list[str]]]) -> PlanOutput:
@@ -39,19 +43,23 @@ def _capture_replay(plan: PlanOutput, lines: list[str]) -> str:
             console.print(obj)
 
     module = ApplyStreamHandler.__module__
+    settings = TfDoSettings(work_dir=Path("/tmp/tfdo-apply-test"))
     handler = ApplyStreamHandler(
-        ApplyProgressState(plan),
+        ApplyProgressState(plan, settings=settings),
         display,
         interactive=True,
+        settings=settings,
         run_started=1000.0,
     )
     with (
         patch(f"{module}.ask_console.print_to_live", side_effect=_print),
         patch("tfdo._internal.output.diagnostic_emitter.ask_console.print_to_live", side_effect=_print),
         patch(f"{module}.time.monotonic", return_value=1000.0),
+        patch.object(executor, "output_json", return_value=OutputResult(exit_code=0)),
     ):
         for line in lines:
             handler.feed_line(line + "\n")
+        handler.set_exit_code(0)
         handler.flush()
     return console.end_capture()
 

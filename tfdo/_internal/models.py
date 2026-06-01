@@ -120,6 +120,7 @@ class OutputInput(TfDoBaseInput):
 class OutputResult(BaseModel):
     exit_code: int
     outputs: dict[str, object] = Field(default_factory=dict)
+    raw_outputs: dict[str, object] = Field(default_factory=dict)
     stderr: str | None = None
 
 

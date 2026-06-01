@@ -96,6 +96,10 @@ def test_apply_all_success(create_flat_plan: Path) -> None:
     assert state.completed_count == state.total_count == 3
     assert state.terminal_summary and state.terminal_summary.changes
     assert state.terminal_summary.changes.operation == "apply"
+    assert state.resolved_output_values() == {
+        "config_path": "./output/app.conf",
+        "server_name": "web-pure-elk",
+    }
 
 
 def test_apply_validation_failed() -> None:
@@ -143,12 +147,30 @@ def test_plan_from_planned_changes() -> None:
     assert all(rc.change.action() != ResourceAction.READ for rc in plan.resource_changes)
 
 
+def test_plan_phase_outputs_ignored() -> None:
+    lines = [
+        '{"type":"change_summary","changes":{"operation":"plan","add":1,"change":0,"remove":0}}',
+        '{"type":"outputs","outputs":{"example":{"sensitive":false,"action":"create"}}}',
+    ]
+    state = ApplyProgressState(_inline_plan([("null_resource.one", ["create"])]))
+    _replay(state, lines)
+    assert state.post_apply_outputs is None
+    assert not state.post_apply_outputs_received
+
+
 def test_destroy_saved_plan(destroy_plan: Path) -> None:
     state = ApplyProgressState(parse_plan_file(destroy_plan))
     _replay(state, load_apply_progress_lines("apply_destroy_saved_plan.ndjson"))
     assert all(r.plan_action == ResourceAction.DELETE for r in state.resources.values())
     assert state.terminal_summary and state.terminal_summary.changes
     assert state.terminal_summary.changes.remove >= 1
+
+
+def test_destroy_empty_outputs_skips_values(destroy_plan: Path) -> None:
+    state = ApplyProgressState(parse_plan_file(destroy_plan))
+    _replay(state, load_apply_progress_lines("apply_destroy_saved_plan.ndjson"))
+    assert state.post_apply_outputs_received
+    assert state.resolved_output_values() is None
 
 
 def test_parallel_apply_errors_partial() -> None:

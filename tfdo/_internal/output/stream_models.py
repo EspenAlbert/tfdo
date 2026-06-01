@@ -117,6 +117,19 @@ class ChangeSummaryEvent(StreamEnvelope):
     changes: ChangeCounts | None = None
 
 
+class ApplyOutputValue(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    sensitive: bool = False
+    type: str | None = None
+    value: object | None = None
+    action: str | None = None
+
+
+class OutputsEvent(StreamEnvelope):
+    outputs: dict[str, ApplyOutputValue] = Field(default_factory=dict)
+
+
 class StreamParseFailureRecord(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
