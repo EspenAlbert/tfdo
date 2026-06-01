@@ -61,3 +61,8 @@ full_path: _internal.output.stream_models.OutputsEvent
 ts: 2026-06-01 12:08:42.520019+00:00
 type: chore
 description: support apply outputs
+---
+name: 0.9.1
+ts: 2026-06-01 12:16:47.112223+00:00
+type: release
+old_version: 0.9.0

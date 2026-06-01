@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1 2026-06-01T12-16Z
+
+### Other Changes
+- Chore: support apply outputs
+
+
 ## 0.9.0 2026-05-29T10-53Z
 
 ### __Root__
