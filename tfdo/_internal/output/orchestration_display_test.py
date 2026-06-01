@@ -89,3 +89,50 @@ def test_create_display_requires_two_dirs() -> None:
     )
     assert orchestration_module._create_orchestration_display(inp, one) is None
     assert orchestration_module._create_orchestration_display(inp, two) is not None
+
+
+def test_parallel_dir_complete_does_not_deadlock_on_live_refresh() -> None:
+    """Regression: on_dir_complete must not hold display._lock while printing to live console."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    from ask_shell._internal import rich_live
+
+    from tfdo._internal.output.orchestration_live import OrchestrationStatusRenderable
+
+    display_module = OrchestrationDisplay.__module__
+    summaries = [
+        _plan_summary("envs/staging/networking"),
+        _plan_summary("envs/staging/compute"),
+    ]
+
+    with (
+        patch(f"{display_module}.register_orchestration_live") as register_mock,
+        patch.object(rich_live, rich_live.render_live.__name__) as render_live_mock,
+    ):
+        register_mock.side_effect = lambda display: rich_live.add_renderable(
+            OrchestrationStatusRenderable(display),
+            name="orchestration-status-test",
+            order=-110,
+        )
+
+        def print_and_refresh(*args: object, **kwargs: object) -> None:
+            rich_live.print_to_live(*args, **kwargs)
+            render_live_mock()
+
+        console_module = __import__("ask_shell.console", fromlist=["print_to_live"])
+        with patch.object(console_module, console_module.print_to_live.__name__, side_effect=print_and_refresh):
+            display = OrchestrationDisplay(
+                command=LifecycleCommand.PLAN,
+                total_dirs=2,
+                total_waves=1,
+                interactive=True,
+                started_at=0.0,
+            )
+            display.on_wave_start(1, 2)
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(display.on_dir_complete, s) for s in summaries]
+                for fut in as_completed(futures, timeout=5):
+                    fut.result()
+
+    rich_live.reset_live()

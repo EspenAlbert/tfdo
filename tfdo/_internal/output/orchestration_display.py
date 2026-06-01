@@ -46,33 +46,43 @@ class OrchestrationDisplay:
     def on_wave_start(self, wave_index: int, wave_dirs: int) -> None:
         with self._lock:
             begin_wave(self.state, wave_index=wave_index, wave_dirs=wave_dirs)
-            if not self._interactive:
-                logger.info(renderer.render_wave_started(self.state))
+            ci_line = None if self._interactive else renderer.render_wave_started(self.state)
+        if ci_line is not None:
+            logger.info(ci_line)
 
     def on_dir_complete(self, summary: RunDirSummary) -> None:
         with self._lock:
             record_dir_complete(self.state, summary)
-            if self._interactive:
-                ask_console.print_to_live(renderer.render_completed_dir_tty(summary))
-            else:
-                logger.info(renderer.render_dir_completion_ci(summary))
+            tty_line = renderer.render_completed_dir_tty(summary) if self._interactive else None
+            ci_line = None if self._interactive else renderer.render_dir_completion_ci(summary)
+        if tty_line is not None:
+            ask_console.print_to_live(tty_line)
+        elif ci_line is not None:
+            logger.info(ci_line)
 
     def on_wave_complete(self, *, ok: int, fail: int) -> None:
         if self._interactive:
             return
         with self._lock:
-            logger.info(renderer.render_wave_complete(self.state, ok=ok, fail=fail))
+            ci_line = renderer.render_wave_complete(self.state, ok=ok, fail=fail)
+        logger.info(ci_line)
 
     def on_run_complete(self) -> None:
         self._remove_live_panel()
         elapsed = time.monotonic() - self._started_at
         with self._lock:
             if self._interactive:
-                for line in renderer.render_final_summary(self.state, total_elapsed_s=elapsed, interactive=True):
-                    ask_console.print_to_live(line)
+                final_lines = list(
+                    renderer.render_final_summary(self.state, total_elapsed_s=elapsed, interactive=True)
+                )
             else:
-                for line in renderer.render_non_tty_footer(self.state, total_elapsed_s=elapsed):
-                    logger.info(line)
+                final_lines = list(renderer.render_non_tty_footer(self.state, total_elapsed_s=elapsed))
+        if self._interactive:
+            for line in final_lines:
+                ask_console.print_to_live(line)
+        else:
+            for line in final_lines:
+                logger.info(line)
 
     def _remove_live_panel(self) -> None:
         if self._remove_live is None:

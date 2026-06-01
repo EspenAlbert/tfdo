@@ -28,8 +28,10 @@ class OrchestrationStatusRenderable:
         with self._display._lock:
             state = self._display.state
             now = time.monotonic()
-            yield renderer.render_orchestration_live_header(state)
-            yield renderer.build_wave_progress(state, now=now)
+            header = renderer.render_orchestration_live_header(state)
+            progress = renderer.build_wave_progress(state, now=now)
+        yield header
+        yield progress
 
 
 def register_orchestration_live(display: _OrchestrationLiveHost) -> RemoveLivePart:
