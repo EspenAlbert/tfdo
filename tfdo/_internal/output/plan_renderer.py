@@ -74,6 +74,12 @@ class _ComplexKey(NamedTuple):
     attr_name: str
 
 
+def _prefix_orchestration_header(line: str, run_dir_key: str) -> str:
+    if not run_dir_key:
+        return line
+    return f"{run_dir_key}: {line}"
+
+
 class _PrintState:
     __slots__ = ("lines",)
 
@@ -107,11 +113,12 @@ def render_plan(
     plan_display: PlanDisplayOptions | None = None,
     has_applyable_changes: bool | None = None,
     header_only: bool = False,
+    run_dir_key: str = "",
 ) -> None:
     if header_only:
         state = _PrintState()
         header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=has_applyable_changes)
-        state.emit(header.line)
+        state.emit(_prefix_orchestration_header(header.line, run_dir_key))
         if header.subtitle:
             state.emit(header.subtitle, style="dim")
         return

@@ -36,18 +36,21 @@ class _PlanStatusRenderable:
 
 
 class PlanStreamHandler:
-    def __init__(self, *, run_dir_key: str = "") -> None:
+    def __init__(self, *, run_dir_key: str = "", orchestration_active: bool = False) -> None:
         self._started = time.monotonic()
         self._phase = _Phase.REFRESH
         self._in_flight: set[str] = set()
         self._done = 0
         self._planning_emitted = False
+        self._orchestration_active = orchestration_active
         self._diagnostics = DiagnosticEmitter()
         self._carry = ""
         self._status = _PlanStatusRenderable(self)
-        self._remove_panel: RemoveLivePart | None = ask_console.add_renderable(
-            self._status, order=10, name=plan_status_renderable_name(run_dir_key)
-        )
+        self._remove_panel: RemoveLivePart | None = None
+        if not orchestration_active:
+            self._remove_panel = ask_console.add_renderable(
+                self._status, order=10, name=plan_status_renderable_name(run_dir_key)
+            )
 
     def feed_line(self, chunk: str) -> None:
         self._carry += chunk
@@ -115,7 +118,7 @@ class PlanStreamHandler:
         self._emit_planning_once()
 
     def _emit_planning_once(self) -> None:
-        if self._planning_emitted:
+        if self._planning_emitted or self._orchestration_active:
             return
         self._planning_emitted = True
         ask_console.print_to_live("plan: computing changes…")

@@ -68,7 +68,10 @@ def run_streaming_plan(input_model: PlanInput) -> PlanResult:
     cmd = build_lifecycle_command(binary.resolve_binary(settings), "plan", input_model.var_file, all_flags)
 
     def run_once() -> PlanResult:
-        handler = PlanStreamHandler(run_dir_key=input_model.run_dir_key)
+        handler = PlanStreamHandler(
+            run_dir_key=input_model.run_dir_key,
+            orchestration_active=input_model.orchestration_active,
+        )
         plan_label = "destroy plan" if input_model.destroy_plan else "plan"
         print_prefix = f"{input_model.run_context_label} {plan_label}"
         return _run_streaming_command(settings, cmd, handler, print_prefix=print_prefix)

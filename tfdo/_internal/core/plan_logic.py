@@ -138,6 +138,7 @@ def plan_and_render(input_model: PlanInput) -> PlanResult:
         plan_display=plan_display,
         has_applyable_changes=applyable,
         header_only=header_only,
+        run_dir_key=input_model.run_dir_key,
     )
     return _exit_plan(
         input_model,

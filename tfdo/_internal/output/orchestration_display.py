@@ -72,9 +72,7 @@ class OrchestrationDisplay:
         elapsed = time.monotonic() - self._started_at
         with self._lock:
             if self._interactive:
-                final_lines = list(
-                    renderer.render_final_summary(self.state, total_elapsed_s=elapsed, interactive=True)
-                )
+                final_lines = list(renderer.render_final_summary(self.state, total_elapsed_s=elapsed, interactive=True))
             else:
                 final_lines = list(renderer.render_non_tty_footer(self.state, total_elapsed_s=elapsed))
         if self._interactive:

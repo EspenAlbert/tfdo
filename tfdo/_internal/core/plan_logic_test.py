@@ -116,10 +116,16 @@ def test_run_plan_orchestration_header_only(tmp_path: Path, detail: DetailLevel,
         patch.object(plan_logic, "print_lifecycle_footer") as footer_mock,
     ):
         plan_logic.run_plan(
-            PlanInput(settings=settings, orchestration_active=True, detail=detail),
+            PlanInput(
+                settings=settings,
+                orchestration_active=True,
+                detail=detail,
+                run_dir_key="envs/staging/compute",
+            ),
         )
 
     assert render_mock.call_args.kwargs["header_only"] is header_only
+    assert render_mock.call_args.kwargs["run_dir_key"] == "envs/staging/compute"
     footer_mock.assert_not_called()
 
 

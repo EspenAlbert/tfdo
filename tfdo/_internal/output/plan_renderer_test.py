@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+from ask_shell import console as ask_console
 from rich.console import Console
 from rich.segment import Segment
 
@@ -20,6 +22,7 @@ from tfdo._internal.output.plan_renderer import (
     _format_output_section,
     _module_depth_by_address,
     _plan_header_line,
+    render_plan,
 )
 from tfdo._internal.output.tree_builder import build_plan_tree
 
@@ -348,3 +351,20 @@ def test_repeated_header_for_long_plan(capture_console) -> None:
     plan = PlanOutput(format_version="1.2", errored=False, resource_changes=changes)
     rendered = render_fixture(None, capture_console, plan=plan)
     assert rendered.count("📋 Plan:") == 2
+
+
+def test_header_only_prefixes_run_dir(create_flat_plan: Path) -> None:
+    plan = parse_plan_file(create_flat_plan)
+    tree = build_plan_tree(plan)
+    printed: list[object] = []
+
+    with patch.object(ask_console, "print_to_live", side_effect=lambda *args, **_kw: printed.extend(args)):
+        render_plan(
+            tree,
+            build_attr_lines_by_addr(tree, plan=plan),
+            terminal_width=120,
+            header_only=True,
+            run_dir_key="envs/staging/compute",
+        )
+
+    assert any(str(line).startswith("envs/staging/compute: 📋 Plan:") for line in printed)
