@@ -243,3 +243,37 @@ group: ''
 ignored: true
 message: 'fix(tfdo): Fix pyright errors in orchestration print tests'
 short_sha: f3806a
+---
+name: reset_orchestration_dir_blocks
+ts: 2026-06-01 15:49:34.632764+00:00
+type: keep_private
+full_path: _internal.output.orchestration_print.reset_orchestration_dir_blocks
+---
+name: orchestration_dir_block_separator
+ts: 2026-06-01 15:49:34.632820+00:00
+type: keep_private
+full_path: _internal.output.orchestration_print.orchestration_dir_block_separator
+---
+name: render_wave_tty_header
+ts: 2026-06-01 15:49:37.259319+00:00
+type: keep_private
+full_path: _internal.output.orchestration_renderer.render_wave_tty_header
+---
+name: scrollback_run_dir_prefix
+ts: 2026-06-01 15:49:39.963335+00:00
+type: keep_private
+full_path: _internal.output.apply_renderer.scrollback_run_dir_prefix
+---
+name: resolve_orchestration_root
+ts: 2026-06-01 15:49:42.322463+00:00
+type: keep_private
+full_path: _internal.config.config_file.resolve_orchestration_root
+---
+name: schema
+ts: 2026-06-01 15:49:58.474066+00:00
+type: fix
+author: Espen Albert
+changelog_message: 'fix(schema): Makes schema cache writes safe under parallel plan'
+group: schema
+message: 'fix(schema): Makes schema cache writes safe under parallel plan'
+short_sha: 77d9fd
