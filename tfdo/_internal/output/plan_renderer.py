@@ -16,6 +16,7 @@ from tfdo._internal.output.complex_render import (
     DetailBlock,
     render_complex_value,
 )
+from tfdo._internal.output.count_phrases import format_plan_aggregate_phrases
 from tfdo._internal.output.models import Change, OutputChange, ResourceAction
 from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.plan_filters import (
@@ -38,6 +39,7 @@ from tfdo._internal.output.render_thresholds import (
 from tfdo._internal.output.schema_lookup import CollectionKindLookup, ResourceSchemaLookup
 from tfdo._internal.output.tree_builder import ModuleNode, PlanTree, ResourceNode
 from tfdo._internal.output.unknown_markers import has_unknown_values
+from tfdo._internal.run.run_dir_summary import ResourceActionCounts
 
 ATTR_CONTEXT_INDENT = 7
 ATTR_CHANGED_INDENT = 5
@@ -323,16 +325,15 @@ def _plan_header_line(
             subtitle="Infrastructure matches configuration." if not tree.drift else None,
             render_body=bool(tree.drift),
         )
-    parts: list[str] = []
-    if counts.add:
-        parts.append(f"🟢 {counts.add} to add")
-    if counts.change:
-        parts.append(f"🟡 {counts.change} to change")
-    if counts.destroy:
-        parts.append(f"🔴 {counts.destroy} to destroy")
-    if counts.replace:
-        parts.append(f"🟣 {counts.replace} to replace")
-    return _PlanHeader(line=f"📋 Plan: {', '.join(parts)}")
+    phrases = format_plan_aggregate_phrases(
+        ResourceActionCounts(
+            add=counts.add,
+            change=counts.change,
+            destroy=counts.destroy,
+            replace=counts.replace,
+        )
+    )
+    return _PlanHeader(line=f"📋 Plan: {', '.join(phrases)}")
 
 
 def _destroy_warning_line(counts: PlanActionCounts) -> str | None:

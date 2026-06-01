@@ -1,0 +1,6 @@
+orchestration: wave 1/1 started (3 dirs)
+apply: ✅ envs/staging/networking 🟢3 🟡1 11s
+apply: ❌ envs/staging/compute 🟢1 4s
+apply: ✅ envs/staging/database no changes 2s
+orchestration: complete 3 dirs, 1 waves, 5m 14s
+Apply: 🟢 4 added, 🟡 1 changed

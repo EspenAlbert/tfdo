@@ -17,6 +17,7 @@ from tfdo._internal.output.apply_state import (
     CompletionEmission,
 )
 from tfdo._internal.output.apply_verbs import display_verbs_for_hook_action
+from tfdo._internal.output.count_phrases import apply_past_phrase
 from tfdo._internal.output.models import ResourceAction
 from tfdo._internal.output.stream_models import ChangeSummaryEvent, DiagnosticBody
 
@@ -235,7 +236,7 @@ def _breakdown_from_changes(summary: ChangeSummaryEvent) -> Text | None:
     text = Text("  ")
     labels = []
     for emoji, count in parts:
-        label = _count_label(emoji, count)
+        label = apply_past_phrase(emoji, count)
         if label:
             labels.append(label)
     text.append(", ".join(labels))
@@ -249,9 +250,9 @@ def _breakdown_from_resources(state: ApplyProgressState) -> Text | None:
             continue
         _accumulate_plan_action(counts, resource.plan_action)
     parts = [
-        _count_label("🟢", counts["add"]),
-        _count_label("🟡", counts["change"]),
-        _count_label("🔴", counts["remove"]),
+        apply_past_phrase("🟢", counts["add"]),
+        apply_past_phrase("🟡", counts["change"]),
+        apply_past_phrase("🔴", counts["remove"]),
     ]
     parts = [part for part in parts if part]
     if not parts:
@@ -270,20 +271,6 @@ def _accumulate_plan_action(counts: dict[str, int], action: ResourceAction) -> N
         case ResourceAction.REPLACE_DESTROY_FIRST | ResourceAction.REPLACE_CREATE_FIRST:
             counts["add"] += 1
             counts["remove"] += 1
-
-
-def _count_label(emoji: str, count: int) -> str:
-    if not count:
-        return ""
-    match emoji:
-        case "🟢":
-            return f"{emoji} {count} added"
-        case "🟡":
-            return f"{emoji} {count} changed"
-        case "🔴":
-            return f"{emoji} {count} destroyed"
-        case _:
-            return ""
 
 
 def _failed_recap_lines(state: ApplyProgressState) -> list[Text]:
@@ -349,11 +336,11 @@ def _breakdown_plain_from_changes(summary: ChangeSummaryEvent) -> str | None:
         return None
     parts: list[str] = []
     if changes.add:
-        parts.append(_count_label("🟢", changes.add))
+        parts.append(apply_past_phrase("🟢", changes.add))
     if changes.change:
-        parts.append(_count_label("🟡", changes.change))
+        parts.append(apply_past_phrase("🟡", changes.change))
     if changes.remove:
-        parts.append(_count_label("🔴", changes.remove))
+        parts.append(apply_past_phrase("🔴", changes.remove))
     parts = [part for part in parts if part]
     if not parts:
         return None
@@ -367,9 +354,9 @@ def _breakdown_plain_from_resources(state: ApplyProgressState) -> str | None:
             continue
         _accumulate_plan_action(counts, resource.plan_action)
     parts = [
-        _count_label("🟢", counts["add"]),
-        _count_label("🟡", counts["change"]),
-        _count_label("🔴", counts["remove"]),
+        apply_past_phrase("🟢", counts["add"]),
+        apply_past_phrase("🟡", counts["change"]),
+        apply_past_phrase("🔴", counts["remove"]),
     ]
     parts = [part for part in parts if part]
     if not parts:
