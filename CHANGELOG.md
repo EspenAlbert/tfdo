@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.2 2026-06-01T16-16Z
+
+### Schema
+- fix(schema): Makes schema cache writes safe under parallel plan [77d9fd](https://github.com/EspenAlbert/tfdo/commit/77d9fd)
+
+
 ## 0.9.1 2026-06-01T12-16Z
 
 ### Other Changes

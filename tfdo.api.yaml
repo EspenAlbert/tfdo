@@ -1,5 +1,5 @@
 pkg_import_name: tfdo
-version: 0.9.1
+version: 0.9.2
 groups:
 - name: __ROOT__
   symbols:
@@ -1829,7 +1829,7 @@ groups:
   - name: InitMode
     module_path: _internal.models
     docstring: ''
-    line_number: 20
+    line_number: 22
     type: class
     mro_bases:
     - StrEnum
@@ -3799,4 +3799,4 @@ groups:
       return_annotation: None
       return_type_imports: []
     cli_params: []
-dumped_at: 2026-06-01 12:16:46.992912+00:00
+dumped_at: 2026-06-01 16:16:26.405198+00:00

@@ -18,7 +18,7 @@ from tfdo._internal.typer_app import get_settings
 from tfdo._internal.typer_app import main_callback
 from tfdo import sync
 
-VERSION = "0.9.1"
+VERSION = "0.9.2"
 __all__ = [
     "boot",
     "config",
