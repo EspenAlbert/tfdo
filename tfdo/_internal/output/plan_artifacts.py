@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import shutil
 from pathlib import Path
@@ -9,6 +10,7 @@ from zero_3rdparty import file_utils
 _TFDO_DIR = ".tfdo"
 _PLAN_BIN = "plan.bin"
 _PLAN_JSON = "plan.json"
+_OUTPUTS_JSON = "outputs.json"
 _DEBUG_LOG = "debug.log"
 _DEBUG_OLD_DIR = "debug_old"
 _DEBUG_OLD_PATTERN = r"^(?P<num>\d{2})_debug\.log$"
@@ -24,6 +26,15 @@ def plan_bin_path(work_dir: Path) -> Path:
 
 def plan_json_path(work_dir: Path) -> Path:
     return tfdo_dir(work_dir) / _PLAN_JSON
+
+
+def outputs_json_path(work_dir: Path) -> Path:
+    return tfdo_dir(work_dir) / _OUTPUTS_JSON
+
+
+def write_outputs_json(work_dir: Path, outputs: dict[str, object]) -> None:
+    content = json.dumps(outputs, indent=2, sort_keys=True) + "\n"
+    atomic_write_text(outputs_json_path(work_dir), content)
 
 
 def debug_log_path(work_dir: Path) -> Path:

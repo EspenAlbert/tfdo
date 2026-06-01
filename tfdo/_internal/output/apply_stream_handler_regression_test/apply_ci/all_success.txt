@@ -3,3 +3,6 @@ apply: ✅ random_string.suffix created 0s
 apply: ✅ local_file.config created 0s
 apply: 3 ✅  total 0s
 apply: 🟢 3 added
+
+outputs: config_path = "./output/app.conf"
+outputs: server_name = "web-pure-elk"

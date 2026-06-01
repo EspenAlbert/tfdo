@@ -57,6 +57,7 @@ def _run_streaming_apply_command(
             print_prefix=print_prefix,
             message_callbacks=[callback],
         )
+        handler.set_exit_code(run.exit_code or 0)
         handler.flush()
         return ApplyResult(
             exit_code=run.exit_code or 0,
@@ -64,6 +65,7 @@ def _run_streaming_apply_command(
             diagnostics_emitted=handler.diagnostics_emitted,
         )
     except ShellError as e:
+        handler.set_exit_code(e.exit_code or 1)
         handler.flush()
         return ApplyResult(
             exit_code=e.exit_code or 1,
@@ -90,7 +92,12 @@ def run_streaming_apply(
     print_prefix = f"{label} apply"
 
     def run_once() -> T:
-        handler = ApplyStreamHandler(state, display, interactive=settings.is_interactive)
+        handler = ApplyStreamHandler(
+            state,
+            display,
+            interactive=settings.is_interactive,
+            settings=settings,
+        )
         result = _run_streaming_apply_command(
             settings,
             cmd,

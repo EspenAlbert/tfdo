@@ -1,0 +1,63 @@
+name: outputs_json_path
+ts: 2026-06-01 12:08:09.039732+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.outputs_json_path
+---
+name: write_outputs_json
+ts: 2026-06-01 12:08:09.039894+00:00
+type: keep_private
+full_path: _internal.output.plan_artifacts.write_outputs_json
+---
+name: format_scalar
+ts: 2026-06-01 12:08:11.003533+00:00
+type: keep_private
+full_path: _internal.output.output_value_format.format_scalar
+---
+name: parse_tf_output_entries
+ts: 2026-06-01 12:08:16.578933+00:00
+type: keep_private
+full_path: _internal.output.apply_outputs_renderer.parse_tf_output_entries
+---
+name: values_from_entries
+ts: 2026-06-01 12:08:16.578992+00:00
+type: keep_private
+full_path: _internal.output.apply_outputs_renderer.values_from_entries
+---
+name: render_apply_outputs_tty
+ts: 2026-06-01 12:08:16.578999+00:00
+type: keep_private
+full_path: _internal.output.apply_outputs_renderer.render_apply_outputs_tty
+---
+name: render_apply_outputs_ci
+ts: 2026-06-01 12:08:16.579004+00:00
+type: keep_private
+full_path: _internal.output.apply_outputs_renderer.render_apply_outputs_ci
+---
+name: load_output_entries
+ts: 2026-06-01 12:08:16.579008+00:00
+type: keep_private
+full_path: _internal.output.apply_outputs_renderer.load_output_entries
+---
+name: resolve_output_entries
+ts: 2026-06-01 12:08:16.579013+00:00
+type: keep_private
+full_path: _internal.output.apply_outputs_renderer.resolve_output_entries
+---
+name: emit_apply_outputs
+ts: 2026-06-01 12:08:16.579017+00:00
+type: keep_private
+full_path: _internal.output.apply_outputs_renderer.emit_apply_outputs
+---
+name: ApplyOutputValue
+ts: 2026-06-01 12:08:20.797007+00:00
+type: keep_private
+full_path: _internal.output.stream_models.ApplyOutputValue
+---
+name: OutputsEvent
+ts: 2026-06-01 12:08:20.797072+00:00
+type: keep_private
+full_path: _internal.output.stream_models.OutputsEvent
+---
+ts: 2026-06-01 12:08:42.520019+00:00
+type: chore
+description: support apply outputs
