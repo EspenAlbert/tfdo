@@ -69,7 +69,8 @@ def test_render_plan_holds_lock_until_tree_finishes(create_flat_plan) -> None:
             proceed.set()
             thread.join(timeout=2.0)
 
-    assert printed[0].startswith("envs/a: 📋 Plan:")
+    assert str(printed[0]) == "envs/a"
+    assert str(printed[1]).startswith("📋 Plan:")
     intruder_index = printed.index("INTRUDER")
     assert intruder_index > 0
     assert any("local_file" in line for line in printed[1:intruder_index])

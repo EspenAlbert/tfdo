@@ -8,6 +8,21 @@ _orchestration_print_lock: ContextVar[Lock | None] = ContextVar(
     "tfdo_orchestration_print_lock",
     default=None,
 )
+_orch_dir_blocks = 0
+
+
+def reset_orchestration_dir_blocks() -> None:
+    """Reset per-run directory block count when orchestration display starts."""
+    global _orch_dir_blocks
+    _orch_dir_blocks = 0
+
+
+def orchestration_dir_block_separator() -> bool:
+    """Return True before the 2nd+ orchestration plan block so callers can insert a blank line."""
+    global _orch_dir_blocks
+    separator = _orch_dir_blocks > 0
+    _orch_dir_blocks += 1
+    return separator
 
 
 @contextmanager

@@ -50,6 +50,10 @@ def render_wave_started(state: OrchestrationProgressState) -> str:
     return f"orchestration: wave {state.current_wave_index}/{state.total_waves} started ({state.wave_dirs_total} dirs)"
 
 
+def render_wave_tty_header(state: OrchestrationProgressState) -> str:
+    return f"Wave {state.current_wave_index}/{state.total_waves}"
+
+
 def render_wave_complete(state: OrchestrationProgressState, *, ok: int, fail: int) -> str:
     return f"orchestration: wave {state.current_wave_index}/{state.total_waves} complete ({ok} ✅, {fail} ❌)"
 

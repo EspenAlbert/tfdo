@@ -8,6 +8,7 @@ from ask_shell import console as ask_console
 from rich.console import Console
 from rich.segment import Segment
 
+from tfdo._internal.output import orchestration_print
 from tfdo._internal.output.apply_state import plan_has_applyable_changes
 from tfdo._internal.output.complex_render import ComplexRenderConfig
 from tfdo._internal.output.conftest import build_attr_lines_by_addr, render_fixture
@@ -354,35 +355,30 @@ def test_repeated_header_for_long_plan(capture_console) -> None:
 
 
 def test_header_only_prefixes_run_dir(create_flat_plan: Path) -> None:
-    plan = parse_plan_file(create_flat_plan)
-    tree = build_plan_tree(plan)
-    printed: list[object] = []
-
-    with patch.object(ask_console, "print_to_live", side_effect=lambda *args, **_kw: printed.extend(args)):
-        render_plan(
-            tree,
-            build_attr_lines_by_addr(tree, plan=plan),
-            terminal_width=120,
-            header_only=True,
-            run_dir_key="envs/staging/compute",
-        )
-
-    assert any(str(line).startswith("envs/staging/compute: 📋 Plan:") for line in printed)
+    _assert_orchestration_run_dir_header(create_flat_plan, header_only=True)
 
 
 def test_compact_render_prefixes_run_dir_header(create_flat_plan: Path) -> None:
+    _assert_orchestration_run_dir_header(create_flat_plan, header_only=False)
+
+
+def _assert_orchestration_run_dir_header(create_flat_plan: Path, *, header_only: bool) -> None:
     plan = parse_plan_file(create_flat_plan)
     tree = build_plan_tree(plan)
     printed: list[object] = []
 
+    orchestration_print.reset_orchestration_dir_blocks()
     with patch.object(ask_console, "print_to_live", side_effect=lambda *args, **_kw: printed.extend(args)):
         render_plan(
             tree,
             build_attr_lines_by_addr(tree, plan=plan),
             terminal_width=120,
+            header_only=header_only,
             run_dir_key="envs/staging/compute",
         )
 
-    prefixed = [line for line in printed if str(line).startswith("envs/staging/compute: 📋 Plan:")]
-    assert len(prefixed) == 1
+    assert str(printed[0]) == "envs/staging/compute"
+    assert str(printed[1]).startswith("📋 Plan:")
+    if header_only:
+        return
     assert any("random_pet" in str(line) for line in printed)

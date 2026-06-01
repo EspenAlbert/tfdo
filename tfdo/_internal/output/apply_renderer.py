@@ -30,6 +30,12 @@ _APPLY_PREFIX = "apply: "
 _IN_PROGRESS_PREFIX = "in progress: "
 
 
+def scrollback_run_dir_prefix(run_dir_key: str) -> str:
+    if not run_dir_key:
+        return ""
+    return f"[{run_dir_key}] "
+
+
 def max_addr_width(state: ApplyProgressState) -> int:
     return max((len(addr) for addr in state.resources), default=0)
 
@@ -38,11 +44,14 @@ def render_completion_line(
     emission: CompletionEmission,
     *,
     addr_width: int,
+    run_dir_key: str = "",
 ) -> Text:
     marker = _CHECK_FAIL if emission.errored else _CHECK_OK
     verb = display_verbs_for_hook_action(emission.hook_action or "create").past
     duration = format_elapsed(emission.elapsed_seconds or 0)
     text = Text()
+    if run_dir_key:
+        text.append(scrollback_run_dir_prefix(run_dir_key))
     text.append(f"{marker} ")
     text.append(emission.addr.ljust(addr_width))
     text.append(f"  {verb}  {duration}")
@@ -83,6 +92,7 @@ def render_ci_completion_line(
     *,
     display: ResolvedApplyDisplay,
     diagnostic: DiagnosticBody | None = None,
+    run_dir_key: str = "",
 ) -> str:
     marker = _CHECK_FAIL if emission.errored else _CHECK_OK
     verb = display_verbs_for_hook_action(emission.hook_action or "create").past
@@ -94,7 +104,7 @@ def render_ci_completion_line(
             slow_suffix = f" {_VERY_SLOW_EMOJI}"
         case _SlowTier.SLOW:
             slow_suffix = f" {_SLOW_EMOJI}"
-    line = f"{_APPLY_PREFIX}{marker} {emission.addr} {verb} {duration}{slow_suffix}"
+    line = f"{scrollback_run_dir_prefix(run_dir_key)}{_APPLY_PREFIX}{marker} {emission.addr} {verb} {duration}{slow_suffix}"
     if emission.errored and diagnostic:
         line += f" | {_diagnostic_recap_plain(diagnostic)}"
     return line
@@ -122,18 +132,25 @@ def render_ci_heartbeat_line(
     return line
 
 
-def render_ci_final_summary(state: ApplyProgressState, *, total_elapsed_s: float) -> list[str]:
+def render_ci_final_summary(
+    state: ApplyProgressState,
+    *,
+    total_elapsed_s: float,
+    run_dir_key: str = "",
+) -> list[str]:
+    dir_prefix = scrollback_run_dir_prefix(run_dir_key)
     success, failed = _outcome_counts(state)
     if failed:
         outcome = (
-            f"{_APPLY_PREFIX}{success} {_CHECK_OK}, {failed} {_CHECK_FAIL}  total {format_elapsed(total_elapsed_s)}"
+            f"{dir_prefix}{_APPLY_PREFIX}{success} {_CHECK_OK}, {failed} {_CHECK_FAIL}  "
+            f"total {format_elapsed(total_elapsed_s)}"
         )
     else:
-        outcome = f"{_APPLY_PREFIX}{success} {_CHECK_OK}  total {format_elapsed(total_elapsed_s)}"
+        outcome = f"{dir_prefix}{_APPLY_PREFIX}{success} {_CHECK_OK}  total {format_elapsed(total_elapsed_s)}"
     lines = [outcome]
     breakdown = _breakdown_plain(state)
     if breakdown:
-        lines.append(f"{_APPLY_PREFIX}{breakdown}")
+        lines.append(f"{dir_prefix}{_APPLY_PREFIX}{breakdown}")
     return lines
 
 
@@ -142,10 +159,13 @@ def render_final_summary(
     *,
     total_elapsed_s: float,
     display: ResolvedApplyDisplay,
+    run_dir_key: str = "",
 ) -> list[Text | str]:
     success, failed = _outcome_counts(state)
     lines: list[Text | str] = []
     outcome = Text()
+    if run_dir_key:
+        outcome.append(scrollback_run_dir_prefix(run_dir_key))
     outcome.append("Apply complete: ")
     if failed:
         outcome.append(f"{success} {_CHECK_OK}, {failed} {_CHECK_FAIL}  ")
@@ -156,7 +176,13 @@ def render_final_summary(
 
     breakdown = _breakdown_line(state)
     if breakdown:
-        lines.append(breakdown)
+        if run_dir_key:
+            prefixed = Text()
+            prefixed.append(scrollback_run_dir_prefix(run_dir_key))
+            prefixed.append_text(breakdown)
+            lines.append(prefixed)
+        else:
+            lines.append(breakdown)
 
     failed_lines = _failed_recap_lines(state)
     if failed_lines:

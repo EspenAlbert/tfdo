@@ -7,9 +7,12 @@ from threading import Lock
 from ask_shell import console as ask_console
 from ask_shell.console import RemoveLivePart
 
+from tfdo._internal.config.enums import LifecycleCommand
+from tfdo._internal.output import orchestration_print
 from tfdo._internal.output import orchestration_renderer as renderer
 from tfdo._internal.output.orchestration_live import register_orchestration_live
 from tfdo._internal.output.orchestration_state import OrchestrationProgressState, begin_wave, record_dir_complete
+from tfdo._internal.output.plan_display import DetailLevel
 from tfdo._internal.run.run_dir_summary import RunDirSummary
 
 logger = logging.getLogger(__name__)
@@ -23,10 +26,13 @@ class OrchestrationDisplay:
         total_dirs: int,
         total_waves: int,
         interactive: bool,
+        detail: DetailLevel = DetailLevel.COMPACT,
         started_at: float | None = None,
     ) -> None:
         started = started_at if started_at is not None else time.monotonic()
+        orchestration_print.reset_orchestration_dir_blocks()
         self._interactive = interactive
+        self._detail = detail
         self._started_at = started
         self._lock = Lock()
         self._print_lock = Lock()
@@ -51,14 +57,26 @@ class OrchestrationDisplay:
     def on_wave_start(self, wave_index: int, wave_dirs: int) -> None:
         with self._lock:
             begin_wave(self.state, wave_index=wave_index, wave_dirs=wave_dirs)
+            tty_lines: list[str] = []
+            if self._interactive:
+                if wave_index > 1:
+                    tty_lines.append("")
+                tty_lines.append(renderer.render_wave_tty_header(self.state))
             ci_line = None if self._interactive else renderer.render_wave_started(self.state)
+        if tty_lines:
+            with self._print_lock:
+                for line in tty_lines:
+                    ask_console.print_to_live(line)
         if ci_line is not None:
             logger.info(ci_line)
 
     def on_dir_complete(self, summary: RunDirSummary) -> None:
         with self._lock:
             record_dir_complete(self.state, summary)
-            tty_line = renderer.render_completed_dir_tty(summary) if self._interactive else None
+            emit_live_completion_row = self._interactive and (
+                summary.command != LifecycleCommand.PLAN or self._detail == DetailLevel.COMPACT
+            )
+            tty_line = renderer.render_completed_dir_tty(summary) if emit_live_completion_row else None
             ci_line = None if self._interactive else renderer.render_dir_completion_ci(summary)
         if tty_line is not None:
             with self._print_lock:

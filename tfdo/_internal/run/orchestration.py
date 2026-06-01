@@ -8,7 +8,6 @@ from enum import StrEnum
 from pathlib import Path
 from typing import NamedTuple
 
-from ask_shell.console import live_print_scope
 from ask_shell.shell import run_and_wait, run_pool
 from pydantic import BaseModel, Field
 from zero_3rdparty.file_utils import ensure_parents_write_text, find_repo_root
@@ -524,9 +523,6 @@ def _execute_run_dir(
 
         return result_dir
 
-    if inp.orchestration_active:
-        with live_print_scope(prefix=f"[{rel}] "):
-            return body()
     return body()
 
 
@@ -549,6 +545,7 @@ def _create_orchestration_display(inp: RunOrchestrationInput, plan: ExecutionPla
         total_dirs=plan.total_run_dirs,
         total_waves=len(plan.waves),
         interactive=inp.settings.is_interactive,
+        detail=inp.detail,
         started_at=time.monotonic(),
     )
 
@@ -712,7 +709,7 @@ def _execute_wave_parallel(
     futures: list[tuple[str, Future[RunDirResult]]] = []
 
     with run_pool(
-        task_name=f"wave-{wave.wave_index}",
+        task_name=f"wave-{wave.wave_index + 1}",
         total=len(wave.run_dirs),
         max_concurrent_submits=max_submits,
         pool_thread_count=max_submits,

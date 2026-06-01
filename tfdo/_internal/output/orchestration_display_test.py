@@ -7,6 +7,7 @@ import pytest
 
 from tfdo._internal.config.enums import LifecycleCommand
 from tfdo._internal.output.orchestration_display import OrchestrationDisplay
+from tfdo._internal.output.plan_display import DetailLevel
 from tfdo._internal.run import orchestration as orchestration_module
 from tfdo._internal.run.run_dir_summary import ResourceActionCounts, RunDirSummary, build_run_dir_summary
 from tfdo._internal.settings import TfDoSettings
@@ -136,3 +137,60 @@ def test_parallel_dir_complete_does_not_deadlock_on_live_refresh() -> None:
                     fut.result()
 
     rich_live.reset_live()
+
+
+def test_interactive_wave_start_prints_wave_header() -> None:
+    display_module = OrchestrationDisplay.__module__
+    console_module = __import__("ask_shell.console", fromlist=["print_to_live"])
+    printed: list[object] = []
+
+    with (
+        patch(f"{display_module}.register_orchestration_live", return_value=lambda **_kw: None),
+        patch.object(
+            console_module,
+            console_module.print_to_live.__name__,
+            side_effect=lambda *args, **kwargs: printed.append(args[0]),
+        ),
+    ):
+        display = OrchestrationDisplay(
+            command=LifecycleCommand.PLAN,
+            total_dirs=3,
+            total_waves=2,
+            interactive=True,
+            started_at=0.0,
+        )
+        display.on_wave_start(1, 2)
+        display.on_wave_start(2, 1)
+
+    assert printed[0] == "Wave 1/2"
+    assert printed[1] == ""
+    assert printed[2] == "Wave 2/2"
+
+
+def test_full_detail_plan_skips_live_completion_row() -> None:
+    display_module = OrchestrationDisplay.__module__
+    console_module = __import__("ask_shell.console", fromlist=["print_to_live"])
+    printed: list[object] = []
+
+    with (
+        patch(f"{display_module}.register_orchestration_live", return_value=lambda **_kw: None),
+        patch.object(
+            console_module,
+            console_module.print_to_live.__name__,
+            side_effect=lambda *args, **kwargs: printed.append(args[0]),
+        ),
+    ):
+        display = OrchestrationDisplay(
+            command=LifecycleCommand.PLAN,
+            total_dirs=2,
+            total_waves=1,
+            interactive=True,
+            detail=DetailLevel.FULL,
+            started_at=0.0,
+        )
+        display.on_dir_complete(_plan_summary())
+        live_count = len(printed)
+        display.on_run_complete()
+
+    assert live_count == 0
+    assert any(str(line).startswith("✅") for line in printed)

@@ -9,7 +9,7 @@ from rich.console import RenderableType
 from rich.text import Text
 from rich.tree import Tree
 
-from tfdo._internal.output import display_path, output_value_format
+from tfdo._internal.output import display_path, orchestration_print, output_value_format
 from tfdo._internal.output.attr_diff import AttrLine, AttrPrefix, ValueKind
 from tfdo._internal.output.complex_render import (
     ComplexRenderConfig,
@@ -19,7 +19,6 @@ from tfdo._internal.output.complex_render import (
 )
 from tfdo._internal.output.count_phrases import format_plan_aggregate_phrases
 from tfdo._internal.output.models import Change, OutputChange, ResourceAction
-from tfdo._internal.output.orchestration_print import orchestration_print_lock
 from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.plan_filters import (
     KNOWN_AFTER_APPLY,
@@ -76,10 +75,12 @@ class _ComplexKey(NamedTuple):
     attr_name: str
 
 
-def _prefix_orchestration_header(line: str, run_dir_key: str) -> str:
+def _emit_orchestration_dir_header(state: _PrintState, run_dir_key: str) -> None:
     if not run_dir_key:
-        return line
-    return f"{run_dir_key}: {line}"
+        return
+    if orchestration_print.orchestration_dir_block_separator():
+        state.blank()
+    state.emit(Text(run_dir_key, style="bold"))
 
 
 class _PrintState:
@@ -117,7 +118,7 @@ def render_plan(
     header_only: bool = False,
     run_dir_key: str = "",
 ) -> None:
-    lock = orchestration_print_lock()
+    lock = orchestration_print.orchestration_print_lock()
     print_ctx = lock if lock is not None else nullcontext()
     with print_ctx:
         _render_plan_body(
@@ -156,7 +157,8 @@ def _render_plan_body(
     if header_only:
         state = _PrintState()
         header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=has_applyable_changes)
-        state.emit(_prefix_orchestration_header(header.line, run_dir_key))
+        _emit_orchestration_dir_header(state, run_dir_key)
+        state.emit(header.line)
         if header.subtitle:
             state.emit(header.subtitle, style="dim")
         return
@@ -192,7 +194,8 @@ def _render_plan_body(
         _print_detail_blocks(state, _collect_detail_blocks(complex_results))
 
     header = _plan_header_line(tree, _action_counts(tree), has_applyable_changes=has_applyable_changes)
-    state.emit(_prefix_orchestration_header(header.line, run_dir_key))
+    _emit_orchestration_dir_header(state, run_dir_key)
+    state.emit(header.line)
     if header.subtitle:
         state.emit(header.subtitle, style="dim")
     if not header.render_body:

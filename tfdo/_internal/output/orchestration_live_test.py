@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from io import StringIO
 from threading import Lock
@@ -31,6 +32,20 @@ def test_live_header() -> None:
     assert render_orchestration_live_header(_mid_run_state()) == "Orchestration: wave 2/3  dirs 6/10"
 
 
+def _stabilize_progress_line(line: str) -> str:
+    line = re.sub(r"[━─]+", "<bar>", line)
+    return re.sub(r" {2,}", " ", line).strip()
+
+
+def _stabilize_orchestration_live_snapshot(text: str) -> str:
+    lines = text.strip().splitlines()
+    if not lines:
+        return ""
+    header = lines[0]
+    progress = [_stabilize_progress_line(line) for line in lines[1:]]
+    return "\n".join([header, *progress])
+
+
 @dataclass
 class _LiveHost:
     state: OrchestrationProgressState
@@ -51,4 +66,5 @@ def test_in_progress_live_regression(file_regression: FileRegressionFixture) -> 
     with patch("time.monotonic", return_value=1012.0):
         for part in renderable.__rich_console__(console, console.options):
             console.print(part)
-    file_regression.check(buffer.getvalue().strip(), basename="orchestration_tty/in_progress", extension=".txt")
+    snapshot = _stabilize_orchestration_live_snapshot(buffer.getvalue())
+    file_regression.check(snapshot, basename="orchestration_tty/in_progress", extension=".txt")
