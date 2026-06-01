@@ -33,7 +33,7 @@ _IN_PROGRESS_PREFIX = "in progress: "
 def scrollback_run_dir_prefix(run_dir_key: str) -> str:
     if not run_dir_key:
         return ""
-    return f"[{run_dir_key}] "
+    return f"{run_dir_key} | "
 
 
 def max_addr_width(state: ApplyProgressState) -> int:

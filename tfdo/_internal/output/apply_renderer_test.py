@@ -76,7 +76,7 @@ def test_render_completion_and_summary() -> None:
         addr_width=20,
         run_dir_key="envs/staging/networking",
     )
-    assert str(orch_line).startswith("[envs/staging/networking] ✅")
+    assert str(orch_line).startswith("envs/staging/networking | ✅")
     summary = render_final_summary(state, total_elapsed_s=48.0, display=display)
     assert any("Apply complete:" in str(part) for part in summary)
     assert any("added" in str(part) for part in summary)
@@ -139,7 +139,7 @@ def test_ci_renderer_lines() -> None:
         display=display,
         run_dir_key="envs/staging/networking",
     )
-    assert orch_line.startswith("[envs/staging/networking] apply: ✅")
+    assert orch_line.startswith("envs/staging/networking | apply: ✅")
     assert slow_line.endswith("🐌")
     assert format_elapsed_compact(18.0) == "18s"
     assert format_elapsed_compact(130.0) == "2m"
