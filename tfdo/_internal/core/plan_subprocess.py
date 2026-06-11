@@ -48,6 +48,7 @@ def _run_streaming_command(
             exit_code=run.exit_code or 0,
             stderr=run.stderr or None,
             diagnostics_emitted=handler.diagnostics_emitted,
+            diagnostics_text=handler.diagnostics_text,
         )
     except ShellError as e:
         handler.flush()
@@ -55,6 +56,7 @@ def _run_streaming_command(
             exit_code=e.exit_code or 1,
             stderr=e.stderr or None,
             diagnostics_emitted=handler.diagnostics_emitted,
+            diagnostics_text=handler.diagnostics_text,
         )
 
 

@@ -10,8 +10,16 @@ from tfdo._internal.output.stream_models import DiagnosticBody
 class DiagnosticEmitter:
     def __init__(self) -> None:
         self.blocks_emitted = 0
+        self._text_parts: list[str] = []
+
+    @property
+    def combined_text(self) -> str:
+        return "\n".join(self._text_parts)
 
     def emit(self, diag: DiagnosticBody, *, resource_addr: str | None = None, leading_blank: bool = False) -> None:
+        self._text_parts.append(diag.summary)
+        if diag.detail:
+            self._text_parts.append(diag.detail)
         lock = orchestration_print_lock()
 
         def _emit_lines() -> None:

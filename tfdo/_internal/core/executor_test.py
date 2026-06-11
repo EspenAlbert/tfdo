@@ -1,9 +1,11 @@
+import json
 from pathlib import Path
 from shutil import which
 from unittest.mock import MagicMock, patch
 
 import pytest
 from ask_shell import console as ask_console
+from ask_shell._internal.events import ShellRunStdOutput
 from ask_shell.shell import AbortRetryError, ShellRun
 from typer.testing import CliRunner
 
@@ -18,7 +20,9 @@ from tfdo._internal.core.executor import (
 from tfdo._internal.core.lifecycle_init_retry import (
     init_input_for_output_retry,
     is_backend_changed,
+    lifecycle_failure_text,
     needs_init,
+    run_with_init_retry,
 )
 from tfdo._internal.core.lifecycle_shell import build_lifecycle_command
 from tfdo._internal.core.plan_subprocess import run_streaming_plan
@@ -313,6 +317,18 @@ def test_lifecycle_always_init_then_command(tmp_path: Path):
 # --- init mode tests ---
 
 
+_MODULE_NOT_INSTALLED_LINE = json.dumps(
+    {
+        "type": "diagnostic",
+        "diagnostic": {
+            "severity": "error",
+            "summary": "Error: Module not installed",
+            "detail": 'This module is not yet installed. Run "terraform init".',
+        },
+    }
+)
+
+
 def test_needs_init_detection():
     assert needs_init('Error: Could not load plugin\n\nPlease run "terraform init"')
     assert needs_init("Error: Missing required provider")
@@ -320,6 +336,33 @@ def test_needs_init_detection():
     assert needs_init("Error: Module not installed")
     assert not needs_init("Error: Backend configuration changed")
     assert not needs_init("Error: Invalid HCL syntax")
+
+
+def test_lifecycle_failure_text_merges_stderr_and_diagnostics():
+    text = lifecycle_failure_text(stderr="stderr line", diagnostics_text="Error: Module not installed")
+    assert "stderr line" in text
+    assert "Module not installed" in text
+    assert needs_init(text)
+
+
+def test_run_with_init_retry_uses_diagnostics_text(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    input_model = PlanInput(settings=settings)
+    calls = 0
+
+    def run_once() -> PlanResult:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return PlanResult(exit_code=1, stderr="", diagnostics_text="Error: Module not installed")
+        return PlanResult(exit_code=0)
+
+    init_run = _mock_run(exit_code=0, attempt=1)
+    with patch(_patch_init_run, return_value=init_run) as mock_init:
+        result = run_with_init_retry(input_model, "plan", PlanResult, run_once)
+    assert result.exit_code == 0
+    assert calls == 2
+    mock_init.assert_called_once()
 
 
 def test_init_input_for_output_retry(tmp_path: Path):
@@ -348,6 +391,30 @@ def test_auto_init_retries_on_init_needed_error(tmp_path: Path):
     cmds = [c[0][0] for c in mock_plan.call_args_list]
     assert "plan" in cmds[0]
     assert "plan" in cmds[1]
+
+
+def test_auto_init_retries_on_streamed_plan_diagnostic(tmp_path: Path):
+    settings = _make_settings(tmp_path)
+    init_run = _mock_run(exit_code=0, attempt=1)
+    plan_calls = 0
+
+    def plan_run_side_effect(_cmd: str, **kwargs) -> MagicMock:
+        nonlocal plan_calls
+        plan_calls += 1
+        if plan_calls == 1:
+            for callback in kwargs.get("message_callbacks") or []:
+                callback(ShellRunStdOutput(is_stdout=True, content=f"{_MODULE_NOT_INSTALLED_LINE}\n"))
+            return _mock_run(exit_code=1, stderr="")
+        return _mock_run(exit_code=0)
+
+    with (
+        patch(_patch_plan_run, side_effect=plan_run_side_effect) as mock_plan,
+        patch(_patch_init_run, return_value=init_run) as mock_init,
+    ):
+        result = run_streaming_plan(PlanInput(settings=settings))
+    assert result.exit_code == 0
+    assert mock_plan.call_count == 2
+    mock_init.assert_called_once()
 
 
 def test_auto_init_retries_on_init_needed_error_apply(tmp_path: Path):
