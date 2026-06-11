@@ -10,7 +10,7 @@ from tfdo._internal.output import output_value_format
 from tfdo._internal.output.apply_state import ApplyProgressState
 from tfdo._internal.output.plan_artifacts import outputs_json_path, write_outputs_json
 from tfdo._internal.output.render_thresholds import OUTPUT_MULTILINE_CHARS, OUTPUT_WRAP_WIDTH
-from tfdo._internal.output.stream_models import ApplyOutputValue
+from tfdo._internal.output.stream_models import ApplyOutputValue, coerce_output_type
 from tfdo._internal.settings import TfDoSettings
 
 APPLY_OUTPUT_HEADER = "📤 Outputs"
@@ -26,7 +26,7 @@ def parse_tf_output_entries(raw: dict[str, object]) -> dict[str, ApplyOutputValu
             continue
         entries[name] = ApplyOutputValue(
             sensitive=bool(payload.get("sensitive")),
-            type=payload.get("type") if isinstance(payload.get("type"), str) else None,
+            type=coerce_output_type(payload.get("type")),
             value=payload.get("value"),
         )
     return entries

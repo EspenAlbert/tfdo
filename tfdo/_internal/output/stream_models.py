@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from tfdo._internal.settings import TfDoSettings
 
@@ -117,13 +117,25 @@ class ChangeSummaryEvent(StreamEnvelope):
     changes: ChangeCounts | None = None
 
 
+TfOutputTypeConstraint = str | list | dict
+
+
+def coerce_output_type(raw: object) -> TfOutputTypeConstraint | None:
+    return raw if isinstance(raw, str | list | dict) else None
+
+
 class ApplyOutputValue(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     sensitive: bool = False
-    type: str | None = None
+    type: TfOutputTypeConstraint | None = None
     value: object | None = None
     action: str | None = None
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _coerce_type(cls, raw: object) -> TfOutputTypeConstraint | None:
+        return coerce_output_type(raw)
 
 
 class OutputsEvent(StreamEnvelope):
