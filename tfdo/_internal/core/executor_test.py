@@ -441,6 +441,36 @@ def test_auto_init_retries_on_init_needed_error_apply(tmp_path: Path):
     assert mock_renderable.call_count == 2
 
 
+def test_auto_init_retries_on_streamed_apply_diagnostic(tmp_path: Path):
+    settings = _make_settings(tmp_path, interactive=InteractiveMode.ALWAYS)
+    _write_apply_artifacts(tmp_path)
+    init_run = _mock_run(exit_code=0, attempt=1)
+    apply_calls = 0
+
+    def apply_run_side_effect(_cmd: str, **kwargs) -> MagicMock:
+        nonlocal apply_calls
+        apply_calls += 1
+        if apply_calls == 1:
+            for callback in kwargs.get("message_callbacks") or []:
+                callback(ShellRunStdOutput(is_stdout=True, content=f"{_MODULE_NOT_INSTALLED_LINE}\n"))
+            return _mock_run(exit_code=1, stderr="")
+        return _mock_run(exit_code=0)
+
+    with (
+        patch(_patch_apply_run, side_effect=apply_run_side_effect) as mock_apply,
+        patch(_patch_init_run, return_value=init_run) as mock_init,
+        patch.object(ask_console, "add_renderable"),
+    ):
+        result = apply_subprocess.run_streaming_apply(
+            ApplyInput(settings=settings, auto_approve=True),
+            plan_bin_path(tmp_path),
+            result_cls=ApplyResult,
+        )
+    assert result.exit_code == 0
+    assert mock_apply.call_count == 2
+    mock_init.assert_called_once()
+
+
 def test_auto_init_skips_when_no_init_pattern(tmp_path: Path):
     settings = _make_settings(tmp_path)
     fail_run = _mock_run(exit_code=1, stderr="Error: Invalid resource type")

@@ -166,6 +166,27 @@ def test_render_live_height_folds_pending() -> None:
     assert shown_pending < 14
 
 
+def test_render_live_height_folds_in_progress() -> None:
+    addrs = [(f"module.example.running_{index:02d}.resource.this", ResourceAction.CREATE) for index in range(8)]
+    state = _state(addrs)
+    state.phase = ApplyPhase.APPLYING
+    for addr in state.resources:
+        state.resources[addr].status = ApplyResourceStatus.IN_PROGRESS
+        state.resources[addr].hook_action = "create"
+        state.resources[addr].started_at = 0.0
+    display = resolve_apply_display(ApplyDisplayOptions(), None, ApplyDisplayCliOverrides())
+    live = render_live_section(state, addr_width=80, display=display, now=1.0, height=10)
+    assert live is not None
+    lines = str(live).splitlines()
+    assert "... 6 more in progress" in lines
+    assert len(lines) <= 4
+
+    minimal = render_live_section(state, addr_width=80, display=display, now=1.0, height=7)
+    assert minimal is not None
+    assert str(minimal).splitlines() == ["Apply: 0/8 resources"]
+    assert render_live_section(state, addr_width=80, display=display, now=1.0, height=6) is None
+
+
 def test_render_live_width_does_not_wrap_waiting_on() -> None:
     blockers = [f"module.example.blocker_{index}.resource.this" for index in range(4)]
     addrs = [(blocker, ResourceAction.CREATE) for blocker in blockers]

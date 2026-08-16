@@ -82,15 +82,22 @@ def render_live_section(
         return None
 
     content_height = height - LIVE_SIBLING_ROWS if height is not None else None
-    pending_rows, more_pending = _pending_rows_for_height(pending, content_height, len(in_progress))
+    if content_height is not None and content_height <= 0:
+        return None
+    in_progress_rows, more_in_progress = _in_progress_rows_for_height(in_progress, content_height)
+    pending_rows, more_pending = (
+        _pending_rows_for_height(pending, content_height, len(in_progress_rows)) if not more_in_progress else ([], 0)
+    )
 
     text = Text()
     text.append(f"Apply: {state.completed_count}/{state.total_count} resources\n", style="bold")
-    for resource in in_progress:
+    for resource in in_progress_rows:
         text.append_text(
             _render_in_progress_row(resource, addr_width=addr_width, display=display, now=now, width=width)
         )
         text.append("\n")
+    if more_in_progress:
+        text.append(f"... {more_in_progress} more in progress\n", style="dim")
     if pending_rows or more_pending:
         if in_progress and content_height is None:
             text.append("\n")
@@ -207,6 +214,22 @@ def render_final_summary(
         lines.append("  Failed:")
         lines.extend(failed_lines)
     return lines
+
+
+def _in_progress_rows_for_height(
+    in_progress: list[ApplyResourceState], content_height: int | None
+) -> tuple[list[ApplyResourceState], int]:
+    if content_height is None:
+        return in_progress, 0
+    row_budget = content_height - 1
+    if len(in_progress) <= row_budget:
+        return in_progress, 0
+    if row_budget <= 0:
+        return [], 0
+    if row_budget == 1:
+        return [], len(in_progress)
+    shown = row_budget - 1
+    return in_progress[:shown], len(in_progress) - shown
 
 
 def _pending_rows_for_height(
