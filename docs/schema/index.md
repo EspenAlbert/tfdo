@@ -82,18 +82,8 @@ class SchemaDiffResult(BaseModel):
 > **Since:** 0.4.0
 
 ```python
-def schema_diff_cmd(
-    *,
-    provider: str = ...,
-    source: str | None = None,
-    from_constraint: str | None = None,
-    to_constraint: str | None = None,
-    resource: str | None = None,
-    path_parts: list[str] = [],
-    no_cache: bool = False,
-    as_json: bool = False,
-    output: Path | None = None,
-) -> None: ...
+def schema_diff_cmd(*, provider: str = ..., source: str | None = None, from_constraint: str | None = None, to_constraint: str | None = None, resource: str | None = None, path_parts: list[str] = [], no_cache: bool = False, as_json: bool = False, output: Path | None = None) -> None:
+    ...
 ```
 
 Compare resource schemas for two version constraints or for registry vs local dev plugin.
@@ -134,16 +124,8 @@ Examples:
 > **Since:** 0.4.0
 
 ```python
-def schema_show_cmd(
-    *,
-    provider: str = ...,
-    source: str | None = None,
-    version: str = ">= 1.0",
-    resource: str | None = None,
-    no_cache: bool = False,
-    as_json: bool = False,
-    output: Path | None = None,
-) -> None: ...
+def schema_show_cmd(*, provider: str = ..., source: str | None = None, version: str = '>= 1.0', resource: str | None = None, no_cache: bool = False, as_json: bool = False, output: Path | None = None) -> None:
+    ...
 ```
 
 **CLI Options:**

@@ -16,3 +16,12 @@ changelog_message: 'fix(output): Accepts complex Terraform output type constrain
 group: core
 message: 'fix(output): Accepts complex Terraform output type constraints on apply stream'
 short_sha: dc05d3
+---
+name: __ROOT__
+ts: 2026-08-16 17:31:15.954530+00:00
+type: fix
+author: Espen Albert
+changelog_message: 'fix(output): Truncates apply live panel to terminal viewport'
+group: __ROOT__
+message: 'fix(output): Truncates apply live panel to terminal viewport'
+short_sha: 5e2fa6

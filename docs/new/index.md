@@ -20,7 +20,8 @@
 > **Since:** 0.7.0
 
 ```python
-def backend_cmd(*, bucket: str = ..., region: str = "us-east-1", key: str = "{path}/terraform.tfstate") -> None: ...
+def backend_cmd(*, bucket: str = ..., region: str = 'us-east-1', key: str = '{path}/terraform.tfstate') -> None:
+    ...
 ```
 
 Write backend.tf to all run-dirs.
@@ -43,11 +44,12 @@ Write backend.tf to all run-dirs.
 <a id="run_dir_cmd_def"></a>
 
 ### cli_command: `run_dir_cmd`
-- [source](../../tfdo/_internal/new/cmd_new.py#L268)
+- [source](../../tfdo/_internal/new/cmd_new.py#L266)
 > **Since:** 0.7.0
 
 ```python
-def run_dir_cmd() -> None: ...
+def run_dir_cmd() -> None:
+    ...
 ```
 
 Scaffold a new run-dir with module calls, variables, and outputs.
