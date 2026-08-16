@@ -140,6 +140,7 @@ class LifecycleResult(BaseModel):
     exit_code: int
     stdout: str = ""
     stderr: str | None = None
+    diagnostics_text: str = ""
 
 
 class PlanResult(LifecycleResult):

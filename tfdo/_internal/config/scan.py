@@ -41,9 +41,7 @@ def _infer_pattern(relative_paths: list[str]) -> str | None:
         else:
             if values & COMMON_ENV_NAMES:
                 segments.append("{env}")
-            elif capture_index == 0 and i == depth - 1:
-                segments.append("{app}")
-            elif capture_index > 0 or i == depth - 1:
+            elif capture_index == 0 and i == depth - 1 or capture_index > 0 or i == depth - 1:
                 segments.append("{app}")
             else:
                 segments.append("{env}")

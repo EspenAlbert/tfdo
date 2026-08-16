@@ -65,6 +65,7 @@ def _run_streaming_apply_command(
             exit_code=run.exit_code or 0,
             stderr=run.stderr or None,
             diagnostics_emitted=handler.diagnostics_emitted,
+            diagnostics_text=handler.emitter.combined_text,
             resource_counts=resource_counts_from_apply_state(handler.state),
         )
     except ShellError as e:
@@ -74,6 +75,7 @@ def _run_streaming_apply_command(
             exit_code=e.exit_code or 1,
             stderr=e.stderr or None,
             diagnostics_emitted=handler.diagnostics_emitted,
+            diagnostics_text=handler.emitter.combined_text,
             resource_counts=resource_counts_from_apply_state(handler.state),
         )
 
@@ -119,6 +121,7 @@ def run_streaming_apply(
             exit_code=result.exit_code,
             stderr=result.stderr,
             diagnostics_emitted=result.diagnostics_emitted,
+            diagnostics_text=result.diagnostics_text,
             resource_counts=result.resource_counts,
         )
 

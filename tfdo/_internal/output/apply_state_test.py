@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from tfdo._internal.output.apply_state import (
@@ -145,6 +146,27 @@ def test_plan_from_planned_changes() -> None:
     plan = plan_from_planned_changes(lines)
     assert len(seed_apply_addrs(plan)) == 3
     assert all(rc.change.action() != ResourceAction.READ for rc in plan.resource_changes)
+
+
+def test_post_apply_object_output_type_captured() -> None:
+    object_type = ["object", {"phase_a_rotation_rfc3339": "string"}]
+    value = {"phase_a_rotation_rfc3339": "2026-01-01T00:00:00Z"}
+    lines = [
+        '{"type":"change_summary","changes":{"operation":"apply","add":0,"change":0,"remove":0}}',
+        json.dumps(
+            {
+                "type": "outputs",
+                "outputs": {
+                    "rotation_schedule": {"sensitive": False, "type": object_type, "value": value},
+                },
+            }
+        ),
+    ]
+    state = ApplyProgressState(_inline_plan([]))
+    _replay(state, lines)
+    assert state.post_apply_outputs is not None
+    assert state.post_apply_outputs["rotation_schedule"].type == object_type
+    assert state.resolved_output_values() == {"rotation_schedule": value}
 
 
 def test_plan_phase_outputs_ignored() -> None:

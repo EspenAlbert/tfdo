@@ -256,6 +256,8 @@ class ApplyProgressState:
                 if self._try_enter_applying(ApplyHookEvent.model_validate(data)):
                     self._handle_line_after_applying(data)
                     return True
+            case "diagnostic":
+                self._on_diagnostic(DiagnosticEvent.model_validate(data))
             case _:
                 pass
         return False
@@ -322,9 +324,8 @@ class ApplyProgressState:
         return addr
 
     def _on_apply_start(self, event: ApplyHookEvent) -> None:
-        if self.phase == ApplyPhase.PRE_APPLY:
-            if not self._try_enter_applying(event):
-                return
+        if self.phase == ApplyPhase.PRE_APPLY and not self._try_enter_applying(event):
+            return
         addr = self._tracked_addr(event)
         if addr is None:
             return

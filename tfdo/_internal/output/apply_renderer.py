@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from rich.cells import cell_len
 from rich.text import Text
 
 from tfdo._internal.output.apply_display import (
@@ -28,6 +29,9 @@ _SLOW_EMOJI = "🐢"
 _VERY_SLOW_EMOJI = "🐌"
 _APPLY_PREFIX = "apply: "
 _IN_PROGRESS_PREFIX = "in progress: "
+LIVE_SIBLING_ROWS = 6
+_WAITING_ON_PREFIX = "  waiting_on("
+_WAITING_ON_SUFFIX = ")"
 
 
 def scrollback_run_dir_prefix(run_dir_key: str) -> str:
@@ -64,25 +68,45 @@ def render_live_section(
     addr_width: int,
     display: ResolvedApplyDisplay,
     now: float,
+    width: int | None = None,
+    height: int | None = None,
 ) -> Text | None:
     if state.phase != ApplyPhase.APPLYING or state.total_count == 0:
         return None
-    in_progress = [
-        resource for resource in state.resources.values() if resource.status == ApplyResourceStatus.IN_PROGRESS
-    ]
+    in_progress = sorted(
+        (resource for resource in state.resources.values() if resource.status == ApplyResourceStatus.IN_PROGRESS),
+        key=lambda item: item.addr,
+    )
     pending = state.pending_resources_sorted()
     if not in_progress and not pending:
         return None
 
+    content_height = height - LIVE_SIBLING_ROWS if height is not None else None
+    if content_height is not None and content_height <= 0:
+        return None
+    in_progress_rows, more_in_progress = _in_progress_rows_for_height(in_progress, content_height)
+    pending_rows, more_pending = (
+        _pending_rows_for_height(pending, content_height, len(in_progress_rows)) if not more_in_progress else ([], 0)
+    )
+
     text = Text()
     text.append(f"Apply: {state.completed_count}/{state.total_count} resources\n", style="bold")
-    for resource in sorted(in_progress, key=lambda item: item.addr):
-        text.append_text(_render_in_progress_row(resource, addr_width=addr_width, display=display, now=now))
+    for resource in in_progress_rows:
+        text.append_text(
+            _render_in_progress_row(resource, addr_width=addr_width, display=display, now=now, width=width)
+        )
         text.append("\n")
-    if pending:
-        text.append(f"\n{_PENDING_SEPARATOR}\n", style="dim")
-        for resource in sorted(pending, key=lambda item: item.addr):
-            text.append_text(_render_pending_row(state, resource, addr_width=addr_width))
+    if more_in_progress:
+        text.append(f"... {more_in_progress} more in progress\n", style="dim")
+    if pending_rows or more_pending:
+        if in_progress and content_height is None:
+            text.append("\n")
+        text.append(f"{_PENDING_SEPARATOR}\n", style="dim")
+        for resource in pending_rows:
+            text.append_text(_render_pending_row(state, resource, addr_width=addr_width, width=width))
+            text.append("\n")
+        if more_pending:
+            text.append(f"... {more_pending} more pending", style="dim")
             text.append("\n")
     return text
 
@@ -192,20 +216,113 @@ def render_final_summary(
     return lines
 
 
+def _in_progress_rows_for_height(
+    in_progress: list[ApplyResourceState], content_height: int | None
+) -> tuple[list[ApplyResourceState], int]:
+    if content_height is None:
+        return in_progress, 0
+    row_budget = content_height - 1
+    if len(in_progress) <= row_budget:
+        return in_progress, 0
+    if row_budget <= 0:
+        return [], 0
+    if row_budget == 1:
+        return [], len(in_progress)
+    shown = row_budget - 1
+    return in_progress[:shown], len(in_progress) - shown
+
+
+def _pending_rows_for_height(
+    pending: list[ApplyResourceState],
+    content_height: int | None,
+    in_progress_count: int,
+) -> tuple[list[ApplyResourceState], int]:
+    if not pending:
+        return [], 0
+    if content_height is None:
+        return pending, 0
+    used = 1 + in_progress_count
+    remaining = content_height - used
+    if remaining < 2:
+        return [], 0
+    row_budget = remaining - 1
+    if len(pending) <= row_budget:
+        return pending, 0
+    if row_budget <= 0:
+        return [], len(pending)
+    show_count = row_budget - 1
+    return pending[:show_count], len(pending) - show_count
+
+
+def _clip_addr(addr: str, max_width: int) -> str:
+    if cell_len(addr) <= max_width:
+        return addr
+    if max_width <= 3:
+        return "." * max_width
+    budget = max_width - 3
+    start = max(0, len(addr) - budget)
+    for index in range(start, len(addr)):
+        candidate = f"...{addr[index:]}"
+        if cell_len(candidate) <= max_width:
+            return candidate
+    return f"...{addr[-budget:]}"
+
+
+def _format_waiting_on(blockers: list[str], max_width: int) -> str:
+    if not blockers or max_width <= 0:
+        return ""
+    outer = cell_len(_WAITING_ON_PREFIX) + cell_len(_WAITING_ON_SUFFIX)
+    if outer >= max_width:
+        return ""
+    inner_budget = max_width - outer
+    shown: list[str] = []
+    for blocker in blockers:
+        candidate = ", ".join([*shown, blocker]) if shown else blocker
+        if cell_len(candidate) <= inner_budget:
+            shown.append(blocker)
+            continue
+        remaining = len(blockers) - len(shown)
+        if not shown:
+            plus = f"+{remaining}"
+            if cell_len(plus) <= inner_budget:
+                return f"{_WAITING_ON_PREFIX}{plus}{_WAITING_ON_SUFFIX}"
+            return ""
+        plus = f"+{remaining}"
+        while shown:
+            candidate = ", ".join(shown) + f", {plus}"
+            if cell_len(candidate) <= inner_budget:
+                return f"{_WAITING_ON_PREFIX}{candidate}{_WAITING_ON_SUFFIX}"
+            shown.pop()
+        if cell_len(plus) <= inner_budget:
+            return f"{_WAITING_ON_PREFIX}{plus}{_WAITING_ON_SUFFIX}"
+        return ""
+    return f"{_WAITING_ON_PREFIX}{', '.join(shown)}{_WAITING_ON_SUFFIX}"
+
+
 def _render_in_progress_row(
     resource: ApplyResourceState,
     *,
     addr_width: int,
     display: ResolvedApplyDisplay,
     now: float,
+    width: int | None = None,
 ) -> Text:
     elapsed = _resource_elapsed(resource, now)
     tier = slow_tier(elapsed, display.slow_seconds, display.very_slow_seconds)
     verb = display_verbs_for_hook_action(resource.hook_action or "create").present
-    text = Text()
+    suffix = f"  {verb}...  {format_elapsed(elapsed)}"
+    emoji_prefix = ""
     if tier is not _SlowTier.NORMAL:
-        text.append(f"{_VERY_SLOW_EMOJI if tier is _SlowTier.VERY_SLOW else _SLOW_EMOJI} ")
-    text.append(resource.addr.ljust(addr_width))
+        emoji_prefix = f"{_VERY_SLOW_EMOJI if tier is _SlowTier.VERY_SLOW else _SLOW_EMOJI} "
+    suffix_cells = cell_len(emoji_prefix) + cell_len(suffix)
+    if width is not None:
+        addr_text = _clip_addr(resource.addr, max(0, width - suffix_cells))
+    else:
+        addr_text = resource.addr.ljust(addr_width)
+    text = Text()
+    if emoji_prefix:
+        text.append(emoji_prefix)
+    text.append(addr_text)
     elapsed_style = "red" if tier is _SlowTier.VERY_SLOW else "yellow" if tier is _SlowTier.SLOW else ""
     text.append(f"  {verb}...", style="cyan")
     text.append("  ")
@@ -213,11 +330,29 @@ def _render_in_progress_row(
     return text
 
 
-def _render_pending_row(state: ApplyProgressState, resource: ApplyResourceState, *, addr_width: int) -> Text:
-    text = Text(resource.addr.ljust(addr_width), style="dim")
+def _render_pending_row(
+    state: ApplyProgressState,
+    resource: ApplyResourceState,
+    *,
+    addr_width: int,
+    width: int | None = None,
+) -> Text:
     blockers = state.active_blockers(resource.addr)
-    if blockers:
-        text.append(f"  waiting_on({', '.join(blockers)})", style="dim")
+    if width is None:
+        text = Text(resource.addr.ljust(addr_width), style="dim")
+        if blockers:
+            text.append(f"  waiting_on({', '.join(blockers)})", style="dim")
+        return text
+
+    waiting_on = _format_waiting_on(blockers, width)
+    waiting_cells = cell_len(waiting_on)
+    addr_text = _clip_addr(resource.addr, max(0, width - waiting_cells))
+    if blockers and not waiting_on:
+        addr_text = _clip_addr(resource.addr, width)
+        waiting_on = _format_waiting_on(blockers, width - cell_len(addr_text))
+    text = Text(addr_text, style="dim")
+    if waiting_on:
+        text.append(waiting_on, style="dim")
     return text
 
 

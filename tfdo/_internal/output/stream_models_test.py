@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from tfdo._internal.output.stream_models import parse_stream_line
+from tfdo._internal.output.stream_models import OutputsEvent, coerce_output_type, parse_stream_line
 from tfdo._internal.settings import TfDoSettings
 
 
@@ -24,3 +24,29 @@ def test_parse_failure_appends_to_cache_ndjson(tmp_path: Path) -> None:
     records = failure_path.read_text().strip().splitlines()
     assert len(records) == 2
     assert json.loads(records[1])["error_type"] == ValidationError.__name__
+
+
+def test_coerce_output_type() -> None:
+    assert coerce_output_type("string") == "string"
+    assert coerce_output_type(["object", {"k": "string"}]) == ["object", {"k": "string"}]
+    assert coerce_output_type(None) is None
+    assert coerce_output_type(42) is None
+
+
+def test_outputs_event_complex_type() -> None:
+    object_type = ["object", {"phase_a_rotation_rfc3339": "string"}]
+    event = OutputsEvent.model_validate(
+        {
+            "type": "outputs",
+            "outputs": {
+                "rotation_schedule": {
+                    "sensitive": False,
+                    "type": object_type,
+                    "value": {"phase_a_rotation_rfc3339": "2026-01-01T00:00:00Z"},
+                }
+            },
+        }
+    )
+    entry = event.outputs["rotation_schedule"]
+    assert entry.type == object_type
+    assert entry.value == {"phase_a_rotation_rfc3339": "2026-01-01T00:00:00Z"}

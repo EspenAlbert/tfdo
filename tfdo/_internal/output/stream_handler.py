@@ -70,6 +70,10 @@ class PlanStreamHandler:
     def diagnostics_emitted(self) -> bool:
         return self._diagnostics.blocks_emitted > 0
 
+    @property
+    def diagnostics_text(self) -> str:
+        return self._diagnostics.combined_text
+
     def _handle_line(self, line: str) -> None:
         try:
             data = json.loads(line)

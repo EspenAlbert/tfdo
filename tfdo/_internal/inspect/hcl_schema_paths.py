@@ -105,9 +105,7 @@ def _list_element_child_path(
             invalid.add(f"{name}.{ck}")
         return
     if ca.nested_type is not None and (ca.nested_type.attributes or {}):
-        if isinstance(cv, dict) and cv:
-            invalid.add(f"{name}.{ck}")
-        elif cv not in (None, {}, []):
+        if isinstance(cv, dict) and cv or cv not in (None, {}, []):
             invalid.add(f"{name}.{ck}")
         return
     attr_paths.add(f"{name}.{ck}")

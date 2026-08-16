@@ -44,7 +44,7 @@ Write backend.tf to all run-dirs.
 <a id="run_dir_cmd_def"></a>
 
 ### cli_command: `run_dir_cmd`
-- [source](../../tfdo/_internal/new/cmd_new.py#L268)
+- [source](../../tfdo/_internal/new/cmd_new.py#L266)
 > **Since:** 0.7.0
 
 ```python

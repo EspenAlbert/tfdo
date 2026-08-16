@@ -36,7 +36,10 @@ class _ApplyStatusRenderable:
         self._handler = handler
 
     def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
-        status = self._handler._live_status()
+        status = self._handler._live_status(
+            width=options.max_width,
+            height=options.max_height,
+        )
         if status:
             yield status
 
@@ -111,13 +114,15 @@ class ApplyStreamHandler:
     def set_exit_code(self, exit_code: int) -> None:
         self._exit_code = exit_code
 
-    def _live_status(self) -> Text | None:
+    def _live_status(self, *, width: int | None = None, height: int | None = None) -> Text | None:
         addr_width = max_addr_width(self._state)
         return render_live_section(
             self._state,
             addr_width=addr_width,
             display=self._display,
             now=time.monotonic(),
+            width=width,
+            height=height,
         )
 
     def _emit_drained(self) -> None:

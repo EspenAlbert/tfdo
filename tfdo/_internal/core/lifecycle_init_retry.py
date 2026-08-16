@@ -24,13 +24,18 @@ BACKEND_CHANGED_PATTERNS: list[str] = [
 ]
 
 
-def is_backend_changed(stderr: str) -> bool:
-    lower = stderr.lower()
+def lifecycle_failure_text(*, stderr: str | None = None, diagnostics_text: str = "") -> str:
+    parts = [stderr or "", diagnostics_text]
+    return "\n".join(part for part in parts if part)
+
+
+def is_backend_changed(failure_text: str) -> bool:
+    lower = failure_text.lower()
     return any(p.lower() in lower for p in BACKEND_CHANGED_PATTERNS)
 
 
-def needs_init(stderr: str) -> bool:
-    lower = stderr.lower()
+def needs_init(failure_text: str) -> bool:
+    lower = failure_text.lower()
     return any(p.lower() in lower for p in INIT_NEEDED_PATTERNS)
 
 
@@ -57,15 +62,15 @@ def run_with_init_retry(
             return result_cls(exit_code=init_result.exit_code, stderr=init_result.stderr)
 
     result = run_once()
-    stderr = result.stderr or ""
+    failure_text = lifecycle_failure_text(stderr=result.stderr, diagnostics_text=result.diagnostics_text)
     if result.exit_code != 0 and mode != InitMode.NEVER and not force_init:
-        if is_backend_changed(stderr):
+        if is_backend_changed(failure_text):
             logger.warning(
                 f"backend configuration changed in {settings.work_dir}. "
                 "Run 'tfdo check --fix' to update backend.tf, then 'terraform init -reconfigure' to accept "
                 "the new backend, or 'terraform init -migrate-state' to migrate existing state."
             )
-        elif needs_init(stderr):
+        elif needs_init(failure_text):
             logger.info(f"auto-init: detected init-needed error, running terraform init before retrying {subcommand}")
             init_result = terraform_init.init(
                 InitInput(
@@ -81,8 +86,9 @@ def run_with_init_retry(
 
 
 def init_input_for_output_retry(stderr: str, base: InitInput) -> InitInput | None:
-    if is_backend_changed(stderr):
+    failure_text = lifecycle_failure_text(stderr=stderr)
+    if is_backend_changed(failure_text):
         return base.model_copy(update={"extra_args": [*base.extra_args, "-reconfigure"]})
-    if needs_init(stderr):
+    if needs_init(failure_text):
         return base
     return None

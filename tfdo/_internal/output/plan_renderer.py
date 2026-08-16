@@ -1006,9 +1006,7 @@ def _scalar_single_value_split(line: AttrLine, terminal_width: int, *, tree_extr
     if len(head) + len(value_s) <= available:
         return None
     second = Text(value_pad)
-    if line.prefix is None:
-        second.append(value_s, style="dim")
-    elif line.prefix is AttrPrefix.REMOVE:
+    if line.prefix is None or line.prefix is AttrPrefix.REMOVE:
         second.append(value_s, style="dim")
     else:
         second.append(value_s)
