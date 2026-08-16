@@ -25,3 +25,8 @@ changelog_message: 'fix(output): Truncates apply live panel to terminal viewport
 group: __ROOT__
 message: 'fix(output): Truncates apply live panel to terminal viewport'
 short_sha: 5e2fa6
+---
+name: 0.9.3
+ts: 2026-08-16 17:51:14.966548+00:00
+type: release
+old_version: 0.9.2

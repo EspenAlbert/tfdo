@@ -1,5 +1,5 @@
 pkg_import_name: tfdo
-version: 0.9.2
+version: 0.9.3
 groups:
 - name: __ROOT__
   symbols:
@@ -2602,7 +2602,7 @@ groups:
   - name: run_dir_cmd
     module_path: _internal.new.cmd_new
     docstring: Scaffold a new run-dir with module calls, variables, and outputs.
-    line_number: 268
+    line_number: 266
     type: cli_command
     signature:
       parameters:
@@ -3799,4 +3799,4 @@ groups:
       return_annotation: None
       return_type_imports: []
     cli_params: []
-dumped_at: 2026-06-01 16:16:26.405198+00:00
+dumped_at: 2026-08-16 17:51:14.827862+00:00

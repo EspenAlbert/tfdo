@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.3 2026-08-16T17-51Z
+
+### __Root__
+- fix(output): Truncates apply live panel to terminal viewport [5e2fa6](https://github.com/EspenAlbert/tfdo/commit/5e2fa6)
+
+### Core
+- fix(output): Accepts complex Terraform output type constraints on apply stream [dc05d3](https://github.com/EspenAlbert/tfdo/commit/dc05d3)
+
+
 ## 0.9.2 2026-06-01T16-16Z
 
 ### Schema
