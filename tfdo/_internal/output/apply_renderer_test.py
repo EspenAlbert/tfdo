@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from rich.cells import cell_len
 
 from tfdo._internal.output.apply_blockers import build_apply_blockers
 from tfdo._internal.output.apply_display import (
@@ -125,6 +126,64 @@ def test_render_live_pending_sort_and_waiting_on(apply_blockers_count_plan: Path
     assert f"waiting_on({CPA_SETUP})" in pending_section
     assert f"waiting_on({LOG_BUCKET}" in pending_section
     assert f"waiting_on({LOG_SLEEP})" in pending_section
+
+
+def test_render_live_width_clips_waiting_on() -> None:
+    blockers = [f"module.example.blocker_{index:02d}.resource.this" for index in range(8)]
+    addrs = [(blocker, ResourceAction.CREATE) for blocker in blockers]
+    addrs.append(("module.example.pending.resource.this", ResourceAction.CREATE))
+    state = _state(addrs)
+    state.phase = ApplyPhase.APPLYING
+    for blocker in blockers:
+        state.resources[blocker].status = ApplyResourceStatus.IN_PROGRESS
+    state.blockers = {"module.example.pending.resource.this": frozenset(blockers)}
+    display = resolve_apply_display(ApplyDisplayOptions(), None, ApplyDisplayCliOverrides())
+    live = render_live_section(state, addr_width=80, display=display, now=1.0, width=80)
+    assert live is not None
+    text = str(live)
+    full_waiting_on = f"waiting_on({', '.join(blockers)})"
+    assert "waiting_on(" in text
+    assert "+" in text
+    assert full_waiting_on not in text
+    for line in text.splitlines():
+        assert cell_len(line) <= 80
+
+
+def test_render_live_height_folds_pending() -> None:
+    addrs = [(f"module.example.pending_{index:02d}.resource.this", ResourceAction.CREATE) for index in range(15)]
+    state = _state(addrs)
+    state.phase = ApplyPhase.APPLYING
+    state.resources["module.example.pending_00.resource.this"].status = ApplyResourceStatus.IN_PROGRESS
+    state.resources["module.example.pending_00.resource.this"].hook_action = "create"
+    state.resources["module.example.pending_00.resource.this"].started_at = 0.0
+    display = resolve_apply_display(ApplyDisplayOptions(), None, ApplyDisplayCliOverrides())
+    live = render_live_section(state, addr_width=80, display=display, now=1.0, height=10)
+    assert live is not None
+    text = str(live)
+    assert "creating..." in text
+    assert "more pending" in text
+    shown_pending = sum(1 for index in range(1, 15) if f"pending_{index:02d}" in text)
+    assert shown_pending < 14
+
+
+def test_render_live_width_does_not_wrap_waiting_on() -> None:
+    blockers = [f"module.example.blocker_{index}.resource.this" for index in range(4)]
+    addrs = [(blocker, ResourceAction.CREATE) for blocker in blockers]
+    addrs.append(("module.example.pending.resource.this", ResourceAction.CREATE))
+    state = _state(addrs)
+    state.phase = ApplyPhase.APPLYING
+    for blocker in blockers:
+        state.resources[blocker].status = ApplyResourceStatus.IN_PROGRESS
+    state.blockers = {"module.example.pending.resource.this": frozenset(blockers)}
+    display = resolve_apply_display(ApplyDisplayOptions(), None, ApplyDisplayCliOverrides())
+    narrow = render_live_section(state, addr_width=120, display=display, now=1.0, width=40)
+    wide = render_live_section(state, addr_width=120, display=display, now=1.0, width=120)
+    assert narrow is not None and wide is not None
+    narrow_line = next(line for line in str(narrow).splitlines() if "pending.resource.this" in line)
+    wide_line = next(line for line in str(wide).splitlines() if "pending.resource.this" in line)
+    assert "waiting_on(" in narrow_line
+    assert cell_len(narrow_line) <= 40
+    assert len(wide_line) > len(narrow_line)
 
 
 def test_ci_renderer_lines() -> None:

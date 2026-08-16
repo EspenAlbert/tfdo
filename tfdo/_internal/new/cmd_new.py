@@ -99,9 +99,7 @@ def _split_attrs_for_customize(
     passthrough: dict[str, HclValue] = {}
     customize: list[tuple[str, HclValue]] = []
     for attr_name, current_val in raw_attrs.items():
-        if isinstance(current_val, dict | list):
-            passthrough[attr_name] = current_val
-        elif attr_name not in configure_keys:
+        if isinstance(current_val, dict | list) or attr_name not in configure_keys:
             passthrough[attr_name] = current_val
         else:
             customize.append((attr_name, current_val))

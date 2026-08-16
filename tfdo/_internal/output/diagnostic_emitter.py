@@ -23,9 +23,7 @@ class DiagnosticEmitter:
         lock = orchestration_print_lock()
 
         def _emit_lines() -> None:
-            if self.blocks_emitted:
-                ask_console.print_to_live("")
-            elif leading_blank:
+            if self.blocks_emitted or leading_blank:
                 ask_console.print_to_live("")
             self.blocks_emitted += 1
             for line in render_diagnostic(diag, resource_addr=resource_addr):

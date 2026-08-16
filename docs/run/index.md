@@ -122,8 +122,7 @@ Run destroy across multiple run directories.
 > **Since:** 0.6.0
 
 ```python
-def run_init_cmd(*, reconfigure: bool = False, extra_args: list[str] | None = None) -> None:
-    ...
+def run_init_cmd(*, reconfigure: bool = False, extra_args: list[str] | None = None) -> None: ...
 ```
 
 Run init across multiple run directories.

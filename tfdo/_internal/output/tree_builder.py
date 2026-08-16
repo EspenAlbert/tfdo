@@ -73,7 +73,7 @@ class PlanTree(BaseModel):
 
 
 class _ModuleAcc:
-    __slots__ = ("resources", "children")
+    __slots__ = ("children", "resources")
 
     def __init__(self) -> None:
         self.resources: list[ResourceChange] = []
