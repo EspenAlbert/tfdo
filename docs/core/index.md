@@ -126,8 +126,7 @@ Run terraform destroy.
 > **Since:** 0.1.0
 
 ```python
-def init_cmd(*, reconfigure: bool = False, extra_args: list[str] | None = None) -> None:
-    ...
+def init_cmd(*, reconfigure: bool = False, extra_args: list[str] | None = None) -> None: ...
 ```
 
 Run terraform init with retry on transient errors.
@@ -188,8 +187,7 @@ Run terraform plan.
 > **Since:** 0.2.0
 
 ```python
-class InitMode(StrEnum):
-    ...
+class InitMode(StrEnum): ...
 ```
 
 ### Changes
