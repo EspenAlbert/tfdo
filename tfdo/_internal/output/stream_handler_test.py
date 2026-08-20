@@ -53,6 +53,30 @@ def test_diagnostic_immediate(_add_mock: MagicMock) -> None:
 
 
 @patch(f"{_MODULE}.ask_console.add_renderable", return_value=MagicMock())
+def test_slow_refresh_threshold_and_complete(_add_mock: MagicMock) -> None:
+    with patch(f"{_MODULE}.time.monotonic", side_effect=[0.0, 0.0]):
+        handler = PlanStreamHandler()
+        handler.feed_line(_line({"type": "apply_start", "hook": {"resource": {"addr": "slow.addr"}}}))
+    assert "slow.addr" not in handler._live_status(now=9.0).plain
+    status = handler._live_status(now=10.0)
+    assert "slow.addr" in status.plain
+    assert "10s" in status.plain
+    handler.feed_line(_line({"type": "apply_complete", "hook": {"resource": {"addr": "slow.addr"}}}))
+    assert "slow.addr" not in handler._live_status(now=20.0).plain
+
+
+@patch(f"{_MODULE}.ask_console.add_renderable", return_value=MagicMock())
+def test_slow_refresh_sort_and_cap(_add_mock: MagicMock) -> None:
+    handler = PlanStreamHandler()
+    handler._in_flight = {f"addr.{index}": 0.0 for index in range(6)}
+    handler._in_flight["addr.slow"] = -30.0
+    status = handler._live_status(now=40.0)
+    plain = status.plain
+    assert plain.index("addr.slow") < plain.index("addr.0")
+    assert "2 more" in plain
+
+
+@patch(f"{_MODULE}.ask_console.add_renderable", return_value=MagicMock())
 def test_apply_events_and_planning_status(_add_mock: MagicMock) -> None:
     handler = PlanStreamHandler()
     with patch(f"{_MODULE}.ask_console.print_to_live") as print_mock:

@@ -20,8 +20,9 @@
 > **Since:** 0.7.0
 
 ```python
-def github_cmd(*, dry_run: bool = False, replace_existing_github_secrets: bool = False, env: str | None = None, oidc: bool = False) -> None:
-    ...
+def github_cmd(
+    *, dry_run: bool = False, replace_existing_github_secrets: bool = False, env: str | None = None, oidc: bool = False
+) -> None: ...
 ```
 
 Scaffold GitHub Actions workflows and sync secrets/variables per environment.
@@ -49,8 +50,7 @@ Scaffold GitHub Actions workflows and sync secrets/variables per environment.
 > **Since:** 0.7.0
 
 ```python
-def justfile_cmd() -> None:
-    ...
+def justfile_cmd() -> None: ...
 ```
 
 Generate repo-level justfile with per-env (and per-run-dir) Terraform targets.

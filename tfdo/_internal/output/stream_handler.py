@@ -8,15 +8,21 @@ from enum import StrEnum
 from ask_shell import console as ask_console
 from ask_shell._internal.events import ShellRunEventT, ShellRunStdOutput
 from ask_shell.console import RemoveLivePart
+from rich.cells import cell_len
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.text import Text
 
+from tfdo._internal.output.apply_display import format_elapsed
 from tfdo._internal.output.apply_live_mode import plan_status_renderable_name
+from tfdo._internal.output.apply_renderer import _clip_addr
 from tfdo._internal.output.diagnostic_emitter import DiagnosticEmitter
 from tfdo._internal.output.diagnostic_link import resolve_resource_addr
 from tfdo._internal.output.stream_models import ChangeSummaryEvent, DiagnosticEvent, RefreshEvent
 
 logger = logging.getLogger(__name__)
+
+SLOW_REFRESH_SECONDS = 10
+SLOW_REFRESH_MAX_ROWS = 5
 
 
 class _Phase(StrEnum):
@@ -30,7 +36,7 @@ class _PlanStatusRenderable:
         self._handler = handler
 
     def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
-        status = self._handler._status_line()
+        status = self._handler._live_status(now=time.monotonic(), width=options.max_width)
         if status:
             yield status
 
@@ -39,7 +45,7 @@ class PlanStreamHandler:
     def __init__(self, *, run_dir_key: str = "", orchestration_active: bool = False) -> None:
         self._started = time.monotonic()
         self._phase = _Phase.REFRESH
-        self._in_flight: set[str] = set()
+        self._in_flight: dict[str, float] = {}
         self._done = 0
         self._planning_emitted = False
         self._orchestration_active = orchestration_active
@@ -106,11 +112,12 @@ class PlanStreamHandler:
 
     def _on_refresh_start(self, event: RefreshEvent) -> None:
         if event.hook and event.hook.resource:
-            self._in_flight.add(event.hook.resource.addr)
+            addr = event.hook.resource.addr
+            self._in_flight.setdefault(addr, time.monotonic())
 
     def _on_refresh_complete(self, event: RefreshEvent) -> None:
         if event.hook and event.hook.resource:
-            self._in_flight.discard(event.hook.resource.addr)
+            self._in_flight.pop(event.hook.resource.addr, None)
         self._done += 1
         if not self._in_flight:
             self._leave_refresh_phase()
@@ -133,6 +140,39 @@ class PlanStreamHandler:
         if self._phase == _Phase.PLANNING:
             return Text("planning…", style="cyan")
         return self._refresh_status(time.monotonic() - self._started)
+
+    def _live_status(self, *, now: float, width: int | None = None) -> Text | None:
+        if self._phase == _Phase.DONE:
+            return None
+        if self._phase == _Phase.PLANNING:
+            return Text("planning…", style="cyan")
+        text = self._refresh_status(now - self._started)
+        slow = self._slow_refresh_rows(now)
+        if not slow:
+            return text
+        visible = slow[:SLOW_REFRESH_MAX_ROWS]
+        remaining = len(slow) - len(visible)
+        for addr, addr_elapsed in visible:
+            elapsed_str = format_elapsed(addr_elapsed)
+            if width is not None:
+                indent = 2
+                elapsed_col = cell_len(elapsed_str) + 2
+                clip_budget = max(8, width - indent - elapsed_col)
+                clipped = _clip_addr(addr, clip_budget)
+            else:
+                clipped = addr
+            text.append("\n  ")
+            text.append(clipped)
+            text.append("  ")
+            text.append(elapsed_str, style="dim")
+        if remaining > 0:
+            text.append(f"\n  {remaining} more", style="dim")
+        return text
+
+    def _slow_refresh_rows(self, now: float) -> list[tuple[str, float]]:
+        slow = [(addr, now - start) for addr, start in self._in_flight.items() if now - start >= SLOW_REFRESH_SECONDS]
+        slow.sort(key=lambda item: (-item[1], item[0]))
+        return slow
 
     def _refresh_status(self, elapsed_s: float) -> Text:
         mins, secs = divmod(int(elapsed_s), 60)
