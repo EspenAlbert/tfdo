@@ -5,6 +5,7 @@ from threading import Lock
 from ask_shell import console as ask_console
 
 from tfdo._internal.output.diagnostic_renderer import (
+    provider_override_paths,
     render_compact_warning,
     render_diagnostic,
     render_repeat_warning,
@@ -52,6 +53,7 @@ class DiagnosticEmitter:
             _seen_counts[identity] = count
             if count == 1 and normalized in COMPACT_WARNING_SUMMARIES:
                 self._text_parts.append(diag.summary)
+                self._text_parts.extend(provider_override_paths(diag.detail))
             elif count == 1:
                 self._text_parts.append(diag.summary)
                 if diag.detail:
@@ -59,7 +61,7 @@ class DiagnosticEmitter:
             else:
                 self._text_parts.append(normalized)
             if count == 1 and normalized in COMPACT_WARNING_SUMMARIES:
-                lines = render_compact_warning(normalized)
+                lines = render_compact_warning(normalized, detail=diag.detail)
             elif count == 1:
                 lines = render_diagnostic(diag, resource_addr=resource_addr)
             else:

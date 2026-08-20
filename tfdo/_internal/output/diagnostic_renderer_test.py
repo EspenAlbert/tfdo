@@ -140,8 +140,9 @@ def test_provider_override_compact_and_dedup() -> None:
     captured = _capture_emit([override, override], new_emitter_per_diag=True)
     text = _plain_output(captured)
     assert "Warning: Provider development overrides are in effect" in text
+    assert "/Users/example/dev/mongodbatlas" in text
     assert "×2" in text
-    assert "mongodbatlas in /Users/example" not in text
+    assert "The following provider development overrides" not in text
     assert ".terraformrc" not in text
 
 

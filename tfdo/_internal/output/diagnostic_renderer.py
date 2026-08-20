@@ -44,8 +44,28 @@ def summary_after_label(summary: str, severity: str) -> str:
     return summary
 
 
-def render_compact_warning(summary: str) -> list[Text | str]:
-    return [_severity_heading("warning", summary)]
+def render_compact_warning(summary: str, *, detail: str | None = None) -> list[Text | str]:
+    lines: list[Text | str] = [_severity_heading("warning", summary)]
+    for path in provider_override_paths(detail):
+        lines.append(_DETAIL_INDENT + path)
+    return lines
+
+
+def provider_override_paths(detail: str | None) -> list[str]:
+    if not detail:
+        return []
+    paths: list[str] = []
+    for line in detail.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("- "):
+            continue
+        entry = stripped[2:]
+        if " in " in entry:
+            _, path = entry.rsplit(" in ", 1)
+            paths.append(path.strip())
+            continue
+        paths.append(entry)
+    return paths
 
 
 def render_repeat_warning(count: int, summary: str) -> list[Text | str]:
