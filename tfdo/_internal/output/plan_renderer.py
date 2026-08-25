@@ -10,6 +10,7 @@ from rich.text import Text
 from rich.tree import Tree
 
 from tfdo._internal.output import display_path, orchestration_print, output_value_format
+from tfdo._internal.output.action_reason_label import format_resource_suffix_clauses
 from tfdo._internal.output.attr_diff import AttrLine, AttrPrefix, ValueKind
 from tfdo._internal.output.complex_render import (
     ComplexRenderConfig,
@@ -627,26 +628,30 @@ def _resource_emoji_style(action: ResourceAction) -> tuple[str, str]:
             return "", ""
 
 
-def _resource_action_suffix(action: ResourceAction) -> str:
+def _resource_action_suffix(action: ResourceAction, *, action_reason: str | None = None) -> str:
     match action:
         case ResourceAction.DELETE:
-            return " (deleted)"
+            base = "deleted"
         case ResourceAction.UPDATE:
-            return " (updated)"
+            base = "updated"
         case ResourceAction.REPLACE_DESTROY_FIRST | ResourceAction.REPLACE_CREATE_FIRST:
-            return " (must replace)"
+            base = "must replace"
         case _:
             return ""
+    clauses = format_resource_suffix_clauses(action, action_reason=action_reason)
+    if not clauses:
+        return f" ({base})"
+    return f" ({base}, {', '.join(clauses)})"
 
 
 def _format_resource_header(node: ResourceNode) -> Text:
     emoji, style = _resource_emoji_style(node.action)
-    suffix = _resource_action_suffix(node.action)
+    suffix = _resource_action_suffix(node.action, action_reason=node.action_reason)
     return Text(f"{emoji} {node.address}{suffix}", style=style)
 
 
 def _format_drift_resource_header(node: ResourceNode) -> Text:
-    suffix = _resource_action_suffix(node.action) or " (changed)"
+    suffix = _resource_action_suffix(node.action, action_reason=node.action_reason) or " (changed)"
     return Text(f"⚠️ {node.address}{suffix}", style="cyan")
 
 

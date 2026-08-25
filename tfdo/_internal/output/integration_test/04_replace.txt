@@ -1,12 +1,12 @@
 📋 Plan: 🟣 3 to replace
 
-🟣 local_file.credentials (must replace)
+🟣 local_file.credentials (must replace, cannot update, destroy before create)
        filename: "./output/creds.txt"
-🟣 random_pet.service (must replace)
+🟣 random_pet.service (must replace, cannot update, destroy before create)
      ! length: 2 -> 3
      ! prefix: "svc" -> "app"
      ! separator: "-" -> "_"
-🟣 random_string.token (must replace)
+🟣 random_string.token (must replace, cannot update, destroy before create)
      ! length: 16 -> 32
      ! special: true -> false
 
