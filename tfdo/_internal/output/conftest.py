@@ -11,6 +11,7 @@ from rich.console import Console
 from tfdo._internal.output import plan_render_input
 from tfdo._internal.output.apply_state import plan_has_applyable_changes
 from tfdo._internal.output.complex_render import ComplexRenderConfig
+from tfdo._internal.output.diagnostic_emitter import reset_diagnostic_seen
 from tfdo._internal.output.models import PlanOutput
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_display import PlanDisplayOptions
@@ -43,6 +44,13 @@ def create_capture_console(*, width: int = 120, height: int = 80) -> Console:
         record=True,
         _environ={},
     )
+
+
+@pytest.fixture(autouse=True)
+def _reset_diagnostic_seen() -> Iterator[None]:
+    reset_diagnostic_seen()
+    yield
+    reset_diagnostic_seen()
 
 
 @pytest.fixture

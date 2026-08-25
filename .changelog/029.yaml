@@ -1,0 +1,44 @@
+name: reset_diagnostic_seen
+ts: 2026-08-25 06:47:17.922680+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_emitter.reset_diagnostic_seen
+---
+name: diagnostic_identity
+ts: 2026-08-25 06:47:17.922798+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_emitter.diagnostic_identity
+---
+name: summary_after_label
+ts: 2026-08-25 06:47:22.971753+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_renderer.summary_after_label
+---
+name: render_compact_warning
+ts: 2026-08-25 06:47:22.971947+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_renderer.render_compact_warning
+---
+name: provider_override_paths
+ts: 2026-08-25 06:47:22.971974+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_renderer.provider_override_paths
+---
+name: render_repeat_warning
+ts: 2026-08-25 06:47:22.971988+00:00
+type: keep_private
+full_path: _internal.output.diagnostic_renderer.render_repeat_warning
+---
+name: format_action_reason_label
+ts: 2026-08-25 06:47:26.048392+00:00
+type: keep_private
+full_path: _internal.output.action_reason_label.format_action_reason_label
+---
+name: format_replace_order_label
+ts: 2026-08-25 06:47:26.048562+00:00
+type: keep_private
+full_path: _internal.output.action_reason_label.format_replace_order_label
+---
+name: format_resource_suffix_clauses
+ts: 2026-08-25 06:47:26.048575+00:00
+type: keep_private
+full_path: _internal.output.action_reason_label.format_resource_suffix_clauses

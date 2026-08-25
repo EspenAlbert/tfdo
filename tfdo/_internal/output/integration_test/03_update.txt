@@ -1,6 +1,6 @@
 📋 Plan: 🟣 1 to replace
 
-🟣 local_file.config (must replace)
+🟣 local_file.config (must replace, cannot update, destroy before create)
        filename: "./output/config.json"
      ! content: {"name":"api-live-rat","version":"1.0.0"}
      -> {"env":"production","name":"api-live-rat","version":"2.0.0"}

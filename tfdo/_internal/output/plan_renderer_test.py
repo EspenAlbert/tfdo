@@ -12,7 +12,7 @@ from tfdo._internal.output import orchestration_print
 from tfdo._internal.output.apply_state import plan_has_applyable_changes
 from tfdo._internal.output.complex_render import ComplexRenderConfig
 from tfdo._internal.output.conftest import build_attr_lines_by_addr, render_fixture
-from tfdo._internal.output.models import Change, OutputChange, PlanOutput, ResourceChange
+from tfdo._internal.output.models import Change, OutputChange, PlanOutput, ResourceAction, ResourceChange
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.plan_display import PlanDisplayOptions
 from tfdo._internal.output.plan_renderer import (
@@ -23,9 +23,36 @@ from tfdo._internal.output.plan_renderer import (
     _format_output_section,
     _module_depth_by_address,
     _plan_header_line,
+    _resource_action_suffix,
     render_plan,
 )
+from tfdo._internal.output.testdata_paths import TESTDATA_DIR
 from tfdo._internal.output.tree_builder import build_plan_tree
+
+
+def test_resource_action_suffix_includes_reason_and_order() -> None:
+    suffix = _resource_action_suffix(
+        ResourceAction.REPLACE_CREATE_FIRST,
+        action_reason="replace_because_tainted",
+    )
+    assert suffix == " (must replace, tainted, create before destroy)"
+
+    destroy_first = _resource_action_suffix(
+        ResourceAction.REPLACE_DESTROY_FIRST,
+        action_reason="replace_because_cannot_update",
+    )
+    assert destroy_first == " (must replace, cannot update, destroy before create)"
+
+    deleted = _resource_action_suffix(
+        ResourceAction.DELETE,
+        action_reason="delete_because_no_resource_config",
+    )
+    assert deleted == " (deleted, removed from config)"
+
+
+def test_render_tainted_replace_create_first(capture_console) -> None:
+    rendered = render_fixture(TESTDATA_DIR / "10_replace_tainted.json", capture_console)
+    assert "(must replace, tainted, create before destroy)" in rendered
 
 
 def test_module_resource_header_not_dim(create_modules_plan: Path) -> None:

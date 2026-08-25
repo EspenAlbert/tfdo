@@ -15,7 +15,7 @@ _CODE_INDENT = "     "
 def render_diagnostic(diag: DiagnosticBody, *, resource_addr: str | None = None) -> list[Text | str]:
     lines: list[Text | str] = []
     severity = (diag.severity or "error").lower()
-    lines.append(_severity_heading(severity, _summary_after_label(diag.summary, severity)))
+    lines.append(_severity_heading(severity, summary_after_label(diag.summary, severity)))
 
     has_source = diag.source_range is not None or diag.snippet is not None
     if diag.source_range is not None:
@@ -31,7 +31,7 @@ def render_diagnostic(diag: DiagnosticBody, *, resource_addr: str | None = None)
     return lines
 
 
-def _summary_after_label(summary: str, severity: str) -> str:
+def summary_after_label(summary: str, severity: str) -> str:
     match severity:
         case "warning":
             for prefix in ("Warning: ", "Warning "):
@@ -42,6 +42,37 @@ def _summary_after_label(summary: str, severity: str) -> str:
                 if summary.startswith(prefix):
                     return summary[len(prefix) :]
     return summary
+
+
+def render_compact_warning(summary: str, *, detail: str | None = None) -> list[Text | str]:
+    lines: list[Text | str] = [_severity_heading("warning", summary)]
+    for path in provider_override_paths(detail):
+        lines.append(_DETAIL_INDENT + path)
+    return lines
+
+
+def provider_override_paths(detail: str | None) -> list[str]:
+    if not detail:
+        return []
+    paths: list[str] = []
+    for line in detail.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("- "):
+            continue
+        entry = stripped[2:]
+        if " in " in entry:
+            _, path = entry.rsplit(" in ", 1)
+            paths.append(path.strip())
+            continue
+        paths.append(entry)
+    return paths
+
+
+def render_repeat_warning(count: int, summary: str) -> list[Text | str]:
+    text = Text(_DIAGNOSTIC_INDENT)
+    text.append(f"Warning (×{count}): ", style="bold yellow")
+    text.append(summary)
+    return [text]
 
 
 def _severity_heading(severity: str, summary: str) -> Text:
