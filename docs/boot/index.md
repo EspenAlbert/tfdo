@@ -19,7 +19,8 @@
 > **Since:** 0.7.0
 
 ```python
-def boot_cmd() -> None: ...
+def boot_cmd() -> None:
+    ...
 ```
 
 Bootstrap a new tfdo-managed Terraform repo.

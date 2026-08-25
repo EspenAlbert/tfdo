@@ -45,7 +45,8 @@ class ExitEvent(BaseModel):
 > **Since:** 0.6.0
 
 ```python
-class HookEnvVars(dict): ...
+class HookEnvVars(dict):
+    ...
 ```
 
 ### Changes

@@ -25,7 +25,8 @@
 > **Since:** 0.1.0
 
 ```python
-def get_settings() -> TfDoSettings: ...
+def get_settings() -> TfDoSettings:
+    ...
 ```
 
 ### Changes
@@ -72,7 +73,8 @@ def main_callback(*, binary: str = 'terraform', tf_version: str | None = None, w
 > **Since:** 0.2.0
 
 ```python
-class InteractiveMode(StrEnum): ...
+class InteractiveMode(StrEnum):
+    ...
 ```
 
 ### Changes
@@ -89,7 +91,8 @@ class InteractiveMode(StrEnum): ...
 > **Since:** 0.3.0
 
 ```python
-def info_cmd() -> None: ...
+def info_cmd() -> None:
+    ...
 ```
 
 Show resolved settings, paths, and user config.

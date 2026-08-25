@@ -19,7 +19,8 @@
 > **Since:** 0.7.0
 
 ```python
-def env_cmd(*, src: str = ..., dst: str = ...) -> None: ...
+def env_cmd(*, src: str = ..., dst: str = ...) -> None:
+    ...
 ```
 
 Copy a tfdo-managed environment.

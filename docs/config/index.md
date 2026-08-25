@@ -34,7 +34,8 @@
 > **Since:** 0.6.0
 
 ```python
-class BackendType(StrEnum): ...
+class BackendType(StrEnum):
+    ...
 ```
 
 ### Changes
@@ -85,7 +86,8 @@ class HookConfig(BaseModel):
 > **Since:** 0.6.0
 
 ```python
-class HookOnError(StrEnum): ...
+class HookOnError(StrEnum):
+    ...
 ```
 
 ### Changes
@@ -102,7 +104,8 @@ class HookOnError(StrEnum): ...
 > **Since:** 0.6.0
 
 ```python
-class LifecycleEvent(StrEnum): ...
+class LifecycleEvent(StrEnum):
+    ...
 ```
 
 ### Changes
@@ -143,7 +146,8 @@ class LocalBackend(BaseModel):
 > **Since:** 0.6.0
 
 ```python
-class TagsInject(StrEnum): ...
+class TagsInject(StrEnum):
+    ...
 ```
 
 ### Changes
@@ -160,7 +164,8 @@ class TagsInject(StrEnum): ...
 > **Since:** 0.6.0
 
 ```python
-def show_cmd() -> None: ...
+def show_cmd() -> None:
+    ...
 ```
 
 Print resolved tfdo.yaml config layers and merged result for current work directory.
@@ -179,7 +184,8 @@ Print resolved tfdo.yaml config layers and merged result for current work direct
 > **Since:** 0.6.0
 
 ```python
-def init_cmd(*, dry_run: bool = False) -> None: ...
+def init_cmd(*, dry_run: bool = False) -> None:
+    ...
 ```
 
 Detect run directories and generate a starter tfdo.yaml.
@@ -209,7 +215,7 @@ class CiConfig(BaseModel):
     repo_org: str | None = None
     repo_name: str | None = None
     oidc_roles: dict[str, str] = ...
-    tfdo_install: str = "git+https://github.com/EspenAlbert/tfdo.git@main"
+    tfdo_install: str = 'git+https://github.com/EspenAlbert/tfdo.git@main'
 ```
 
 | Field | Type | Default | Since |
@@ -284,7 +290,8 @@ class ProviderConstraint(BaseModel):
 > **Since:** 0.8.0
 
 ```python
-class DetailLevel(StrEnum): ...
+class DetailLevel(StrEnum):
+    ...
 ```
 
 ### Changes
@@ -302,9 +309,9 @@ class DetailLevel(StrEnum): ...
 
 ```python
 class ApplyDisplayOptions(BaseModel):
-    slow_threshold: str = "2m"
-    very_slow_threshold: str = "10m"
-    heartbeat_interval: str = "30s"
+    slow_threshold: str = '2m'
+    very_slow_threshold: str = '10m'
+    heartbeat_interval: str = '30s'
     hide_provision_output: bool = False
 ```
 
