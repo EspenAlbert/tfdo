@@ -57,12 +57,17 @@ def test_slow_refresh_threshold_and_complete(_add_mock: MagicMock) -> None:
     with patch(f"{_MODULE}.time.monotonic", side_effect=[0.0, 0.0]):
         handler = PlanStreamHandler()
         handler.feed_line(_line({"type": "apply_start", "hook": {"resource": {"addr": "slow.addr"}}}))
-    assert "slow.addr" not in handler._live_status(now=9.0).plain
+    before_threshold = handler._live_status(now=9.0)
+    assert before_threshold is not None
+    assert "slow.addr" not in before_threshold.plain
     status = handler._live_status(now=10.0)
+    assert status is not None
     assert "slow.addr" in status.plain
     assert "10s" in status.plain
     handler.feed_line(_line({"type": "apply_complete", "hook": {"resource": {"addr": "slow.addr"}}}))
-    assert "slow.addr" not in handler._live_status(now=20.0).plain
+    after_complete = handler._live_status(now=20.0)
+    assert after_complete is not None
+    assert "slow.addr" not in after_complete.plain
 
 
 @patch(f"{_MODULE}.ask_console.add_renderable", return_value=MagicMock())
@@ -71,6 +76,7 @@ def test_slow_refresh_sort_and_cap(_add_mock: MagicMock) -> None:
     handler._in_flight = {f"addr.{index}": 0.0 for index in range(6)}
     handler._in_flight["addr.slow"] = -30.0
     status = handler._live_status(now=40.0)
+    assert status is not None
     plain = status.plain
     assert plain.index("addr.slow") < plain.index("addr.0")
     assert "2 more" in plain
