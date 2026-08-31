@@ -80,6 +80,20 @@ docs-serve:
   uv run scripts/fix_source_links.py {{REPO_URL}}
   uv run --group docs mkdocs serve
 # === OK_EDIT: path-sync docs ===
+# === DO_NOT_EDIT: path-sync typos ===
+typos:
+  typos --force-exclude .
+
+typos-fix:
+  typos --write-changes --force-exclude .
+# === OK_EDIT: path-sync typos ===
+# === DO_NOT_EDIT: path-sync secrets-check ===
+secrets-check:
+  betterleaks git . --pre-commit --no-banner
+
+secrets-history:
+  betterleaks git . --no-banner --redact -v
+# === OK_EDIT: path-sync secrets-check ===
 
 # Custom recipes below
 
