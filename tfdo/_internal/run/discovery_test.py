@@ -62,7 +62,7 @@ def test_has_backend_block_negative(tmp_path: Path):
     assert not has_backend_block(tmp_path)
 
 
-def test_has_backend_block_skips_unparseable(tmp_path: Path):
+def test_has_backend_block_skips_unparsable(tmp_path: Path):
     (tmp_path / "bad.tf").write_text("{{{{invalid hcl")
     assert not has_backend_block(tmp_path)
 

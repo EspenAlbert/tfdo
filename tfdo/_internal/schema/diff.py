@@ -148,12 +148,12 @@ def join_path(prefix: str, name: str) -> str:
 
 def _attr_tags(old: SchemaAttribute, new: SchemaAttribute) -> list[str]:
     tags: list[str] = []
-    od = old.model_dump(mode="json", exclude_none=True)
-    nd = new.model_dump(mode="json", exclude_none=True)
-    if od == nd:
+    old_dump = old.model_dump(mode="json", exclude_none=True)
+    new_dump = new.model_dump(mode="json", exclude_none=True)
+    if old_dump == new_dump:
         return []
     for k in ("type", "element_type", "nested_type"):
-        if od.get(k) != nd.get(k):
+        if old_dump.get(k) != new_dump.get(k):
             tags.append("type")
             break
     req_o, req_n = old.required is True, new.required is True
@@ -190,9 +190,9 @@ def diff_blocks(
             out.append(ResourceSchemaChange(resource_type=resource_type, path=path, kind="added"))
             continue
         a_old, a_new = la[name], ra[name]
-        od = a_old.model_dump(mode="json", exclude_none=True)
-        nd = a_new.model_dump(mode="json", exclude_none=True)
-        if od != nd:
+        old_dump = a_old.model_dump(mode="json", exclude_none=True)
+        new_dump = a_new.model_dump(mode="json", exclude_none=True)
+        if old_dump != new_dump:
             out.append(
                 ResourceSchemaChange(
                     resource_type=resource_type,

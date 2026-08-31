@@ -37,7 +37,7 @@ def test_has_tags_variable_no_variables(tmp_path: Path):
     assert not has_tags_variable(tmp_path)
 
 
-def test_has_tags_variable_unparseable(tmp_path: Path):
+def test_has_tags_variable_unparsable(tmp_path: Path):
     (tmp_path / "bad.tf").write_text("{{{{invalid hcl")
     assert not has_tags_variable(tmp_path)
 

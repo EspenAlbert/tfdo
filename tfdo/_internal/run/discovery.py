@@ -20,7 +20,7 @@ def has_backend_block(directory: Path) -> bool:
         try:
             data = hcl2_loads(tf_file.read_text())
         except Exception:
-            logger.warning(f"skipping unparseable file: {tf_file}")
+            logger.warning(f"skipping unparsable file: {tf_file}")
             continue
         for terraform_block in data.get("terraform", []):
             if "backend" in terraform_block:
