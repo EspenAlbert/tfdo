@@ -121,7 +121,7 @@ def test_schema_show_invalid_provider_schemas_type(monkeypatch: pytest.MonkeyPat
         return _as_fetch({"provider_schemas": "nope"})
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
-    with pytest.raises(ValueError, match="provider_schemas"):
+    with pytest.raises(TypeError, match="provider_schemas"):
         schema_show(SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas", source="mongodb/mongodbatlas"))
 
 
@@ -130,7 +130,7 @@ def test_schema_show_invalid_provider_entry(monkeypatch: pytest.MonkeyPatch) -> 
         return _as_fetch({"provider_schemas": {"registry.terraform.io/mongodb/mongodbatlas": []}})
 
     monkeypatch.setattr(schema_inspect, _fetch_providers_schema_json.__name__, fake_fetch)
-    with pytest.raises(ValueError, match="Invalid provider entry"):
+    with pytest.raises(TypeError, match="Invalid provider entry"):
         schema_show(SchemaShowInput(settings=TfDoSettings(), provider="mongodbatlas", source="mongodb/mongodbatlas"))
 
 

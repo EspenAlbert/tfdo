@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from tfdo._internal.config.enums import TagsInject
-from tfdo._internal.hcl_read import hcl2_loads
+from tfdo._internal.hcl_read import HCL_PARSE_ERRORS, hcl2_loads
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ def has_tags_variable(directory: Path) -> bool:
             continue
         try:
             data = hcl2_loads(tf_file.read_text())
-        except Exception:
+        except HCL_PARSE_ERRORS:
             logger.warning(f"skipping unparsable file: {tf_file}")
             continue
         for var_block in data.get("variable", []):

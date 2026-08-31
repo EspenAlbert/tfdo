@@ -44,12 +44,10 @@ def resolve_resource_addr(
     candidate_addrs: frozenset[str] | None = None,
 ) -> str | None:
     candidates = candidate_addrs or frozenset()
-    if diagnostic.address:
-        if not candidates or diagnostic.address in candidates:
-            return diagnostic.address
-    if pending_hook_addr:
-        if not candidates or pending_hook_addr in candidates:
-            return pending_hook_addr
+    if diagnostic.address and (not candidates or diagnostic.address in candidates):
+        return diagnostic.address
+    if pending_hook_addr and (not candidates or pending_hook_addr in candidates):
+        return pending_hook_addr
     if candidates:
         return resolve_diagnostic_addr(diagnostic, candidates)
     return None

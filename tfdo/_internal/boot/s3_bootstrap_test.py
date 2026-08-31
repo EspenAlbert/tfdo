@@ -23,9 +23,11 @@ def test_check_tf_version_passes_for_1_11() -> None:
 
 
 def test_check_tf_version_raises_for_old_version() -> None:
-    with patch(f"{_MODULE}.run_and_wait", return_value=_mock_version_run({"terraform_version": "1.9.3"})):
-        with pytest.raises(ValueError, match="too old"):
-            check_tf_version("terraform")
+    with (
+        patch(f"{_MODULE}.run_and_wait", return_value=_mock_version_run({"terraform_version": "1.9.3"})),
+        pytest.raises(ValueError, match="too old"),
+    ):
+        check_tf_version("terraform")
 
 
 def test_provision_s3_bucket_issues_four_commands() -> None:

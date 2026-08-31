@@ -152,6 +152,6 @@ def load_user_config(settings: TfDoSettings) -> TfDoUserConfig:
     try:
         data = yaml.safe_load(path.read_text()) or {}
         return TfDoUserConfig(**data)
-    except Exception:
+    except (OSError, yaml.YAMLError, ValueError, TypeError):
         logger.warning(f"failed to parse user config at {path}")
         return TfDoUserConfig()

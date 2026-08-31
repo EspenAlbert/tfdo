@@ -87,7 +87,7 @@ def _ensure_backends_and_fmt(copied: list[Path], edited: list[Path], settings: T
         try:
             if check_logic.ensure_run_dir_backend(run_dir, settings):
                 backend_touched.append(run_dir)
-        except Exception as exc:
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
             logger.warning(f"ensure backend failed for {run_dir}: {exc}")
 
     for path in sorted(set(edited) | set(backend_touched), key=lambda p: str(p)):

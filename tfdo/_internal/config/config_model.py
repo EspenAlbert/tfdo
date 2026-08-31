@@ -173,9 +173,8 @@ class TfDoConfig(BaseModel):
     def run_context_label(self, repo_root: Path, work_dir: Path) -> str:
         rel = str(work_dir.resolve().relative_to(repo_root))
         pattern = self.parsed_pattern()
-        if selectors := pattern.match(rel):
-            if label := pattern.context_label(selectors):
-                return label
+        if (selectors := pattern.match(rel)) and (label := pattern.context_label(selectors)):
+            return label
         parts = rel.strip("/").split("/")
         if len(parts) >= 2:
             return f"{parts[-2]}/{parts[-1]}"

@@ -98,9 +98,7 @@ def resolve_tflint(
         if layer.config.check and layer.config.check.tflint:
             return True
     user_config = load_user_config(settings)
-    if user_config.check and user_config.check.tflint:
-        return True
-    return False
+    return bool(user_config.check and user_config.check.tflint)
 
 
 def resolve_skip_check_providers(
@@ -114,6 +112,4 @@ def resolve_skip_check_providers(
         if layer.config.check and layer.config.check.skip_check_providers:
             return True
     user_config = load_user_config(settings)
-    if user_config.check and user_config.check.skip_check_providers:
-        return True
-    return False
+    return bool(user_config.check and user_config.check.skip_check_providers)

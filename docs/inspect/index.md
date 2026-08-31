@@ -26,7 +26,7 @@
 
 ```python
 def inspect_hcl_paths_cmd(
-    *, path: Path = Path("."), hidden: bool = False, as_json: bool = False, output: Path | None = None
+    *, path: Path = ".", hidden: bool = False, as_json: bool = False, output: Path | None = None
 ) -> None: ...
 ```
 
@@ -34,7 +34,7 @@ def inspect_hcl_paths_cmd(
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--path`, `-p` | `Path` | `Path('.')` | Root directory to scan for Terraform files |
+| `--path`, `-p` | `Path` | `'.'` | Root directory to scan for Terraform files |
 | `--hidden` | `bool` | `False` | Include hidden directories (dot-prefixed) in the scan |
 | `--json` | `bool` | `False` | Print JSON to stdout |
 | `--output`, `-o` | `Path | None` | `None` | Write JSON here instead of stdout (requires --json) |
@@ -55,7 +55,7 @@ def inspect_hcl_paths_cmd(
 ```python
 def inspect_resource_usage_cmd(
     *,
-    path: Path = Path("."),
+    path: Path = ".",
     mode: str = "all",
     input_only: bool = True,
     provider: str = ...,
@@ -75,7 +75,7 @@ def inspect_resource_usage_cmd(
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--path`, `-p` | `Path` | `Path('.')` | Root directory to scan for Terraform files |
+| `--path`, `-p` | `Path` | `'.'` | Root directory to scan for Terraform files |
 | `--mode` | `str` | `'all'` | included \| excluded \| all |
 | `--input-only/--no-input-only` | `bool` | `True` | Input paths only in v1 (default: on) |
 | `--provider` | `str` | *required* | required_providers local name (e.g. mongodbatlas) |

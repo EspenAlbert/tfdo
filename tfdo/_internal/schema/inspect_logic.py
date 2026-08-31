@@ -79,11 +79,11 @@ def _raw_resource_schemas_for_provider(
     raw = fetched.payload
     pschemas = raw.get("provider_schemas")
     if not isinstance(pschemas, dict):
-        raise ValueError("Invalid schema JSON: provider_schemas missing or not an object")
+        raise TypeError("Invalid schema JSON: provider_schemas missing or not an object")
     pkey = pick_provider_key(pschemas, local_name=provider, source=source_resolved)
     entry = pschemas[pkey]
     if not isinstance(entry, dict):
-        raise ValueError(f"Invalid provider entry for {pkey!r}")
+        raise TypeError(f"Invalid provider entry for {pkey!r}")
     rschemas = entry.get("resource_schemas")
     if not isinstance(rschemas, dict):
         return {}, fetched.resolved_version

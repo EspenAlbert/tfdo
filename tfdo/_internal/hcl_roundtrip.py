@@ -176,7 +176,7 @@ def splice_block(original: str, block_dict: dict[str, Any], label_path: Iterable
 def _find_resource_attrs(doc: dict[str, Any], resource_type: str, resource_name: str) -> dict[str, Any]:
     resources = doc.get("resource")
     if not isinstance(resources, list):
-        raise ValueError("document has no resource list")
+        raise TypeError("document has no resource list")
 
     for block in resources:
         if not isinstance(block, dict):
@@ -198,7 +198,7 @@ def _find_resource_attrs(doc: dict[str, Any], resource_type: str, resource_name:
 def _find_module_attrs(doc: dict[str, Any], module_name: str) -> dict[str, Any]:
     modules = doc.get("module")
     if not isinstance(modules, list):
-        raise ValueError(f"module {module_name} not found")
+        modules = []
 
     for block in modules:
         if not isinstance(block, dict):
@@ -318,7 +318,7 @@ def patch_module_block_attributes(original: str, module_name: str, attributes: d
     block_index = find_block_index(tree, ("module", module_name))
     block = tree.body.children[block_index]
     if not isinstance(block, BlockRule):
-        raise ValueError(f"expected module block, got {type(block).__name__}")
+        raise TypeError(f"expected module block, got {type(block).__name__}")
     for attr_name, attr_value in attributes.items():
         new_expr = _attribute_rhs_expression(attr_name, attr_value)
         for child in block.body.children:

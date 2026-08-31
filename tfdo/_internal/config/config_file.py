@@ -6,6 +6,7 @@ from typing import NamedTuple
 
 import yaml
 from model_lib import dump as model_dump
+from model_lib.errors import PayloadError
 from model_lib.serialize.parse import parse_dict
 from zero_3rdparty.file_utils import ensure_parents_write_text, find_repo_root
 
@@ -132,7 +133,7 @@ def load_optional_env_vars_from_files(
             continue
         try:
             file_values = {key: str(value) for key, value in parse_dict(env_file_path).items()}
-        except Exception as exc:
+        except (OSError, ValueError, PayloadError) as exc:
             active_log.warning(f"failed to parse env-var file {env_file_path}: {exc}")
             continue
         loaded.update(file_values)

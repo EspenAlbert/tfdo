@@ -30,7 +30,7 @@ app.add_typer(inspect_app, name="inspect")
 
 @inspect_app.command("hcl-paths")
 def inspect_hcl_paths_cmd(
-    path: Path = typer.Option(Path.cwd(), "--path", "-p", help="Root directory to scan for Terraform files"),
+    path: Path = typer.Option(".", "--path", "-p", help="Root directory to scan for Terraform files"),
     hidden: bool = typer.Option(False, "--hidden", help="Include hidden directories (dot-prefixed) in the scan"),
     as_json: bool = typer.Option(False, "--json", help="Print JSON to stdout"),
     output: Path | None = typer.Option(
@@ -56,7 +56,7 @@ def inspect_hcl_paths_cmd(
 @inspect_app.command("resource-usage")
 def inspect_resource_usage_cmd(
     ctx: typer.Context,
-    path: Path = typer.Option(Path.cwd(), "--path", "-p", help="Root directory to scan for Terraform files"),
+    path: Path = typer.Option(".", "--path", "-p", help="Root directory to scan for Terraform files"),
     mode: str = typer.Option("all", "--mode", help="included | excluded | all"),
     input_only: bool = typer.Option(
         True,
