@@ -6,11 +6,7 @@ _DEFAULT_MAX_DEPTH = 1
 
 
 def is_computed_only_attribute(attr: SchemaAttribute) -> bool:
-    if attr.computed is not True:
-        return False
-    if attr.optional is True:
-        return False
-    return True
+    return attr.computed is True and attr.optional is not True
 
 
 def is_whole_map_leaf_attribute(attr: SchemaAttribute) -> bool:

@@ -123,7 +123,7 @@ def test_narrow_terminal_uses_inline_min_width() -> None:
     config = ComplexRenderConfig(inline_min_width=120)
     old = "x" * 200
     new = "y" * 200
-    lines, header = _render(
+    _lines, header = _render(
         old,
         new,
         terminal_width=40,

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from zero_3rdparty.file_utils import ensure_parents_write_text
 
-from tfdo._internal.hcl_read import hcl2_loads
+from tfdo._internal.hcl_read import HCL_PARSE_ERRORS, hcl2_loads
 from tfdo._internal.schema.cache import REGISTRY_HOST_PREFIX
 
 TF_CLI_CONFIG_FILE_ENV = "TF_CLI_CONFIG_FILE"
@@ -88,7 +88,7 @@ def parse_dev_overrides(config_path: Path) -> dict[str, str]:
     hcl2_parsed = False
     try:
         loaded = hcl2_loads(raw_text)
-    except Exception as e:
+    except HCL_PARSE_ERRORS as e:
         hcl2_error = e
     else:
         hcl2_parsed = True

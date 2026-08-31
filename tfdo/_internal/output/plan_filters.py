@@ -93,9 +93,7 @@ def is_computed_only_drift_line(
     if after_unknown_at(change, path):
         return True
     schema_hit = lookup(provider, resource_type, path)
-    if schema_hit is True:
-        return True
-    return False
+    return schema_hit is True
 
 
 def is_computed_only_drift_resource(

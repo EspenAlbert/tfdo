@@ -275,7 +275,7 @@ def _collect_dependency_outputs(
 ) -> dict[str, object] | None:
     try:
         prepared = prepare_run_dir(settings, run_dir_path, ctx, config, var_file)
-    except Exception as e:
+    except (OSError, ValueError, TypeError, KeyError, RuntimeError) as e:
         logger.warning(f"dependency output prepare failed in {run_dir_path}: {e}")
         return None
     init_input = prepared.init_input
@@ -472,7 +472,7 @@ def _run_event_hooks(registry: HookRegistry, event: LifecycleEvent, hook_ctx: Ho
         hook_execution.run_hooks(registry, event, hook_ctx)
     except HookAbortError as e:
         logger.warning(f"{rel}: {e}")
-    except Exception as e:
+    except (OSError, ValueError, TypeError, RuntimeError) as e:
         logger.warning(f"{rel}: unexpected error in {event} hooks: {e}")
 
 
@@ -491,7 +491,7 @@ def _execute_run_dir(
     def body() -> RunDirResult:
         try:
             prepared = prepare_run_dir(inp.settings, run_dir_path, ctx, config, inp.var_file)
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, RuntimeError) as e:
             logger.error(f"{rel}: preparation failed: {e}")
             return finish(
                 _DispatchOutcome(1, False, "", str(e), None, None, None),
@@ -587,7 +587,7 @@ def _parallel_dir_done_callback(
 ) -> None:
     try:
         result = future.result()
-    except Exception:
+    except (TimeoutError, RuntimeError, OSError, ValueError):
         return
     if summary := _dir_summary_from_result(result, command):
         display.on_dir_complete(summary)

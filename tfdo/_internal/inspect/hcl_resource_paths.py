@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from tfdo._internal.core.tf_files import iter_tf_files
-from tfdo._internal.hcl_read import hcl2_load
+from tfdo._internal.hcl_read import HCL_PARSE_ERRORS, hcl2_load
 
 _TERRAFORM_META_PATHS: frozenset[str] = frozenset(
     {"connection", "count", "depends_on", "for_each", "lifecycle", "provider", "provisioner"}
@@ -59,7 +59,7 @@ def collect_resource_argument_paths(root: Path, *, include_hidden: bool = False)
         try:
             with path.open(encoding="utf-8") as f:
                 parsed = hcl2_load(f)
-        except Exception as exc:
+        except HCL_PARSE_ERRORS as exc:
             errors.append(to_parse_error(path, exc))
             continue
         _merge_parsed_into_file(parsed, rel_file, acc)

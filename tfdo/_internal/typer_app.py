@@ -40,14 +40,14 @@ def main_callback(
         False, "--verbose-shell", envvar="TFDO_VERBOSE_SHELL", help="Log successful shell command completions"
     ),
 ) -> None:
-    kwargs: dict = dict(
-        binary=binary,
-        tf_version=tf_version,
-        interactive=interactive,
-        log_level=log_level,
-        passthrough=passthrough,
-        verbose_shell=verbose_shell,
-    )
+    kwargs: dict = {
+        "binary": binary,
+        "tf_version": tf_version,
+        "interactive": interactive,
+        "log_level": log_level,
+        "passthrough": passthrough,
+        "verbose_shell": verbose_shell,
+    }
     if work_dir is not None:
         kwargs["work_dir"] = work_dir
     settings = TfDoSettings(**kwargs)

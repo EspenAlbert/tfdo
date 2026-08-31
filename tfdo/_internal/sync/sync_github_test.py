@@ -211,7 +211,7 @@ def test_github_environment_api_put_only_when_secret_list_404(tmp_path: Path) ->
                 return (
                     False,
                     "failed to get secrets: HTTP 404: Not Found "
-                    "(https://api.github.com/repos/org/repo/environments/dev/secrets?per_page=100)",
+                    + "(https://api.github.com/repos/org/repo/environments/dev/secrets?per_page=100)",
                 )
             return True, "[]"
         if "gh api repos/org/repo/environments/dev" in script and "-X PUT" in script:
@@ -284,7 +284,7 @@ def test_two_env_workflow_generation(tmp_path: Path) -> None:
 def test_setup_action_reads_tf_version(tmp_path: Path) -> None:
     _make_envs(tmp_path, ["dev"])
     config = TfDoConfig(tf_version="1.10.0", providers=[ProviderConstraint(name="mongodbatlas")])
-    calls, recorder = _gh_call_recorder()
+    _calls, recorder = _gh_call_recorder()
     input_model = SyncGithubInput(
         settings=_settings(tmp_path),
         config=config,

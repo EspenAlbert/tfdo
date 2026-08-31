@@ -28,7 +28,7 @@ from tfdo._internal.core.terraform_init import init
 from tfdo._internal.core.tf_files import TERRAFORM_DIR, find_tf_directories
 from tfdo._internal.git_utils import parse_git_remote
 from tfdo._internal.hcl_entity_parser import TfRequiredProviders, parse_dir_entities
-from tfdo._internal.hcl_read import hcl2_load
+from tfdo._internal.hcl_read import HCL_PARSE_ERRORS, hcl2_load
 from tfdo._internal.hcl_roundtrip import update_required_providers
 from tfdo._internal.models import (
     CheckInput,
@@ -80,7 +80,7 @@ class _DirRunResult(NamedTuple):
     provider_result: RunDirProviderResult | None = None
     backend_drift: bool = False
     version_drift: bool = False
-    unpinned_providers: list[str] = []
+    unpinned_providers: tuple[str, ...] = ()
 
 
 def _run_fmt(resolved_binary: str, cwd: Path, fix: bool, diff: bool) -> _FmtResult:
@@ -133,7 +133,7 @@ def _required_tf_vars(tf_dir: Path) -> set[str]:
         try:
             with tf_file.open() as file_handle:
                 parsed = hcl2_load(file_handle)
-        except Exception as exc:
+        except HCL_PARSE_ERRORS as exc:
             logger.warning(f"failed to parse variables from {tf_file}: {exc}")
             continue
         for block in parsed.get("variable", []):
@@ -166,7 +166,7 @@ def _provided_tf_vars(tf_dir: Path, settings: TfDoSettings, os_env: Mapping[str,
         try:
             with var_file_path.open() as file_handle:
                 parsed = hcl2_load(file_handle)
-        except Exception as exc:
+        except HCL_PARSE_ERRORS as exc:
             logger.warning(f"failed to parse tfvars file {var_file_path}: {exc}")
             continue
         provided.update(str(key) for key in parsed)
@@ -283,19 +283,19 @@ def _check_directory(
         provider_result = check_run_dir(work_dir, rel, os_env or os.environ, settings)
     try:
         bd = _check_backend_drift(tf_dir, settings, fix)
-    except Exception as exc:
+    except (OSError, ValueError, TypeError, RuntimeError) as exc:
         logger.warning(f"backend drift check failed for {tf_dir}: {exc}")
         bd = False
     try:
         vd = _check_provider_version_drift(tf_dir, fix)
-    except Exception as exc:
+    except (OSError, ValueError, TypeError, RuntimeError) as exc:
         logger.warning(f"provider version drift check failed for {tf_dir}: {exc}")
         vd = False
     try:
         unpinned = _find_unpinned_providers(tf_dir)
-    except Exception as exc:
+    except (OSError, ValueError, TypeError, RuntimeError) as exc:
         logger.warning(f"unpinned provider check failed for {tf_dir}: {exc}")
-        unpinned = []
+        unpinned = ()
     return _DirRunResult(
         fmt=fmt,
         validation_errors=errors,
@@ -305,7 +305,7 @@ def _check_directory(
         provider_result=provider_result,
         backend_drift=bd,
         version_drift=vd,
-        unpinned_providers=unpinned,
+        unpinned_providers=tuple(unpinned),
     )
 
 
@@ -467,7 +467,7 @@ def check(input_model: CheckInput) -> CheckResult:
             skipped=run_result.skipped,
             backend_drift=run_result.backend_drift and not input_model.fix,
             provider_version_drift=run_result.version_drift and not input_model.fix,
-            unpinned_providers=run_result.unpinned_providers,
+            unpinned_providers=list(run_result.unpinned_providers),
         )
         for tf_dir, run_result in run_results.items()
     ]

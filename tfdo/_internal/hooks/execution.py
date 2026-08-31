@@ -12,7 +12,7 @@ from tfdo._internal.hooks.registry import HookRegistry
 
 logger = logging.getLogger(__name__)
 
-_hook_env: ContextVar[dict[str, str]] = ContextVar("_hook_env", default={})
+_hook_env: ContextVar[dict[str, str] | None] = ContextVar("_hook_env", default=None)
 
 ENV_CMD_DIR = "TFDO_CMD_DIR"
 ENV_RUN_STATE_DIR = "TFDO_RUN_STATE_DIR"
@@ -25,7 +25,7 @@ ENV_ATTEMPT = "TFDO_ATTEMPT"
 
 
 def get_hook_env() -> dict[str, str]:
-    return _hook_env.get()
+    return _hook_env.get() or {}
 
 
 def set_hook_env(env: dict[str, str]) -> None:
@@ -33,7 +33,7 @@ def set_hook_env(env: dict[str, str]) -> None:
 
 
 def get_hook_env_var(key: str) -> str | None:
-    return _hook_env.get().get(key)
+    return (_hook_env.get() or {}).get(key)
 
 
 class HookContext(BaseModel):

@@ -142,7 +142,7 @@ def test_write_cached_schema_concurrent_writes(tmp_path: Path) -> None:
     def write() -> None:
         try:
             schema_cache.write_cached_schema(tmp_path, rel, payload)
-        except BaseException as exc:
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
             errors.append(exc)
 
     threads = [threading.Thread(target=write) for _ in range(8)]

@@ -64,7 +64,7 @@ class LocalHookRunner:
         if fn is None:
             raise ValueError(f"py_locate attribute '{attr_name}' not found in '{module_path}'")
         if not callable(fn):
-            raise ValueError(f"py_locate '{dotted}' is not callable")
+            raise TypeError(f"py_locate '{dotted}' is not callable")
 
         params = inspect.signature(fn).parameters
         accepts_input = len(params) >= 1

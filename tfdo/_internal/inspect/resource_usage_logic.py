@@ -9,7 +9,7 @@ from model_lib import parse
 from pydantic import BaseModel, Field
 
 from tfdo._internal.core.tf_files import iter_tf_files
-from tfdo._internal.hcl_read import hcl2_load
+from tfdo._internal.hcl_read import HCL_PARSE_ERRORS, hcl2_load
 from tfdo._internal.inspect import hcl_resource_paths as hrp
 from tfdo._internal.inspect.description_search_logic import (
     MatchingSchemaResource,
@@ -190,7 +190,7 @@ def inspect_resource_usage(input_model: ResourceUsageInput) -> ResourceUsageResu
         try:
             with path.open(encoding="utf-8") as f:
                 parsed = hcl2_load(f)
-        except Exception as exc:
+        except HCL_PARSE_ERRORS as exc:
             errors.append(hrp.to_parse_error(path, exc))
             continue
         _extend_rows_from_parsed(parsed, rel_file, resource_schemas, input_model.provider, rows_in)

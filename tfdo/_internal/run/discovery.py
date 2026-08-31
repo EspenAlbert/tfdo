@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from tfdo._internal.config.config_resolution import ResolvedConfig
 from tfdo._internal.config.discovery_pattern import DiscoveryPattern, iter_dirs_at_depth
-from tfdo._internal.hcl_read import hcl2_loads
+from tfdo._internal.hcl_read import HCL_PARSE_ERRORS, hcl2_loads
 from tfdo._internal.run.run_context import RunDirContext
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ def has_backend_block(directory: Path) -> bool:
             continue
         try:
             data = hcl2_loads(tf_file.read_text())
-        except Exception:
+        except HCL_PARSE_ERRORS:
             logger.warning(f"skipping unparsable file: {tf_file}")
             continue
         for terraform_block in data.get("terraform", []):

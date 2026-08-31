@@ -12,7 +12,10 @@ from typing import Any, TextIO
 from hcl2.api import load as _hcl2_load
 from hcl2.api import loads as _hcl2_loads
 from hcl2.utils import SerializationOptions
+from lark.exceptions import LarkError
 from zero_3rdparty.file_utils import find_repo_root
+
+HCL_PARSE_ERRORS = (OSError, ValueError, TypeError, LarkError)
 
 _V7_COMPAT = SerializationOptions(
     strip_string_quotes=True,
