@@ -20,7 +20,7 @@ def has_tags_variable(directory: Path) -> bool:
         try:
             data = hcl2_loads(tf_file.read_text())
         except Exception:
-            logger.warning(f"skipping unparseable file: {tf_file}")
+            logger.warning(f"skipping unparsable file: {tf_file}")
             continue
         for var_block in data.get("variable", []):
             if "tags" not in var_block:

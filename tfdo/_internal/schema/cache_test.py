@@ -50,7 +50,7 @@ def test_read_resolved_version_missing_lock_file(tmp_path: Path) -> None:
         schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")
 
 
-def test_read_resolved_version_unparseable_lock_raises(tmp_path: Path) -> None:
+def test_read_resolved_version_unparsable_lock_raises(tmp_path: Path) -> None:
     (tmp_path / ".terraform.lock.hcl").write_text("not valid hcl {{{\n", encoding="utf-8")
     with pytest.raises(ValueError, match="failed to parse"):
         schema_cache.read_resolved_version_from_lock(workspace_root=tmp_path, source="mongodb/mongodbatlas")

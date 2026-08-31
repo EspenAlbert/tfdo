@@ -83,7 +83,7 @@ def lock_provider_version(lock_path: Path, source: str) -> str:
     """Read the resolved version for a single provider from a lock file.
 
     ``source`` is the short form (e.g. ``hashicorp/aws``).
-    Raises ValueError when the file is unparseable or the provider/version is missing.
+    Raises ValueError when the file is unparsable or the provider/version is missing.
     """
     addr = f"{REGISTRY_HOST_PREFIX}{source}"
     try:

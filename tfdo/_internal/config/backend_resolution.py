@@ -89,7 +89,7 @@ def _loads_tf(tf_path: Path) -> dict[str, Any] | None:
     try:
         return hcl2_loads(tf_path.read_text())
     except Exception:
-        logger.warning(f"skipping unparseable file: {tf_path}")
+        logger.warning(f"skipping unparsable file: {tf_path}")
         return None
 
 
