@@ -467,7 +467,7 @@ def check(input_model: CheckInput) -> CheckResult:
             skipped=run_result.skipped,
             backend_drift=run_result.backend_drift and not input_model.fix,
             provider_version_drift=run_result.version_drift and not input_model.fix,
-            unpinned_providers=run_result.unpinned_providers,
+            unpinned_providers=list(run_result.unpinned_providers),
         )
         for tf_dir, run_result in run_results.items()
     ]
