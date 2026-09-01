@@ -102,7 +102,7 @@ exclude = [".venv/", "*test.py"]
 # === DO_NOT_EDIT: path-sync dev-lint ===
 [dependency-groups]
 dev-lint = [
-  "pyright>=1.1",
+  "ty==0.0.76",
   "ruff>=0.14",
   "vulture>=2.14",
 ]

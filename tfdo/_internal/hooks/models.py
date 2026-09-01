@@ -20,7 +20,7 @@ class HookInput(BaseModel):
     env_vars: HookEnvVars
 
     def env_dict(self) -> dict[str, str]:
-        return dict(self.env_vars.items())  # pyright: ignore[reportReturnType]
+        return dict(self.env_vars.items())  # ty: ignore[invalid-return-type]
 
 
 class ExitEvent(BaseModel):

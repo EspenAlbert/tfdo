@@ -295,7 +295,7 @@ def _resolve_dep_outputs(dep_ref: DependencyRef, collected: dict[str, object] | 
     if not dep_ref.outputs:
         return None
     if collected is not None:
-        mapped: dict[str, str] = {}  # pyright: ignore[reportRedeclaration]
+        mapped: dict[str, str] = {}
         for out_name, local_var in dep_ref.outputs.items():
             if out_name not in collected:
                 return None

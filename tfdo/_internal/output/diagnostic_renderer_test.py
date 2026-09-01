@@ -64,7 +64,7 @@ def _capture_emit(
     import tfdo._internal.output.diagnostic_emitter as emitter_mod
 
     original = emitter_mod.ask_console
-    emitter_mod.ask_console = _Console()  # type: ignore[assignment]
+    emitter_mod.ask_console = _Console()  # ty: ignore[invalid-assignment]
     try:
         if new_emitter_per_diag:
             for diag in diags:
@@ -183,7 +183,7 @@ def test_emitter_counts_blocks() -> None:
     import tfdo._internal.output.diagnostic_emitter as emitter_mod
 
     original = emitter_mod.ask_console
-    emitter_mod.ask_console = _Console()  # type: ignore[assignment]
+    emitter_mod.ask_console = _Console()  # ty: ignore[invalid-assignment]
     try:
         emitter = DiagnosticEmitter()
         diag = DiagnosticBody(severity="error", summary="one")

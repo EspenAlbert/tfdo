@@ -5,7 +5,12 @@ from dataclasses import dataclass
 
 import pytest
 
-from tfdo._internal.output.hcl_annex import find_resource_change, render_hcl_annex_as_tf, strip_marked_paths
+from tfdo._internal.output.hcl_annex import (
+    MarkMap,
+    find_resource_change,
+    render_hcl_annex_as_tf,
+    strip_marked_paths,
+)
 from tfdo._internal.output.parser import parse_plan_file
 from tfdo._internal.output.testdata_paths import TESTDATA_DIR
 from tfdo._internal.schema.models import ResourceSchema
@@ -40,7 +45,7 @@ def _load_schema(name: str) -> ResourceSchema:
 
 def test_strip_marked_paths_removes_unknown_leaves():
     value = {"a": {"keep": 1, "drop": 2}, "remove": 3}
-    marks = {"a": {"drop": True}, "remove": True}
+    marks: MarkMap = {"a": {"drop": True}, "remove": True}
     assert strip_marked_paths(value, marks) == {"a": {"keep": 1}}
 
 

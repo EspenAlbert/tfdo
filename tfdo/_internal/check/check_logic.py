@@ -405,7 +405,7 @@ def _check_provider_version_drift(tf_dir: Path, fix: bool) -> bool:
         original = versions_tf.read_text()
         providers_patch: dict[str, dict[str, str]] = {}
         for name, pc in drifted.items():
-            providers_patch[name] = {"source": pc.source, "version": pc.constraint}  # type: ignore[dict-item]
+            providers_patch[name] = {"source": pc.source, "version": pc.constraint}  # ty: ignore[invalid-assignment]
         try:
             updated = update_required_providers(original, providers_patch)
             versions_tf.write_text(updated)
