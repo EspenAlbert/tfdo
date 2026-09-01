@@ -54,7 +54,7 @@ open-cov: cov
 
 # === DO_NOT_EDIT: path-sync typing ===
 type-check:
-  uv run pyright
+  uv run ty check
 # === OK_EDIT: path-sync typing ===
 
 # === DO_NOT_EDIT: path-sync pkg-ext ===

@@ -24,7 +24,7 @@ HookFnAny = HookFn | Callable[[], HookEffect | None]
 
 def _wrap_zero_arg(fn: HookFnAny) -> HookFn:
     def _wrapped(_input: HookInput) -> HookEffect | None:
-        return fn()  # pyright: ignore[reportCallIssue]
+        return fn()  # ty: ignore[missing-argument]
 
     return _wrapped
 
@@ -53,7 +53,7 @@ class HookRegistry:
         on_error: HookOnError | None = None,
     ) -> None:
         params = inspect.signature(fn).parameters
-        wrapped: HookFn = _wrap_zero_arg(fn) if not params else fn  # pyright: ignore[reportAssignmentType]
+        wrapped: HookFn = _wrap_zero_arg(fn) if not params else fn  # ty: ignore[invalid-assignment]
         for event in events:
             mode = on_error or LifecycleEvent.default_on_error(event)
             hook = RegisteredHook(name=name, source=source, priority=priority, on_error=mode, fn=wrapped)

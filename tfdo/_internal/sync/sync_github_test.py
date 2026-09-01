@@ -371,7 +371,7 @@ def _atlas_input(tmp_path: Path, recorder: Callable[[str], tuple[bool, str]], **
         "run_gh": recorder,
     }
     defaults.update(overrides)
-    return SyncGithubInput(**defaults)  # type: ignore[arg-type]
+    return SyncGithubInput.model_validate(defaults)
 
 
 def test_section_markers_survive_regeneration(tmp_path: Path) -> None:

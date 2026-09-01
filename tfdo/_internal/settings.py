@@ -31,7 +31,7 @@ class InteractiveMode(StrEnum):
 
 
 class TfDoSettings(StaticSettings):
-    model_config = ConfigDict(populate_by_name=True)  # type: ignore
+    model_config = ConfigDict(populate_by_name=True)
 
     DEP_TFVARS_SUFFIX: ClassVar[str] = ".dep.tfvars.json"
     STREAM_PARSE_FAILURE_FILENAME: ClassVar[str] = "stream_parse_failure.ndjson"

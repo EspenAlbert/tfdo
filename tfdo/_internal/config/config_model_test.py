@@ -29,7 +29,7 @@ def test_full_config_from_dict():
         "var_files": ["common.tfvars"],
         "run_dir_discovery": "envs/{env}/{app}",
     }
-    cfg = TfDoConfig(**data)
+    cfg = TfDoConfig.model_validate(data)
     assert cfg.binary == "tofu"
     assert cfg.tags == {"env": "staging", "team": "infra"}
     assert isinstance(cfg.backend, S3Backend)
