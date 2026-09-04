@@ -27,6 +27,8 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
       - uses: ./.github/actions/setup
+        with:
+          python-version: '3.14'
       - name: post-merge
         run: just pkg-post-merge
       # App token pushes trigger downstream workflows automatically:
