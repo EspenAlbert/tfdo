@@ -7,7 +7,7 @@ on:
     types: [opened, reopened, synchronize]
   push:
     branches:
-      - "**"
+      - main
 # === OK_EDIT: path-sync on ===
 
 # === DO_NOT_EDIT: path-sync jobs ===
